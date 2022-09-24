@@ -188,7 +188,7 @@ int main( void )
         // TRY THIS, MUST ALSO ADJUST LCDSEL
         // Use VLO instead of XTAL
         //RTCCTL = RTCSS__VLOCLK;                    // Initialize RTC to use Very Low Oscilator and enable RTC interrupt
-
+/*
 
         // Configure XT1 oscillator
         P4SEL0 |= BIT1 | BIT2;                              // P4.2~P4.1: crystal pins
@@ -201,6 +201,11 @@ int main( void )
         CSCTL6 = (CSCTL6 & ~(XT1DRIVE_3)) | XT1DRIVE_2;     // Higher drive strength and current consumption for XT1 oscillator
 
         RTCCTL = RTCSS__XT1CLK ;                    // Initialize RTC to use XT1 and enable RTC interrupt
+
+*/
+
+
+        RTCCTL = RTCSS__VLOCLK ;                    // Initialize RTC to use VLO clock
 
 
         // Disable the GPIO power-on default high-impedance mode
@@ -282,7 +287,8 @@ int main( void )
 
         // Set up RTC
 
-        RTCMOD = 32768;                                     // Set RTC modulo to 32768 to trigger interrupt each second. This will get loaded into the shadow register on next trigger or reset
+//        RTCMOD = 32768;                                     // Set RTC modulo to 32768 to trigger interrupt each second. This will get loaded into the shadow register on next trigger or reset
+        RTCMOD = 10000;                                     // Set RTC modulo to 1000 to trigger interrupt each second on VLO clock. This will get loaded into the shadow register on next trigger or reset
 
 
         // Configure RTC
