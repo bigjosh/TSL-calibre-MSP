@@ -221,7 +221,7 @@ int main( void )
 
 
         // Divide by 16 (so CLK will be 32768/162 = ~2KHz), Very Low Osc, Turn on LCD, 4-mux selected (LCD4MUX also includes LCDSON)
-        LCDCTL0 = LCDDIV_5 | LCDSSEL__VLOCLK | LCD4MUX | LCDSON | LCDON  ;
+        LCDCTL0 = LCDDIV_2 | LCDSSEL__VLOCLK | LCD4MUX | LCDSON | LCDON  ;
 
 
 /*
