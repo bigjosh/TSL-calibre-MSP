@@ -187,10 +187,9 @@ int main( void )
 
         // TRY THIS, MUST ALSO ADJUST LCDSEL
         // Use VLO instead of XTAL
-        RTCCTL = RTCSS__VLOCLK;                    // Initialize RTC to use Very Low Oscilator and enable RTC interrupt
+        //RTCCTL = RTCSS__VLOCLK;                    // Initialize RTC to use Very Low Oscilator and enable RTC interrupt
 
 
-/*
         // Configure XT1 oscillator
         P4SEL0 |= BIT1 | BIT2;                              // P4.2~P4.1: crystal pins
         do
@@ -202,7 +201,7 @@ int main( void )
         CSCTL6 = (CSCTL6 & ~(XT1DRIVE_3)) | XT1DRIVE_2;     // Higher drive strength and current consumption for XT1 oscillator
 
         RTCCTL = RTCSS__XT1CLK ;                    // Initialize RTC to use XT1 and enable RTC interrupt
-*/
+
 
         // Disable the GPIO power-on default high-impedance mode
         // to activate previously configured port settings
@@ -218,8 +217,17 @@ int main( void )
 
         //LCDCTL0 = LCDSSEL_0 | LCDDIV_7;                     // flcd ref freq is xtclk
 
-        // TODO: Try different clocks
-        LCDCTL0 = LCDDIV_7 | LCDSSEL__VLOCLK | LCD4MUX | LCDSON | LCDON  ;  // Divide by 32 (so CLK will be 32768/32 = ~1KHz), Very Low Osc, Turn on LCD, 4-mux selected (LCD4MUX also includes LCDSON)
+        // TODO: Try different clocks and dividers
+
+/*
+        // Divide by 32 (so CLK will be 32768/32 = ~1KHz), Very Low Osc, Turn on LCD, 4-mux selected (LCD4MUX also includes LCDSON)
+        LCDCTL0 = LCDDIV_6 | LCDSSEL__VLOCLK | LCD4MUX | LCDSON | LCDON  ;
+*/
+
+        // Divide by 32 (so CLK will be 32768/32 = ~1KHz), Very Low Osc, Turn on LCD, 4-mux selected (LCD4MUX also includes LCDSON)
+        LCDCTL0 = LCDDIV_6 | LCDSSEL__XTCLK | LCD4MUX | LCDSON | LCDON  ;
+
+
 
         // LCD Operation - Mode 3, internal 3.08v, charge pump 256Hz, 3.4uA
         //LCDVCTL = LCDCPEN | LCDREFEN | VLCD_6 | (LCDCPFSEL0 | LCDCPFSEL1 | LCDCPFSEL2 | LCDCPFSEL3);
@@ -282,7 +290,7 @@ int main( void )
 
         RTCIV;                      // Clear any pending RTC interrupt
 
-        RTCCTL |= RTCIE;                    // Initialize RTC to use XT1 and enable RTC interrupt
+        RTCCTL |= RTCIE;                    // Enable interrupt wake on RTC rollover
 
         // Go into LPM3.5 sleep
 
