@@ -16,13 +16,13 @@ Additionally we want to be able to optimize the layout of the traces to keep the
 
 The mapping of MSP430 memory locations to pins is here...
 
-[MSP430 LCD memory map.png](MSP430 LCD memory map.png)
+[MSP430 LCD memory map](MSP430%20LCD%20memory%20map.png)
 
 Note that the "L" pin is logical and you need to then map that to a physical pin number  on the device using the layout below. 
 
 Here are the physical layouts of the chip pins and the LCD pins they way they are oriented on the PCB...
 
-[pinouts drawing.svg](pinouts drawing.svg)
+[LCD pinouts drawing](pinouts%20drawing.svg)
 
 These trace mappings are reflected both on the PCB layout and with `#define`s in the firmware. 
 
