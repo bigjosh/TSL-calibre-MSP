@@ -53,20 +53,32 @@
        width="114.39136"
        height="15.501633"
        id="rect1121" />
+    <rect
+       x="62.407436"
+       y="114.12409"
+       width="109.89066"
+       height="2.3272137"
+       id="rect933-1" />
+    <rect
+       x="62.407436"
+       y="114.12409"
+       width="114.39136"
+       height="15.501633"
+       id="rect1437" />
   </defs>
   <sodipodi:namedview
-     inkscape:window-maximized="1"
-     inkscape:window-y="-8"
-     inkscape:window-x="2552"
-     inkscape:window-height="1529"
-     inkscape:window-width="2560"
+     inkscape:window-maximized="0"
+     inkscape:window-y="44"
+     inkscape:window-x="752"
+     inkscape:window-height="1511"
+     inkscape:window-width="1667"
      showgrid="false"
      inkscape:document-rotation="0"
-     inkscape:current-layer="layer1"
+     inkscape:current-layer="layer2"
      inkscape:document-units="mm"
-     inkscape:cy="537.04689"
-     inkscape:cx="235.46302"
-     inkscape:zoom="1.3075636"
+     inkscape:cy="306.54429"
+     inkscape:cx="278.44788"
+     inkscape:zoom="2.6151272"
      inkscape:pageshadow="2"
      inkscape:pageopacity="0.0"
      borderopacity="1.0"
@@ -2132,33 +2144,39 @@ tIjZ9zG58pcAAAAASUVORK5CYII=
          id="tspan1104"
          sodipodi:role="line">12L</tspan></text>
     <text
-       transform="translate(-2.0234834,4.8563602)"
+       transform="translate(4.2493152,-163.29512)"
        id="text1110"
        y="275.19376"
        x="7.0821919"
-       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;line-height:1.25;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;letter-spacing:0px;word-spacing:0px;white-space:pre;inline-size:78.4635;stroke-width:0.264583;"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.88056px;line-height:1.25;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;letter-spacing:0px;word-spacing:0px;white-space:pre;inline-size:53.5747;stroke-width:0.264583"
        xml:space="preserve"><tspan
          x="7.0821919"
-         y="275.19376"><tspan>For efficient updates, both the high and low pins </tspan></tspan><tspan
+         y="275.19376"><tspan
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.88056px;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">For efficient updates, both </tspan></tspan><tspan
          x="7.0821919"
-         y="279.16252"><tspan>of each LCD digit should be connected to the </tspan></tspan><tspan
+         y="280.04447"><tspan
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.88056px;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">the high and low pins of </tspan></tspan><tspan
          x="7.0821919"
-         y="283.13127"><tspan>same register. Pairs start with L0/L1 and go up </tspan></tspan><tspan
+         y="284.89518"><tspan
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.88056px;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">each LCD digit should be </tspan></tspan><tspan
          x="7.0821919"
-         y="287.10002"><tspan>to L36/L37. </tspan></tspan></text>
-    <g
-       id="g1008-5"
-       transform="matrix(0.6892772,0,0,0.99163676,-57.075132,127.74179)">
-      <rect
-         ry="0.52100444"
-         rx="0.51406717"
-         y="149.17636"
-         x="88.191498"
-         height="18.520103"
-         width="117.06034"
-         id="rect937-3"
-         style="fill:none;stroke:#000000;stroke-width:0.273857;stroke-opacity:1" />
-    </g>
+         y="289.74589"><tspan
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.88056px;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">connected to the same </tspan></tspan><tspan
+         x="7.0821919"
+         y="294.5966"><tspan
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.88056px;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">register. This allows the </tspan></tspan><tspan
+         x="7.0821919"
+         y="299.4473"><tspan
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.88056px;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">whole digit to be updated </tspan></tspan><tspan
+         x="7.0821919"
+         y="304.29801"><tspan
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.88056px;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">with a single byte </tspan></tspan><tspan
+         x="7.0821919"
+         y="309.14872"><tspan
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.88056px;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">write.Pairs start with L0/L1 </tspan></tspan><tspan
+         x="7.0821919"
+         y="313.99943"><tspan
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.88056px;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">and go up to L36/L37. </tspan></tspan></text>
     <text
        xml:space="preserve"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.65258px;line-height:1.25;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;letter-spacing:0px;word-spacing:0px;stroke-width:0.342427;fill:#50c200;fill-opacity:1;"
@@ -2285,5 +2303,183 @@ tIjZ9zG58pcAAAAASUVORK5CYII=
          y="182.09386"
          x="138.34492"
          sodipodi:role="line" /></text>
+    <rect
+       ry="0.49999899"
+       rx="0.49999899"
+       y="141.79416"
+       x="104.23515"
+       height="16.669039"
+       width="6.7248483"
+       id="rect1386"
+       style="opacity:0.997;fill:none;fill-opacity:1;stroke:#00d600;stroke-width:0.465;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:0.69999999" />
+    <text
+       transform="matrix(1.8276303,0,0,1.8276303,-49.294142,-110.44584)"
+       id="text1486"
+       y="149.53543"
+       x="33.185127"
+       style="font-size:2.11667px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;white-space:pre;inline-size:29.1516;stroke-width:0.264583"
+       xml:space="preserve"><tspan
+         x="33.185127"
+         y="149.53543"><tspan
+           style="stroke-width:0.264583">Digits 12 and 11 represent </tspan></tspan><tspan
+         x="33.185127"
+         y="152.18127"><tspan
+           style="stroke-width:0.264583">the seconds and so are the </tspan></tspan><tspan
+         x="33.185127"
+         y="154.82711"><tspan
+           style="stroke-width:0.264583">most frequently updated. </tspan></tspan><tspan
+         x="33.185127"
+         y="157.47296"><tspan
+           style="stroke-width:0.264583">By picking 4 L-pins that </tspan></tspan><tspan
+         x="33.185127"
+         y="160.1188"><tspan
+           style="stroke-width:0.264583">are all in a comon word in </tspan></tspan><tspan
+         x="33.185127"
+         y="162.76464"><tspan
+           style="stroke-width:0.264583">memory, we can update </tspan></tspan><tspan
+         x="33.185127"
+         y="165.41049"><tspan
+           style="stroke-width:0.264583">both digits with a single </tspan></tspan><tspan
+         x="33.185127"
+         y="168.05633"><tspan
+           style="stroke-width:0.264583">write when they both </tspan></tspan><tspan
+         x="33.185127"
+         y="170.70217"><tspan
+           style="stroke-width:0.264583">change every 10 seconds. </tspan></tspan></text>
+    <rect
+       ry="0.49999899"
+       rx="0.49999899"
+       y="158.07832"
+       x="10.195297"
+       height="45.933071"
+       width="55.645794"
+       id="rect1488"
+       style="opacity:0.997;fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.433;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+    <rect
+       style="opacity:0.997;fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.433001;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect1488-1"
+       width="55.645798"
+       height="45.933075"
+       x="9.8951368"
+       y="106.81035"
+       rx="0.49999902"
+       ry="0.49999902" />
+  </g>
+  <g
+     inkscape:label="Traces"
+     id="layer2"
+     inkscape:groupmode="layer">
+    <path
+       id="path1333"
+       d="M 73.250099,178.26889 115.74325,156.61762"
+       style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       id="path1335"
+       d="M 73.452447,173.61488 116.14795,152.3683"
+       style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       id="path1339"
+       d="M 116.55265,147.71429 73.654797,168.96086"
+       style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       id="path1341"
+       d="M 73.654797,163.90216 116.55265,143.26263"
+       style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       id="path1343"
+       d="M 139.8227,178.47124 116.65382,139.11448"
+       style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       id="path1345"
+       d="M 139.31683,173.31135 116.65382,134.66282"
+       style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       id="path1347"
+       d="M 139.31683,168.85969 116.55265,130.71703"
+       style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       id="path1349"
+       d="M 139.41801,164.00333 116.55265,126.16419"
+       style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       id="path1351"
+       d="M 139.31683,159.45049 116.45147,121.71253"
+       style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       id="path1353"
+       d="m 139.31683,154.69531 -22.46066,-37.2321"
+       style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       id="path1355"
+       d="M 139.41801,150.14247 116.65382,113.01155"
+       style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       id="path1357"
+       d="M 139.41801,145.69081 116.65382,108.96458"
+       style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       id="path1359"
+       d="M 139.51918,140.93562 116.55265,104.61409"
+       style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       id="path1361"
+       d="M 116.65382,47.956557 139.21566,29.13816"
+       style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       id="path1363"
+       d="M 116.55265,52.307045 139.41801,33.893347"
+       style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       id="path1365"
+       d="M 116.65382,56.75871 139.41801,38.446186"
+       style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       id="path1367"
+       d="M 116.65382,61.109198 139.11448,43.20137"
+       style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       id="path1381"
+       d="M 139.21566,48.158905 116.3503,65.459689"
+       style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;opacity:0.99700004" />
+    <path
+       id="path1513"
+       d="M 116.04677,69.911351 139.51918,52.408222"
+       style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       id="path1515"
+       d="M 116.04677,74.363016 139.51918,57.26458"
+       style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       id="path1517"
+       d="M 115.9456,78.814678 139.01331,61.615071"
+       style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       id="path1519"
+       d="M 139.21566,66.774953 116.04677,82.96282"
+       style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       id="path1521"
+       d="M 138.81096,71.024268 115.84442,87.414483"
+       style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       id="path1523"
+       d="M 73.351273,29.239334 93.282586,48.361253"
+       style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       id="path1525"
+       d="M 73.755971,33.994521 93.080236,52.61057"
+       style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       id="path1527"
+       d="M 73.351273,38.446186 92.877888,57.062232"
+       style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       id="path1529"
+       d="m 73.047751,42.897848 19.830137,18.4137"
+       style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       id="path1531"
+       d="M 73.654797,48.057731 92.473191,65.459689"
+       style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
   </g>
 </svg>
