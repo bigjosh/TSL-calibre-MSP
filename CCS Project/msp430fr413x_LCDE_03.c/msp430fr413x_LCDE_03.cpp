@@ -1,4 +1,8 @@
 #include <msp430.h>
+#include "i2c_master.h"
+
+#define RV_3032_I2C_ADDR (0b01010001)           // Datasheet 6.6
+
 
 // *** LCD layout
 
@@ -56,8 +60,8 @@ constexpr digit_segment_t digit_segments[] = {
 // These mappings come from our PCB trace layout
 
 struct logical_digit_t {
-    char lpin_a_thru_d;       // The LPIN for segments A-D
-    char lpin_e_thru_g;       // The LPIN for segments E-G
+    const char lpin_a_thru_d;       // The LPIN for segments A-D
+    const char lpin_e_thru_g;       // The LPIN for segments E-G
 };
 
 constexpr logical_digit_t logical_digits[] {
@@ -238,6 +242,10 @@ int main( void )
         RTCIV; // Clear RTC interrupt. If we do not do this then the RTC ISR will be needlessly called when drop into LPM3.5
 
 
+        // toggle low power waveform so we can see if it is visible (turns out only visible from wide viewing angles)
+        // Divide by 1 (so CLK will be 10Khz), Very Low Osc, Turn on LCD, 4-mux selected (LCD4MUX also includes LCDSON), Low power waveform
+        //LCDCTL0 ^= LCDLP ;
+
         switch (*Seconds) {
 
             case 0:
@@ -255,6 +263,42 @@ int main( void )
                 lcd_show< 0,3>();
                 break;
 
+            case 3:
+                *Seconds=4;
+                lcd_show< 0,4>();
+                break;
+
+            case 4:
+                *Seconds=5;
+                lcd_show< 0,5>();
+                break;
+
+            case 5:
+                *Seconds=6;
+                lcd_show< 0,6>();
+                break;
+
+            case 6:
+                *Seconds=7;
+                lcd_show< 0,7>();
+                break;
+
+            case 7:
+                *Seconds=8;
+                lcd_show< 0,8>();
+                break;
+
+            case 8:
+                *Seconds=9;
+                lcd_show< 0,9>();
+                break;
+
+            case 9:
+                *Seconds=0;
+                lcd_show< 0,0>();
+                break;
+
+
             default:
                 *Seconds=0;
                 lcd_show< 0,0>();
@@ -262,9 +306,13 @@ int main( void )
 
         }
 
+
         PMMCTL0_H = PMMPW_H;                                // Open PMM Registers for write
         PMMCTL0_L |= PMMREGOFF_L;                           // and set PMMREGOFF
         __bis_SR_register(LPM3_bits | GIE);                 // Re-enter LPM3.5
+
+        // We never get here because LPM3.5 reboots on wake
+
 
     }
     else
@@ -292,9 +340,6 @@ int main( void )
         *Hours = 10;
 
 
-        // TRY THIS, MUST ALSO ADJUST LCDSEL
-        // Use VLO instead of XTAL
-        //RTCCTL = RTCSS__VLOCLK;                    // Initialize RTC to use Very Low Oscilator and enable RTC interrupt
 /*
 
         // Configure XT1 oscillator
@@ -309,8 +354,11 @@ int main( void )
 
         RTCCTL = RTCSS__XT1CLK ;                    // Initialize RTC to use XT1 and enable RTC interrupt
 
+
+
 */
-        RTCCTL = RTCSS__VLOCLK ;                    // Initialize RTC to use VLO clock
+
+        //RTCCTL = RTCSS__VLOCLK ;                    // Initialize RTC to use VLO clock
 
         // Configure LCD pins
         SYSCFG2 |= LCDPCTL;                                 // LCD R13/R23/R33/LCDCAP0/LCDCAP1 pins enabled
@@ -332,7 +380,12 @@ int main( void )
 
         // TODO: Try different clocks and dividers
         // Divide by 1 (so CLK will be 10Khz), Very Low Osc, Turn on LCD, 4-mux selected (LCD4MUX also includes LCDSON)
-        LCDCTL0 = LCDDIV_1 | LCDSSEL__VLOCLK | LCD4MUX | LCDSON | LCDON  ;
+        //LCDCTL0 = LCDDIV_1 | LCDSSEL__VLOCLK | LCD4MUX | LCDSON | LCDON  ;
+
+        // Divide by 1 (so CLK will be 10Khz), Very Low Osc, Turn on LCD, 4-mux selected (LCD4MUX also includes LCDSON), Low power saveform
+        LCDCTL0 = LCDDIV_1 | LCDSSEL__VLOCLK | LCD4MUX | LCDSON | LCDON | LCDLP ;
+
+
 
 /*
         // Divide by 32 (so CLK will be 32768/32 = ~1KHz), Very Low Osc, Turn on LCD, 4-mux selected (LCD4MUX also includes LCDSON)
@@ -343,13 +396,20 @@ int main( void )
         // LCD Operation - Mode 3, internal 3.08v, charge pump 256Hz, 3.4uA
         //LCDVCTL = LCDCPEN | LCDREFEN | VLCD_6 | (LCDCPFSEL0 | LCDCPFSEL1 | LCDCPFSEL2 | LCDCPFSEL3);
 
-        // LCD Operation - Mode 2, internal V1=Vcc 3.3v , charge pump 256Hz, 1.7uA
-        LCDVCTL = LCDCPEN | LCDSELVDD | VLCD_6 | (LCDCPFSEL0 | LCDCPFSEL1 | LCDCPFSEL2 | LCDCPFSEL3);
+        // LCD Operation - internal V1 regulator=3.32v , charge pump 256Hz
+        // LCDVCTL = LCDCPEN | LCDREFEN | VLCD_12 | (LCDCPFSEL0 | LCDCPFSEL1 | LCDCPFSEL2 | LCDCPFSEL3);
 
 
-        // LCD Operation - Mode 1, Pin R33 is connected to external V1, charge pump 256Hz, 1.7uA
-        //LCDVCTL = LCDCPEN | LCDSELVDD | VLCD_6 | (LCDCPFSEL0 | LCDCPFSEL1 | LCDCPFSEL2 | LCDCPFSEL3);
+        // LCD Operation - Pin R33 is connected to external Vcc, charge pump 256Hz, 1.7uA
+        //LCDVCTL = LCDCPEN | LCDSELVDD | (LCDCPFSEL0 | LCDCPFSEL1 | LCDCPFSEL2 | LCDCPFSEL3);
 
+
+        // LCD Operation - Pin R33 is connected to internal Vcc, no charge pump
+        //LCDVCTL = LCDSELVDD;
+
+
+        // LCD Operation - Pin R33 is connected to external V1, charge pump 256Hz, 1.7uA, Low Power Waveform
+        LCDVCTL = LCDCPEN | (LCDCPFSEL0 | LCDCPFSEL1 | LCDCPFSEL2 | LCDCPFSEL3) | LCDLP;
 
 /*
         // For MSP430FR4133-EXP
@@ -381,13 +441,43 @@ int main( void )
 
 
         // Set up RTC
+
+
+
         RTCMOD = 10000;                                     // Set RTC modulo to 1000 to trigger interrupt each second on 10Khz VLO clock. This will get loaded into the shadow register on next trigger or reset
 
-        RTCCTL |=  RTCSR;                    // reset RTC which will load overflow value into shadow reg and reset the counter to 0,  and enable RTC interrupt
+        RTCCTL |=  RTCSR;                    // reset RTC which will load overflow value into shadow reg and reset the counter to 0,  and generate RTC interrupt
 
         RTCIV;                      // Clear any pending RTC interrupt
 
-        RTCCTL |= RTCIE;                    // Enable interrupt wake on RTC rollover
+        // TRY THIS, MUST ALSO ADJUST LCDSEL
+        // Use VLO instead of XTAL
+        RTCCTL = RTCSS__VLOCLK | RTCIE;                    // Initialize RTC to use Very Low Oscillator and enable RTC interrupt on rollovert
+
+/*
+        lcd_show< 0,6>();
+        P1DIR |= 1<<3;
+
+        while (1) {
+
+            P1OUT |= 1<<3;
+            __delay_cycles(100);
+            P1OUT &= ~(1<<3);
+            __delay_cycles(100);
+
+        }
+*/
+
+        i2c_init();
+
+        uint8_t save_flags_reg;
+
+        while (1) {
+
+            i2c_read( RV_3032_I2C_ADDR , 0x01 , &save_flags_reg , 1 );
+
+        }
+
 
         lcd_show< 0,0>();
         lcd_show< 1,1>();
