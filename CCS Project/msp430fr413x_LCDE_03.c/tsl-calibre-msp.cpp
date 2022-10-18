@@ -501,10 +501,10 @@ int main( void )
         // Now we need to setup interrupt on clock_in pin to wake us
 
 
-/*
+
 
        CLOCK_IN_PDIR &= ~_BV( CLOCK_IN_B );
-       // CLOCK_IN_POUT &= ~_BV( CLOCK_IN_B );
+       CLOCK_IN_POUT &= ~_BV( CLOCK_IN_B );
        CLOCK_IN_PREN |= _BV( CLOCK_IN_B );
 
 
@@ -512,7 +512,7 @@ int main( void )
 
        CLOCK_IN_PIE |= _BV( CLOCK_IN_B );          // Enable interrupt on the clock_in pin. By default this will be low-to-high triggered
 
-*/
+
 
         // TODO: Why doesnt this work?
         //LCDMEMCTL |= LCDCLRM;                               // Clear LCD memory command (executed one shot)
@@ -608,12 +608,13 @@ int main( void )
         CBI( P1OUT , 1 );
 
 
+
         // Go into LPM3.5 sleep
-        PMMCTL0_H = PMMPW_H;                               // Open PMM Registers for write
-        PMMCTL0_L |= PMMREGOFF_L;                           // and set PMMREGOFF also clears SVS
+        //PMMCTL0_H = PMMPW_H;                               // Open PMM Registers for write
+        //PMMCTL0_L |= PMMREGOFF_L;                           // and set PMMREGOFF also clears SVS
         // TODO: datasheets say SVS off makes wakeup 10x slower, so need to test when wake works
 
-        __bis_SR_register( LPM4_bits );                    // Enter LPM3.5
+        __bis_SR_register( LPM4_bits | GIE );                    // Enter LPM3.5
 
         /*
         PMMCTL0_H = PMMPW_H;                                // Open PMM Registers for write
@@ -623,7 +624,14 @@ int main( void )
         __no_operation();                                   // For debugger
          */
 
+        while (1) {
 
+            lcd_show< 9,2>();
+            __delay_cycles(1000000);
+            lcd_show< 9,3>();
+            __delay_cycles(1000000);
+
+        }
     }
 }
 
@@ -632,14 +640,23 @@ int main( void )
 
 __interrupt void PORT1_ISR(void) {
 
-    lcd_show< 8,1>();
+    CLOCK_IN_PIV;   // Read and throw away to clear the PORT1 pin change interrupt flag. Only clears the top one but we only expect to have one.
 
 
+    if (*spin==1) {
+
+        lcd_show< 8,1>();
+        *spin=2;
+
+    } else {
+        lcd_show< 8,2>();
+        *spin=1;
+
+    }
 
     SBI( P1DIR , 2 );
     SBI( P1OUT , 2 );
     CBI( P1OUT , 2 );
-
 
 }
 
@@ -649,8 +666,6 @@ __interrupt void PORT1_ISR(void) {
 __interrupt void RTC_ISR(void) {
 
     lcd_show< 9,1>();
-
-
 
     SBI( P1DIR , 2 );
     SBI( P1OUT , 2 );
