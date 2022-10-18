@@ -26,18 +26,7 @@
 
 #define _delay_us(x) (__delay_cycles(x))    // For now we are running 1Mhz
 
-#define I2C_DTA_PREN P1REN
-#define I2C_DTA_PDIR P1DIR
-#define I2C_DTA_POUT P1OUT
-#define I2C_DTA_PIN  P1IN
-#define I2C_DTA_B (3)       // Bit
 
-#define I2C_CLK_PREN P1REN
-#define I2C_CLK_PDIR P1DIR
-#define I2C_CLK_POUT P1OUT
-#define I2C_CLK_PIN  P1IN
-
-#define I2C_CLK_B (2)
 
 
 // TODO: Drive SCL high rather than pull?

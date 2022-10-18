@@ -23,5 +23,21 @@
 
 #define CLOCK_IN_B (0)       // Bit
 
+// I2C data connection to RV3203 on pin P1.3 which is pin number 25 on MSP430
+
+#define I2C_DTA_PREN P1REN
+#define I2C_DTA_PDIR P1DIR
+#define I2C_DTA_POUT P1OUT
+#define I2C_DTA_PIN  P1IN
+#define I2C_DTA_B (3)       // Bit
+
+// I2C clock connection to RV3203 on pin P1.2 which is pin number 26 on MSP430
+
+#define I2C_CLK_PREN P1REN
+#define I2C_CLK_PDIR P1DIR
+#define I2C_CLK_POUT P1OUT
+#define I2C_CLK_PIN  P1IN
+
+#define I2C_CLK_B (2)
 
 #endif /* PINS_H_ */

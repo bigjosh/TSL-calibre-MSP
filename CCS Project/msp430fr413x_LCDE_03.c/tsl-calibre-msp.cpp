@@ -344,8 +344,11 @@ int main( void )
         // to activate previously configured port settings
         PM5CTL0 &= ~LOCKLPM5;
 
+/*
         SBI( P1DIR , 1 );
         SBI( P1OUT , 1 );
+
+*/
 
         /*
             // This code is for testing LCD individual segments, it outputs out of phase square waves on MSP430 pins 1 and 2.
@@ -480,7 +483,7 @@ int main( void )
 
         }
 */
-/*
+
         // Setup the RV3032
 
         i2c_init();
@@ -491,12 +494,33 @@ int main( void )
         uint8_t save_flags_reg = 0b01100000;
         i2c_write( RV_3032_I2C_ADDR , 0xc3 , &save_flags_reg , 1 ); // Switch CLKOUT to 1 Hz
 
+        // set TD to 00 for 4069Hz timer, TE=1 to enable periodic countdown timer
+        uint8_t control1 = 0b00001000;
+        i2c_write( RV_3032_I2C_ADDR , 0x10 , &control1 , 1 ); // Switch CLKOUT to 1 Hz
+
+        // Set TIE in Control 2 to 1 t enable interrupt pin for periodic countdown
+        uint8_t control2 = 0b00010000;
+        i2c_write( RV_3032_I2C_ADDR , 0x11 , &control2 , 1 ); // Switch CLKOUT to 1 Hz
+
+
+        // Periodic Timer value = 2048 for 500ms
+
+        const unsigned timerValue = 4069;
+        uint8_t timerValueH = timerValue / 0x100;
+        uint8_t timerValueL = timerValue % 0x100;
+        i2c_write( RV_3032_I2C_ADDR , 0x0b , &timerValueL  , 1 );
+        i2c_write( RV_3032_I2C_ADDR , 0x0c , &timerValueH  , 1 );
+
+        // Set TD= 01 for 4096Hz
+
+
+
 
         //uint8_t pmu_reg = 0b01010000;       // No CLKOUT, Switchover when VDD < VBACKUP, Trickle Charger off
         //i2c_write( RV_3032_I2C_ADDR , 0xc0 , &pmu_reg , 1 ); // Disable CLKOUT
 
 
-*/
+
         // OK now the RTC is sending a 1Hz clock out
         // Now we need to setup interrupt on clock_in pin to wake us
 
@@ -504,7 +528,7 @@ int main( void )
 
 
        CLOCK_IN_PDIR &= ~_BV( CLOCK_IN_B );
-       CLOCK_IN_POUT &= ~_BV( CLOCK_IN_B );
+       CLOCK_IN_POUT |= _BV( CLOCK_IN_B );// Pull-up
        CLOCK_IN_PREN |= _BV( CLOCK_IN_B );
 
 
@@ -604,9 +628,6 @@ int main( void )
         */
 
         SYSRSTIV = 0x00;            // Clear all pending reset sources
-
-        CBI( P1OUT , 1 );
-
 
 
         // Go into LPM3.5 sleep
