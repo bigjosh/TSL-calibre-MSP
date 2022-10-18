@@ -202,39 +202,16 @@ volatile unsigned char * Hours = &BAKMEM1_L;                 // Store hours in t
 volatile unsigned char * spin = &BAKMEM1_H;                 // Store hours in the backup RAM module
 
 
-void Init_GPIO(void);
-
-// test power consumption
-
-int mainx( void )
-{
-    WDTCTL = WDTPW | WDTHOLD;                               // Stop watchdog timer
-
-    // Disable the GPIO power-on default high-impedance mode
-    // to activate previously configured port settings
-    PM5CTL0 &= ~LOCKLPM5;
-
-    // Configure all GPIO to Output Low
-    P1OUT = 0x00;P2OUT = 0x00;P3OUT = 0x00;P4OUT = 0x00;
-    P5OUT = 0x00;P6OUT = 0x00;P7OUT = 0x00;P8OUT = 0x00;
-
-    P1DIR = 0xFF;P2DIR = 0xFF;P3DIR = 0xFF;P4DIR = 0xFF;
-    P5DIR = 0xFF;P6DIR = 0xFF;P7DIR = 0xFF;P8DIR = 0xFF;
-
-    PMMCTL0_H = PMMPW_H;                                // Open PMM Registers for write
-    PMMCTL0_L |= PMMREGOFF_L;                           // and set PMMREGOFF
-    __bis_SR_register(LPM3_bits | GIE);                 // Re-enter LPM3.5
-
-    return 0;
-
-}
 
 int main( void )
 {
     WDTCTL = WDTPW | WDTHOLD;                               // Stop watchdog timer
-    if ( 0 || SYSRSTIV == SYSRSTIV_LPM5WU)                        // If LPM3.5 wakeup
+    if ( 0 /* && SYSRSTIV == SYSRSTIV_LPM5WU */)                        // If LPM3.5 wakeup
     {
 
+        SBI( P1DIR , 1 );
+        SBI( P1OUT , 1 );
+        CBI( P1OUT , 1 );
 
         /*
          * When an overflow occurs, the RTCIFG bit in the RTCCTL register is set until it is cleared by a read of the
@@ -246,9 +223,9 @@ int main( void )
 
 
         // Initialize GPIO pins for low power
-        Init_GPIO();
-
-
+        // Configure all GPIO to Output Low
+        P1OUT = 0x00;P2OUT = 0x00;P3OUT = 0x00;P4OUT = 0x00;
+        P5OUT = 0x00;P6OUT = 0x00;P7OUT = 0x00;P8OUT = 0x00;
 
        CLOCK_IN_PDIR &= ~_BV( CLOCK_IN_B );
        // CLOCK_IN_POUT &= ~_BV( CLOCK_IN_B );
@@ -357,11 +334,18 @@ int main( void )
         //STACK_INIT();
 
         // Initialize GPIO pins for low power
-        Init_GPIO();
+        P1DIR = 0xFF;P2DIR = 0xFF;P3DIR = 0xFF;P4DIR = 0xFF;
+        P5DIR = 0xFF;P6DIR = 0xFF;P7DIR = 0xFF;P8DIR = 0xFF;
+        // Configure all GPIO to Output Low
+        P1OUT = 0x00;P2OUT = 0x00;P3OUT = 0x00;P4OUT = 0x00;
+        P5OUT = 0x00;P6OUT = 0x00;P7OUT = 0x00;P8OUT = 0x00;
 
         // Disable the GPIO power-on default high-impedance mode
         // to activate previously configured port settings
         PM5CTL0 &= ~LOCKLPM5;
+
+        SBI( P1DIR , 1 );
+        SBI( P1OUT , 1 );
 
         /*
             // This code is for testing LCD individual segments, it outputs out of phase square waves on MSP430 pins 1 and 2.
@@ -374,9 +358,6 @@ int main( void )
             }
         */
 
-        //*Seconds = 5;                                       // Set initial time to 12:00:00
-        *Minutes = 0;
-        *Hours = 10;
 
         //RTCCTL = RTCSS__VLOCLK ;                    // Initialize RTC to use VLO clock
 
@@ -533,7 +514,6 @@ int main( void )
 
 */
 
-
         // TODO: Why doesnt this work?
         //LCDMEMCTL |= LCDCLRM;                               // Clear LCD memory command (executed one shot)
         //while (LCDMEMCTL & LCDCLRM);                        // Wait for clear to complete before moving on
@@ -549,18 +529,44 @@ int main( void )
         lcd_show< 8,8>();
         lcd_show< 9,9>();
         lcd_show<10,0>();
-        lcd_show<11,4>();
+        lcd_show<11,5>();
 
+        unsigned f = PMMIFG;        // Read reset flags
 
-
-        spin++;
-
-        if (*spin==1) {
-            lcd_show<10,1>();
-        } else {
-            lcd_show<10,2>();
+        if (f & PMMLPM5IFG) {       // Wake from LPMx.5
+            lcd_show< 7,1>();
         }
 
+
+        if (f & SVSHIFG) {          // SVS low side interrupt flag (power up)
+            lcd_show< 6,1>();
+        }
+
+
+        if (f & PMMPORIFG) {
+            lcd_show< 5,1>();
+        }
+
+        if (f & PMMPORIFG) {
+            lcd_show< 4,1>();
+        }
+
+        if (f & PMMRSTIFG) {            // Reset pin
+              lcd_show< 3,1>();
+          }
+
+
+        if (f & PMMBORIFG) {
+              lcd_show< 2,1>();
+         }
+
+
+        SYSRSTIV = 0x00;
+        unsigned iv = SYSRSTIV;
+
+        if (iv!=0x0000) {
+            lcd_show< 1,0>();
+        }
 
         //Enter LPM3 with SVS off
         //PMMCTL0_L &= ~SVSHE ;                           // disable SVS (prob ~0.2uA, default is on)
@@ -573,7 +579,11 @@ int main( void )
 
         // "the WDTHOLD bit can be used to hold the WDTCNT, reducing power consumption."
 
-        WDTCTL = WDTPW | WDTSSEL__VLO | WDTHOLD;                               // Select VLO for WDT clock, halt watchdog timer
+
+
+        //WDTCTL = WDTPW | WDTSSEL__VLO | WDTHOLD;                               // Select VLO for WDT clock, halt watchdog timer
+
+
 
         // "After reset, RTCSS defaults to 00b (disabled), which means that no clock source is selected."
 
@@ -585,12 +595,25 @@ int main( void )
         __bis_SR_register( CPUOFF | SCG1 | OSCOFF  );                 // Enter LPM3 with datasheet specified flags.
 
 */
+
+
+        /*
+            Reset interrupt vector. Generates a value that can be used as address offset for
+            fast interrupt service routine handling to identify the last cause of a reset (BOR,
+            POR, or PUC). Writing to this register clears all pending reset source flags.
+        */
+
+        SYSRSTIV = 0x00;            // Clear all pending reset sources
+
+        CBI( P1OUT , 1 );
+
+
         // Go into LPM3.5 sleep
         PMMCTL0_H = PMMPW_H;                               // Open PMM Registers for write
-        PMMCTL0_L = PMMREGOFF_L;                           // and set PMMREGOFF also clears SVS
-        // TODO: datasheets save SVS off makes wakeup 10x slower, so need to test when wake works
+        PMMCTL0_L |= PMMREGOFF_L;                           // and set PMMREGOFF also clears SVS
+        // TODO: datasheets say SVS off makes wakeup 10x slower, so need to test when wake works
 
-        __bis_SR_register( LPM3_bits |  GIE  );                    // Enter LPM3.5
+        __bis_SR_register( LPM4_bits );                    // Enter LPM3.5
 
         /*
         PMMCTL0_H = PMMPW_H;                                // Open PMM Registers for write
@@ -611,6 +634,13 @@ __interrupt void PORT1_ISR(void) {
 
     lcd_show< 8,1>();
 
+
+
+    SBI( P1DIR , 2 );
+    SBI( P1OUT , 2 );
+    CBI( P1OUT , 2 );
+
+
 }
 
 
@@ -618,7 +648,14 @@ __interrupt void PORT1_ISR(void) {
 
 __interrupt void RTC_ISR(void) {
 
-    lcd_show< 7,1>();
+    lcd_show< 9,1>();
+
+
+
+    SBI( P1DIR , 2 );
+    SBI( P1OUT , 2 );
+    CBI( P1OUT , 2 );
+
 
 
     // Currently we never make it here in LPM3.5
@@ -654,12 +691,3 @@ __interrupt void RTC_ISR(void) {
 */
 }
 
-void Init_GPIO()
-{
-    // Configure all GPIO to Output Low
-    P1OUT = 0x00;P2OUT = 0x00;P3OUT = 0x00;P4OUT = 0x00;
-    P5OUT = 0x00;P6OUT = 0x00;P7OUT = 0x00;P8OUT = 0x00;
-
-    P1DIR = 0xFF;P2DIR = 0xFF;P3DIR = 0xFF;P4DIR = 0xFF;
-    P5DIR = 0xFF;P6DIR = 0xFF;P7DIR = 0xFF;P8DIR = 0xFF;
-}
