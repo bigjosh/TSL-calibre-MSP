@@ -18,7 +18,7 @@ unsigned char USI_TWI_Get_State_Info( void );
 
 unsigned char i2c_read(unsigned char slave,unsigned char addr, unsigned char *msg, unsigned char msgSize);
 
-unsigned char USI_TWI_Write_Data(unsigned char slave, unsigned char addr, const uint8_t *data , uint8_t size);
+unsigned char i2c_write(unsigned char slave, unsigned char addr, const uint8_t *data , uint8_t size);
 
 unsigned char USI_TWI_Write_Data_No_stop(unsigned char slave, unsigned char addr , const uint8_t *buffer , uint8_t count);
 

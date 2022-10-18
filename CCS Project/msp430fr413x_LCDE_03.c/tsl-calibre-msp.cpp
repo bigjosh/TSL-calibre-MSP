@@ -1,4 +1,6 @@
 #include <msp430.h>
+#include "util.h"
+#include "pins.h"
 #include "i2c_master.h"
 
 #define RV_3032_I2C_ADDR (0b01010001)           // Datasheet 6.6
@@ -197,9 +199,10 @@ inline void lcd_show() {
 volatile unsigned char * Seconds = &BAKMEM0_L;               // Store seconds in the backup RAM module
 volatile unsigned char * Minutes = &BAKMEM0_H;               // Store minutes in the backup RAM module
 volatile unsigned char * Hours = &BAKMEM1_L;                 // Store hours in the backup RAM module
+volatile unsigned char * spin = &BAKMEM1_H;                 // Store hours in the backup RAM module
+
 
 void Init_GPIO(void);
-void Inc_RTC(void);
 
 // test power consumption
 
@@ -229,7 +232,7 @@ int mainx( void )
 int main( void )
 {
     WDTCTL = WDTPW | WDTHOLD;                               // Stop watchdog timer
-    if (SYSRSTIV == SYSRSTIV_LPM5WU)                        // If LPM3.5 wakeup
+    if ( 0 || SYSRSTIV == SYSRSTIV_LPM5WU)                        // If LPM3.5 wakeup
     {
 
 
@@ -240,6 +243,31 @@ int main( void )
          */
 
         RTCIV; // Clear RTC interrupt. If we do not do this then the RTC ISR will be needlessly called when drop into LPM3.5
+
+
+        // Initialize GPIO pins for low power
+        Init_GPIO();
+
+
+
+       CLOCK_IN_PDIR &= ~_BV( CLOCK_IN_B );
+       // CLOCK_IN_POUT &= ~_BV( CLOCK_IN_B );
+       CLOCK_IN_PREN |= _BV( CLOCK_IN_B );
+
+
+       // Configure LCD pins
+       SYSCFG2 |= LCDPCTL;
+
+
+        // Disable the GPIO power-on default high-impedance mode
+        // to activate previously configured port settings
+        PM5CTL0 &= ~LOCKLPM5;
+
+
+        //CLOCK_IN_PIV;   // Read and throw away to clear the PORT1 pin change interrupt flag. Only clears the top one but we only expect to have one.
+        P1IFG = 0x00;
+
+        CLOCK_IN_PIE |= _BV( CLOCK_IN_B );          // Enable interrupt on the clock_in pin. By default this will be low-to-high triggered
 
 
         // toggle low power waveform so we can see if it is visible (turns out only visible from wide viewing angles)
@@ -307,6 +335,13 @@ int main( void )
         }
 
 
+        if (TBI(CLOCK_IN_PIN,CLOCK_IN_B)) {
+            lcd_show<11,1>();
+        } else {
+            lcd_show<11,0>();
+
+        }
+
         PMMCTL0_H = PMMPW_H;                                // Open PMM Registers for write
         PMMCTL0_L |= PMMREGOFF_L;                           // and set PMMREGOFF
         __bis_SR_register(LPM3_bits | GIE);                 // Re-enter LPM3.5
@@ -317,6 +352,10 @@ int main( void )
     }
     else
     {
+
+        //TODO: INit our own stack save the wastefull init
+        //STACK_INIT();
+
         // Initialize GPIO pins for low power
         Init_GPIO();
 
@@ -335,28 +374,9 @@ int main( void )
             }
         */
 
-        *Seconds = 5;                                       // Set initial time to 12:00:00
+        //*Seconds = 5;                                       // Set initial time to 12:00:00
         *Minutes = 0;
         *Hours = 10;
-
-
-/*
-
-        // Configure XT1 oscillator
-        P4SEL0 |= BIT1 | BIT2;                              // P4.2~P4.1: crystal pins
-        do
-        {
-            CSCTL7 &= ~(XT1OFFG | DCOFFG);                  // Clear XT1 and DCO fault flag
-            SFRIFG1 &= ~OFIFG;
-        } while (SFRIFG1 & OFIFG);                           // Test oscillator fault flag
-
-        CSCTL6 = (CSCTL6 & ~(XT1DRIVE_3)) | XT1DRIVE_2;     // Higher drive strength and current consumption for XT1 oscillator
-
-        RTCCTL = RTCSS__XT1CLK ;                    // Initialize RTC to use XT1 and enable RTC interrupt
-
-
-
-*/
 
         //RTCCTL = RTCSS__VLOCLK ;                    // Initialize RTC to use VLO clock
 
@@ -370,8 +390,6 @@ int main( void )
 
         // LCDCTL0 = LCDSSEL_0 | LCDDIV_7;                     // flcd ref freq is xtclk
 
-        LCDMEMCTL |= LCDCLRM;                               // Clear LCD memory command (executed one shot)
-
         // TODO: Try different clocks and dividers
 
         // Divide by 2 (so CLK will be 10KHz/2= 5KHz), Very Low Osc, Turn on LCD, 4-mux selected (LCD4MUX also includes LCDSON)
@@ -383,8 +401,10 @@ int main( void )
         //LCDCTL0 = LCDDIV_1 | LCDSSEL__VLOCLK | LCD4MUX | LCDSON | LCDON  ;
 
         // Divide by 1 (so CLK will be 10Khz), Very Low Osc, Turn on LCD, 4-mux selected (LCD4MUX also includes LCDSON), Low power saveform
-        LCDCTL0 = LCDDIV_1 | LCDSSEL__VLOCLK | LCD4MUX | LCDSON | LCDON | LCDLP ;
+        //LCDCTL0 = LCDDIV_1 | LCDSSEL__VLOCLK | LCD4MUX | LCDSON | LCDON | LCDLP ;
 
+        // LCD using VLO clock, divide by 4 (on 10KHz from VLO) , 4-mux (LCD4MUX also includes LCDSON), low power waveform
+        LCDCTL0 =  LCDSSEL__VLOCLK | LCDDIV__4 | LCD4MUX | LCDLP ;
 
 
 /*
@@ -409,7 +429,12 @@ int main( void )
 
 
         // LCD Operation - Pin R33 is connected to external V1, charge pump 256Hz, 1.7uA, Low Power Waveform
-        LCDVCTL = LCDCPEN | (LCDCPFSEL0 | LCDCPFSEL1 | LCDCPFSEL2 | LCDCPFSEL3) | LCDLP;
+        //LCDVCTL = LCDCPEN | (LCDCPFSEL0 | LCDCPFSEL1 | LCDCPFSEL2 | LCDCPFSEL3);
+
+        // LCD Operation - Charge pump enable, Vlcd=Vcc , charge pump FREQ=256Hz (lowest)
+        LCDVCTL = LCDCPEN |  LCDSELVDD | (LCDCPFSEL0 | LCDCPFSEL1 | LCDCPFSEL2 | LCDCPFSEL3);
+
+        //LCDMEMCTL |= LCDCLRM;                                      // Clear LCD memory
 
 /*
         // For MSP430FR4133-EXP
@@ -440,11 +465,15 @@ int main( void )
         LCDM5 =  0b00010010;  // L10=MSP_COM0  L11=MSP_COM1
 
 
+        LCDCTL0 |= LCDON;                                           // Turn on LCD
+
+/*
         // Set up RTC
 
 
 
-        RTCMOD = 10000;                                     // Set RTC modulo to 1000 to trigger interrupt each second on 10Khz VLO clock. This will get loaded into the shadow register on next trigger or reset
+//        RTCMOD = 10000;                                     // Set RTC modulo to 10000 to trigger interrupt each second on 10Khz VLO clock. This will get loaded into the shadow register on next trigger or reset
+        RTCMOD = 10000;                                     // Set RTC modulo to 1000 to trigger interrupt each 0.1 second on 10Khz VLO clock. This will get loaded into the shadow register on next trigger or reset
 
         RTCCTL |=  RTCSR;                    // reset RTC which will load overflow value into shadow reg and reset the counter to 0,  and generate RTC interrupt
 
@@ -452,7 +481,10 @@ int main( void )
 
         // TRY THIS, MUST ALSO ADJUST LCDSEL
         // Use VLO instead of XTAL
-        RTCCTL = RTCSS__VLOCLK | RTCIE;                    // Initialize RTC to use Very Low Oscillator and enable RTC interrupt on rollovert
+        //RTCCTL = RTCSS__VLOCLK | RTCIE;                    // Initialize RTC to use Very Low Oscillator and enable RTC interrupt on rollovert
+        RTCCTL = 0x00;                    // Disable RTC
+
+*/
 
 /*
         lcd_show< 0,6>();
@@ -467,17 +499,44 @@ int main( void )
 
         }
 */
+/*
+        // Setup the RV3032
 
         i2c_init();
 
-        uint8_t save_flags_reg;
+        uint8_t pmu_reg = 0b00000000;
+        i2c_write( RV_3032_I2C_ADDR , 0xc0 , &pmu_reg , 1 ); // Default reg, Enable CLKOUT
 
-        while (1) {
+        uint8_t save_flags_reg = 0b01100000;
+        i2c_write( RV_3032_I2C_ADDR , 0xc3 , &save_flags_reg , 1 ); // Switch CLKOUT to 1 Hz
 
-            i2c_read( RV_3032_I2C_ADDR , 0x01 , &save_flags_reg , 1 );
 
-        }
+        //uint8_t pmu_reg = 0b01010000;       // No CLKOUT, Switchover when VDD < VBACKUP, Trickle Charger off
+        //i2c_write( RV_3032_I2C_ADDR , 0xc0 , &pmu_reg , 1 ); // Disable CLKOUT
 
+
+*/
+        // OK now the RTC is sending a 1Hz clock out
+        // Now we need to setup interrupt on clock_in pin to wake us
+
+
+/*
+
+       CLOCK_IN_PDIR &= ~_BV( CLOCK_IN_B );
+       // CLOCK_IN_POUT &= ~_BV( CLOCK_IN_B );
+       CLOCK_IN_PREN |= _BV( CLOCK_IN_B );
+
+
+       P1IFG = 0x00;
+
+       CLOCK_IN_PIE |= _BV( CLOCK_IN_B );          // Enable interrupt on the clock_in pin. By default this will be low-to-high triggered
+
+*/
+
+
+        // TODO: Why doesnt this work?
+        //LCDMEMCTL |= LCDCLRM;                               // Clear LCD memory command (executed one shot)
+        //while (LCDMEMCTL & LCDCLRM);                        // Wait for clear to complete before moving on
 
         lcd_show< 0,0>();
         lcd_show< 1,1>();
@@ -490,13 +549,48 @@ int main( void )
         lcd_show< 8,8>();
         lcd_show< 9,9>();
         lcd_show<10,0>();
-        lcd_show<11,1>();
+        lcd_show<11,4>();
 
 
+
+        spin++;
+
+        if (*spin==1) {
+            lcd_show<10,1>();
+        } else {
+            lcd_show<10,2>();
+        }
+
+
+        //Enter LPM3 with SVS off
+        //PMMCTL0_L &= ~SVSHE ;                           // disable SVS (prob ~0.2uA, default is on)
+        //TODO:Turn off LPM3.5 switch before sleeping? //LPM5SW
+
+        // Datasheet says this will be 1.25uA with LCD...
+        // Low-power mode 3, VLO, excludes SVS test conditions:
+        // Current for watchdog timer clocked by VLO included. RTC disabled. Current for brownout included. SVS disabled (SVSHE = 0).
+        // CPUOFF = 1, SCG0 = 1 SCG1 = 1, OSCOFF = 0 (LPM3),
+
+        // "the WDTHOLD bit can be used to hold the WDTCNT, reducing power consumption."
+
+        WDTCTL = WDTPW | WDTSSEL__VLO | WDTHOLD;                               // Select VLO for WDT clock, halt watchdog timer
+
+        // "After reset, RTCSS defaults to 00b (disabled), which means that no clock source is selected."
+
+/*
+
+        PMMCTL0_H = PMMPW_H;                            // Open PMM Registers for write
+        PMMCTL0_L &= ~SVSHE ;                           // disable SVS
+
+        __bis_SR_register( CPUOFF | SCG1 | OSCOFF  );                 // Enter LPM3 with datasheet specified flags.
+
+*/
         // Go into LPM3.5 sleep
-        PMMCTL0_H = PMMPW_H;                                // Open PMM Registers for write
-        PMMCTL0_L |= PMMREGOFF_L;                           // and set PMMREGOFF
-        __bis_SR_register(LPM3_bits | GIE);                 // Re-enter LPM3.5
+        PMMCTL0_H = PMMPW_H;                               // Open PMM Registers for write
+        PMMCTL0_L = PMMREGOFF_L;                           // and set PMMREGOFF also clears SVS
+        // TODO: datasheets save SVS off makes wakeup 10x slower, so need to test when wake works
+
+        __bis_SR_register( LPM3_bits |  GIE  );                    // Enter LPM3.5
 
         /*
         PMMCTL0_H = PMMPW_H;                                // Open PMM Registers for write
@@ -510,9 +604,22 @@ int main( void )
     }
 }
 
+
+#pragma vector = PORT1_VECTOR
+
+__interrupt void PORT1_ISR(void) {
+
+    lcd_show< 8,1>();
+
+}
+
+
 #pragma vector = RTC_VECTOR
 
 __interrupt void RTC_ISR(void) {
+
+    lcd_show< 7,1>();
+
 
     // Currently we never make it here in LPM3.5
 
@@ -555,71 +662,4 @@ void Init_GPIO()
 
     P1DIR = 0xFF;P2DIR = 0xFF;P3DIR = 0xFF;P4DIR = 0xFF;
     P5DIR = 0xFF;P6DIR = 0xFF;P7DIR = 0xFF;P8DIR = 0xFF;
-}
-
-// Real clock function
-void Inc_RTC()
-{
-
-/*
-    LCDMEM[pos6]++;
-    return;
-    */
-
-    // Deal with second
-    (*Seconds)++;
-
-
-/*
-    if ((*Seconds & 0x01) == 0x01) {
-        LCDMEM[pos6] = 0x00;
-        LCDMEM[pos5] = 0x00;
-        LCDMEM[pos4] = 0x00;
-        LCDMEM[pos3] = 0x00;
-
-    } else {
-        LCDMEM[pos6] = digit[2];
-    }
-    return;
-*/
-
-    if (*Seconds == 60) {
-        *Seconds = 0;
-    }
-
-    /*
-    LCDMEM[pos0] = digit[(*Seconds) % 10];
-    LCDMEM[pos1] = digit[(*Seconds) / 10];
-    */
-/*
-
-    // Deal with minute
-    if ((*Seconds) == 0) 
-    {
-        (*Minutes)++;
-        (*Minutes) %= 60;
-        LCDMEM[pos4] = digit[(*Minutes) % 10];
-
-        if (((*Minutes) % 10) == 0)
-        {
-            LCDMEM[pos3] = digit[(*Minutes) / 10];
-        }
-
-
-        LCDMEM[pos3] = digit[(*Minutes) / 10];
-
-
-        // Deal with hour
-        if ((*Minutes) == 0)
-        {
-            (*Hours)++;
-            (*Hours) %= 24;
-            LCDMEM[pos2] = digit[(*Hours) % 10];
-            if (((*Hours) % 10) == 0)
-            {
-                LCDMEM[pos1] = digit[(*Hours) / 10];
-            }
-        }
-    }
-*/
 }

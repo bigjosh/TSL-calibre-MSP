@@ -18,13 +18,13 @@
 
 
 #include <msp430.h>
+#include "util.h"
+#include "pins.h"
 #include "i2c_master.h"
 
 #define BIT_TIME_US     (5)          // How long should should we wait between bit transitions?
 
 #define _delay_us(x) (__delay_cycles(x))    // For now we are running 1Mhz
-
-#define _BV(x) (1<<x)
 
 #define I2C_DTA_PREN P1REN
 #define I2C_DTA_PDIR P1DIR
@@ -302,7 +302,7 @@ unsigned char USI_TWI_Write_Data_No_stop(unsigned char slave, unsigned char addr
 // assumes bus is idle on entry, Exists with bus idle
 // Returns 0 on success
 
-unsigned char USI_TWI_Write_Data(unsigned char slave, unsigned char addr , const uint8_t *buffer , uint8_t count)
+unsigned char i2c_write(unsigned char slave, unsigned char addr , const uint8_t *buffer , uint8_t count)
 {
 
     i2c_start( slave , 0 );      // TODO: check for error
