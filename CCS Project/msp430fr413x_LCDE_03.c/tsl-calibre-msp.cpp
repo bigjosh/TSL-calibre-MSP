@@ -340,6 +340,10 @@ int main( void )
         P1OUT = 0x00;P2OUT = 0x00;P3OUT = 0x00;P4OUT = 0x00;
         P5OUT = 0x00;P6OUT = 0x00;P7OUT = 0x00;P8OUT = 0x00;
 
+        // Debug pins
+        SBI( DEBUGA_PDIR , DEBUGA_B );
+
+
         // Disable the GPIO power-on default high-impedance mode
         // to activate previously configured port settings
         PM5CTL0 &= ~LOCKLPM5;
@@ -416,7 +420,12 @@ int main( void )
         //LCDVCTL = LCDCPEN | (LCDCPFSEL0 | LCDCPFSEL1 | LCDCPFSEL2 | LCDCPFSEL3);
 
         // LCD Operation - Charge pump enable, Vlcd=Vcc , charge pump FREQ=256Hz (lowest)
-        LCDVCTL = LCDCPEN |  LCDSELVDD | (LCDCPFSEL0 | LCDCPFSEL1 | LCDCPFSEL2 | LCDCPFSEL3);
+        //LCDVCTL = LCDCPEN |  LCDSELVDD | (LCDCPFSEL0 | LCDCPFSEL1 | LCDCPFSEL2 | LCDCPFSEL3);
+
+
+        // LCD Operation - Charge pump enable, Vlcd=V1 pin , charge pump FREQ=256Hz (lowest)
+        LCDVCTL = LCDCPEN |  (LCDCPFSEL0 | LCDCPFSEL1 | LCDCPFSEL2 | LCDCPFSEL3);
+
 
         //LCDMEMCTL |= LCDCLRM;                                      // Clear LCD memory
 
@@ -486,26 +495,38 @@ int main( void )
 
         // Setup the RV3032
 
+        // First power up
+
+        SBI( RV3032_VCC_PDIR , RV3032_VCC_B);
+        SBI( RV3032_VCC_POUT , RV3032_VCC_B);
+
+        // Give the RV3230 a chance to wake up before we start pounding it.
+        // POR refresh time(1) At power up ~66ms
+        __delay_cycles(100000);
+
+        // Initialize our i2c pins as pull-up
         i2c_init();
 
-        uint8_t pmu_reg = 0b00000000;
-        i2c_write( RV_3032_I2C_ADDR , 0xc0 , &pmu_reg , 1 ); // Default reg, Enable CLKOUT
 
-        uint8_t save_flags_reg = 0b01100000;
-        i2c_write( RV_3032_I2C_ADDR , 0xc3 , &save_flags_reg , 1 ); // Switch CLKOUT to 1 Hz
+        // Set all the registers
+        uint8_t pmu_reg = 0b01010000;           // CLKOUT off, Direct backup switching mode, no charge pump, 1K OHM trickle resistor
+        i2c_write( RV_3032_I2C_ADDR , 0xc0 , &pmu_reg , 1 );
 
-        // set TD to 00 for 4069Hz timer, TE=1 to enable periodic countdown timer
-        uint8_t control1 = 0b00001000;
-        i2c_write( RV_3032_I2C_ADDR , 0x10 , &control1 , 1 ); // Switch CLKOUT to 1 Hz
+        uint8_t clockout2_reg = 0b01100000;
+        i2c_write( RV_3032_I2C_ADDR , 0xc3 , &clockout2_reg , 1 ); // Switch CLKOUT to 1 Hz
+
+        // set TD to 00 for 4068Hz timer, TE=1 to enable periodic countdown timer
+        uint8_t control1_reg = 0b00001000;
+        i2c_write( RV_3032_I2C_ADDR , 0x10 , &control1_reg , 1 );
 
         // Set TIE in Control 2 to 1 t enable interrupt pin for periodic countdown
-        uint8_t control2 = 0b00010000;
-        i2c_write( RV_3032_I2C_ADDR , 0x11 , &control2 , 1 ); // Switch CLKOUT to 1 Hz
+        uint8_t control2_reg = 0b00010000;
+        i2c_write( RV_3032_I2C_ADDR , 0x11 , &control2_reg , 1 );
 
 
         // Periodic Timer value = 2048 for 500ms
 
-        const unsigned timerValue = 4069;
+        const unsigned timerValue = 2048;
         uint8_t timerValueH = timerValue / 0x100;
         uint8_t timerValueL = timerValue % 0x100;
         i2c_write( RV_3032_I2C_ADDR , 0x0b , &timerValueL  , 1 );
@@ -513,19 +534,11 @@ int main( void )
 
         // Set TD= 01 for 4096Hz
 
-
-
-
         //uint8_t pmu_reg = 0b01010000;       // No CLKOUT, Switchover when VDD < VBACKUP, Trickle Charger off
         //i2c_write( RV_3032_I2C_ADDR , 0xc0 , &pmu_reg , 1 ); // Disable CLKOUT
 
 
-
-        // OK now the RTC is sending a 1Hz clock out
         // Now we need to setup interrupt on clock_in pin to wake us
-
-
-
 
        CLOCK_IN_PDIR &= ~_BV( CLOCK_IN_B );
        CLOCK_IN_POUT |= _BV( CLOCK_IN_B );// Pull-up
@@ -661,8 +674,9 @@ int main( void )
 
 __interrupt void PORT1_ISR(void) {
 
-    CLOCK_IN_PIV;   // Read and throw away to clear the PORT1 pin change interrupt flag. Only clears the top one but we only expect to have one.
+    SBI( DEBUGA_POUT , DEBUGA_B );
 
+    CLOCK_IN_PIV;   // Read and throw away to clear the PORT1 pin change interrupt flag. Only clears the top one but we only expect to have one.
 
     if (*spin==1) {
 
@@ -675,9 +689,7 @@ __interrupt void PORT1_ISR(void) {
 
     }
 
-    SBI( P1DIR , 2 );
-    SBI( P1OUT , 2 );
-    CBI( P1OUT , 2 );
+    CBI( DEBUGA_POUT , DEBUGA_B );
 
 }
 
@@ -688,11 +700,7 @@ __interrupt void RTC_ISR(void) {
 
     lcd_show< 9,1>();
 
-    SBI( P1DIR , 2 );
-    SBI( P1OUT , 2 );
-    CBI( P1OUT , 2 );
-
-
+    SBI( DEBUGA_POUT , DEBUGA_B );
 
     // Currently we never make it here in LPM3.5
 
@@ -725,5 +733,8 @@ __interrupt void RTC_ISR(void) {
     PMMCTL0_L |= PMMREGOFF_L;                           // and set PMMREGOFF
     __bis_SR_register(LPM3_bits | GIE);                 // Re-enter LPM3.5
 */
+
+    CBI( DEBUGA_POUT , DEBUGA_B );
+
 }
 
