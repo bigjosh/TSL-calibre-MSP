@@ -62,23 +62,24 @@ constexpr digit_segment_t digit_segments[] = {
 // These mappings come from our PCB trace layout
 
 struct logical_digit_t {
-    const char lpin_a_thru_d;       // The LPIN for segments A-D
     const char lpin_e_thru_g;       // The LPIN for segments E-G
+    const char lpin_a_thru_d;       // The LPIN for segments A-D
+
 };
 
 constexpr logical_digit_t logical_digits[] {
-    { 35 , 34 },        //  0 - corresponds to LCD digit 12 and is the rightmost digit
-    { 33 , 32 },        //  1 (LCD 11)
-    { 31 , 30 },        //  2 (LCD 10)
-    { 29 , 28 },        //  3 {LCD 09)
-    { 27 , 26 },        //  4 {LCD 08)
-    { 25 , 24 },        //  5 {LCD 07)
-    { 21 , 17 },        //  6 (LCD 06)
-    { 16 , 15 },        //  7 (LCD 05)
-    { 14 , 13 },        //  8 (LCD 04)
-    { 12 ,  1 },        //  9 (LCD 03)
-    {  2 ,  3 },        // 10 (LCD 02)
-    {  4 ,  4 },        // 11 (LCD 01)
+    { 33 , 32 },        //  0 (LCD 12) - rightmost digit
+    { 35 , 34 },        //  1 (LCD 11)
+    { 30 , 31 },        //  2 (LCD 10)
+    { 28 , 29 },        //  3 {LCD 09)
+    { 26 , 27 },        //  4 {LCD 08)
+    { 24 , 25 },        //  5 {LCD 07)
+    { 17 , 21 },        //  6 (LCD 06)
+    { 15 , 16 },        //  7 (LCD 05)
+    { 13 , 14 },        //  8 (LCD 04)
+    {  1 , 12 },        //  9 (LCD 03)
+    {  3 ,  2 },        // 10 (LCD 02)
+    {  5 ,  4 },        // 11 (LCD 01) - leftmost digit
     // Rest TBD
 };
 
@@ -98,6 +99,16 @@ struct lpin_t {
         return lpin & 0x01 ? UPPER : LOWER;  // Extract which nibble
     }
 };
+
+
+constexpr static char lpin_lcdmem_offset(char lpin) {
+    return (lpin>>1); // Intentionally looses bottom bit since consecutive L-pins share the same memory address (but different nibbles)
+}
+
+constexpr static nibble_t lpin_nibble(char lpin) {
+    return lpin & 0x01 ? UPPER : LOWER;  // Extract which nibble
+}
+
 
 // Write the specified nibble. The other nibble at address a is unchanged.
 
@@ -196,6 +207,107 @@ inline void lcd_show() {
 }
 
 
+// Show the digit x at position p
+// where p=0 is the rightmost digit
+
+inline void lcd_show_f( char pos, char x ) {
+
+    const char nibble_a_thru_d =  digit_segments[x].nibble_a_thru_d;         // Look up which segments on the low pin we need to turn on to draw this digit
+    const char nibble_e_thru_g =  digit_segments[x].nibble_e_thru_g;         // Look up which segments on the low pin we need to turn on to draw this digit
+
+    const char lpin_a_thru_d = logical_digits[pos].lpin_a_thru_d;     // Look up the L-pin for the low segment bits of this digit
+    const char lpin_e_thru_g = logical_digits[pos].lpin_e_thru_g;     // Look up the L-pin for the high bits of this digit
+
+    const char lcdmem_offset_a_thru_d = lpin_lcdmem_offset( lpin_a_thru_d ); // Look up the memory address for the low segment bits
+    const char lcdmem_offset_e_thru_g = lpin_lcdmem_offset( lpin_e_thru_g ); // Look up the memory address for the high segment bits
+
+    char * lcd_mem_reg = LCDMEM;
+
+    /*
+      I know that line above looks dumb, but if you just access LCDMEM directly the compiler does the wrong thing and loads the offset
+      into a register rather than the base and this creates many wasted loads (LCDMEM=0x0620)...
+
+            00c4e2:   403F 0010           MOV.W   #0x0010,R15
+            00c4e6:   40FF 0060 0620      MOV.B   #0x0060,0x0620(R15)
+            00c4ec:   403F 000E           MOV.W   #0x000e,R15
+            00c4f0:   40FF 00F2 0620      MOV.B   #0x00f2,0x0620(R15)
+
+      If we load it into a variable first, the compiler then gets wise and uses that as the base..
+
+            00c4e2:   403F 0620           MOV.W   #0x0620,R15
+            00c4e6:   40FF 0060 0010      MOV.B   #0x0060,0x0010(R15)
+            00c4ec:   40FF 00F2 000E      MOV.B   #0x00f2,0x000e(R15)
+
+     */
+
+    if ( lcdmem_offset_a_thru_d == lcdmem_offset_e_thru_g  ) {
+
+        // If the two L-pins for this digit are in the same memory location, we can update them both with a single byte write
+        // Note that the whole process that gets us here is static at compile time, so the whole lcd_show() call will compile down
+        // to just a single immediate byte write, which is very efficient.
+
+        const char lpin_a_thru_d_nibble = lpin_nibble( lpin_a_thru_d );
+
+        if ( lpin_a_thru_d_nibble == nibble_t::LOWER  ) {
+
+            // the A-D segments go into the lower nibble
+            // the E-G segments go into the upper nibble
+
+            lcd_mem_reg[lcdmem_offset_a_thru_d] = (char) ( nibble_e_thru_g << 4 ) | (nibble_a_thru_d);     // Combine the nibbles, write them to the mem address
+
+        } else {
+
+            // the A-D segments go into the lower nibble
+            // the E-G segments go into the upper nibble
+
+            lcd_mem_reg[lcdmem_offset_a_thru_d] = (char) ( nibble_a_thru_d << 4 ) | (nibble_e_thru_g);     // Combine the nibbles, write them to the mem address
+
+        }
+
+    } else {
+
+        // The A-D segments are located on a pin that has a different address than the E-G segments, so we can to manually splice the nibbles into those two addresses
+
+        // Write the a_thru_d nibble to the memory address is lives in
+
+        const nibble_t lpin_a_thru_d_nibble_index = lpin_nibble(lpin_a_thru_d);
+
+        set_nibble( &lcd_mem_reg[lcdmem_offset_a_thru_d] , lpin_a_thru_d_nibble_index , nibble_a_thru_d );
+
+
+        // Write the e_thru_f nibble to the memory address is lives in
+
+        const nibble_t lpin_e_thru_g_nibble_index = lpin_nibble(lpin_e_thru_g);
+
+        set_nibble( &lcd_mem_reg[lcdmem_offset_e_thru_g] , lpin_e_thru_g_nibble_index , nibble_e_thru_g );
+
+    }
+
+}
+
+
+
+// Wiggle the flash LED IO pins at about 10Hz for testing
+
+void wiggleFlash() {
+    // Set Q1 & Q2 transistor pins to output
+    SBI( Q1_TOP_LED_PDIR , Q1_TOP_LED_B );
+    SBI( Q2_BOT_LED_PDIR , Q2_BOT_LED_B );
+
+    while (1) {
+
+        SBI( Q1_TOP_LED_POUT , Q1_TOP_LED_B );
+        CBI( Q2_BOT_LED_POUT , Q2_BOT_LED_B );
+        __delay_cycles(100000);
+
+        CBI( Q1_TOP_LED_POUT , Q1_TOP_LED_B );
+        SBI( Q2_BOT_LED_POUT , Q2_BOT_LED_B );
+        __delay_cycles(100000);
+
+    }
+
+}
+
 volatile unsigned char * Seconds = &BAKMEM0_L;               // Store seconds in the backup RAM module
 volatile unsigned char * Minutes = &BAKMEM0_H;               // Store minutes in the backup RAM module
 volatile unsigned char * Hours = &BAKMEM1_L;                 // Store hours in the backup RAM module
@@ -227,9 +339,11 @@ int main( void )
         P1OUT = 0x00;P2OUT = 0x00;P3OUT = 0x00;P4OUT = 0x00;
         P5OUT = 0x00;P6OUT = 0x00;P7OUT = 0x00;P8OUT = 0x00;
 
-       CLOCK_IN_PDIR &= ~_BV( CLOCK_IN_B );
-       // CLOCK_IN_POUT &= ~_BV( CLOCK_IN_B );
-       CLOCK_IN_PREN |= _BV( CLOCK_IN_B );
+
+        // CLKIN from RV3032 as INPUT, PULL-UP
+
+        CBI( RV3032_INT_PDIR , RV3032_INT_B);
+        SBI( RV3032_INT_PREN , RV3032_INT_B);
 
 
        // Configure LCD pins
@@ -244,7 +358,7 @@ int main( void )
         //CLOCK_IN_PIV;   // Read and throw away to clear the PORT1 pin change interrupt flag. Only clears the top one but we only expect to have one.
         P1IFG = 0x00;
 
-        CLOCK_IN_PIE |= _BV( CLOCK_IN_B );          // Enable interrupt on the clock_in pin. By default this will be low-to-high triggered
+        RV3032_INT_PIE |= _BV( RV3032_INT_B );          // Enable interrupt on the clock_in pin. By default this will be low-to-high triggered
 
 
         // toggle low power waveform so we can see if it is visible (turns out only visible from wide viewing angles)
@@ -312,7 +426,7 @@ int main( void )
         }
 
 
-        if (TBI(CLOCK_IN_PIN,CLOCK_IN_B)) {
+        if (TBI(RV3032_INT_PIN,RV3032_INT_B)) {
             lcd_show<11,1>();
         } else {
             lcd_show<11,0>();
@@ -330,15 +444,26 @@ int main( void )
     else
     {
 
-        //TODO: INit our own stack save the wastefull init
+        // Disable the GPIO power-on default high-impedance mode
+        // to activate previously configured port settings
+        PM5CTL0 &= ~LOCKLPM5;
+
+
+        //TODO: Init our own stack save the wasteful init
         //STACK_INIT();
 
+
+        // TODO: use the full word-wide registers
         // Initialize GPIO pins for low power
         P1DIR = 0xFF;P2DIR = 0xFF;P3DIR = 0xFF;P4DIR = 0xFF;
         P5DIR = 0xFF;P6DIR = 0xFF;P7DIR = 0xFF;P8DIR = 0xFF;
         // Configure all GPIO to Output Low
         P1OUT = 0x00;P2OUT = 0x00;P3OUT = 0x00;P4OUT = 0x00;
         P5OUT = 0x00;P6OUT = 0x00;P7OUT = 0x00;P8OUT = 0x00;
+
+        // CLKIN from RV3032 as INPUT
+
+        CBI( RV3032_INT_PDIR , RV3032_INT_B);
 
         // Debug pins
         SBI( DEBUGA_PDIR , DEBUGA_B );
@@ -420,11 +545,11 @@ int main( void )
         //LCDVCTL = LCDCPEN | (LCDCPFSEL0 | LCDCPFSEL1 | LCDCPFSEL2 | LCDCPFSEL3);
 
         // LCD Operation - Charge pump enable, Vlcd=Vcc , charge pump FREQ=256Hz (lowest)
-        //LCDVCTL = LCDCPEN |  LCDSELVDD | (LCDCPFSEL0 | LCDCPFSEL1 | LCDCPFSEL2 | LCDCPFSEL3);
+        LCDVCTL = LCDCPEN |  LCDSELVDD | (LCDCPFSEL0 | LCDCPFSEL1 | LCDCPFSEL2 | LCDCPFSEL3);
 
 
         // LCD Operation - Charge pump enable, Vlcd=V1 pin , charge pump FREQ=256Hz (lowest)
-        LCDVCTL = LCDCPEN |  (LCDCPFSEL0 | LCDCPFSEL1 | LCDCPFSEL2 | LCDCPFSEL3);
+        //LCDVCTL = LCDCPEN |  (LCDCPFSEL0 | LCDCPFSEL1 | LCDCPFSEL2 | LCDCPFSEL3);
 
 
         //LCDMEMCTL |= LCDCLRM;                                      // Clear LCD memory
@@ -454,11 +579,30 @@ int main( void )
         // Once we have selected the COM lines above, we have to connect them in the LCD memory. See Figure 17-2 in MSP430FR4x family guide.
         // Each nibble in the LCDMx regs holds 4 bits connecting the L pin to one of the 4 COM lines (two L pins per reg)
 
+
         LCDM4 =  0b01001000;  // L09=MSP_COM2  L08=MSP_COM3
         LCDM5 =  0b00010010;  // L10=MSP_COM0  L11=MSP_COM1
 
 
+
         LCDCTL0 |= LCDON;                                           // Turn on LCD
+
+
+
+
+        lcd_show_f( 0,0 );
+        lcd_show_f( 1,1 );
+        lcd_show_f( 2,2 );
+        lcd_show_f( 3,3 );
+        lcd_show_f( 4,4 );
+        lcd_show_f( 5,5 );
+        lcd_show_f( 6,6 );
+        lcd_show_f( 7,7 );
+        lcd_show_f( 8,8 );
+        lcd_show_f( 9,9 );
+        lcd_show_f(10,0 );
+        lcd_show_f(11,1 );
+        wiggleFlash();
 
 /*
         // Set up RTC
@@ -494,6 +638,8 @@ int main( void )
 */
 
         // Setup the RV3032
+
+
 
         // First power up
 
@@ -540,18 +686,18 @@ int main( void )
 
         // Now we need to setup interrupt on clock_in pin to wake us
 
-       CLOCK_IN_PDIR &= ~_BV( CLOCK_IN_B );
-       CLOCK_IN_POUT |= _BV( CLOCK_IN_B );// Pull-up
-       CLOCK_IN_PREN |= _BV( CLOCK_IN_B );
+       RV3032_INT_PDIR &= ~_BV( RV3032_INT_B );
+       RV3032_INT_POUT |= _BV( RV3032_INT_B );// Pull-up
+       RV3032_INT_PREN |= _BV( RV3032_INT_B );
 
 
        P1IFG = 0x00;
 
-       CLOCK_IN_PIE |= _BV( CLOCK_IN_B );          // Enable interrupt on the clock_in pin. By default this will be low-to-high triggered
+       RV3032_INT_PIE |= _BV( RV3032_INT_B );          // Enable interrupt on the clock_in pin. By default this will be low-to-high triggered
 
 
 
-        // TODO: Why doesnt this work?
+        // TODO: Why doesn't this work?
         //LCDMEMCTL |= LCDCLRM;                               // Clear LCD memory command (executed one shot)
         //while (LCDMEMCTL & LCDCLRM);                        // Wait for clear to complete before moving on
 
@@ -676,7 +822,7 @@ __interrupt void PORT1_ISR(void) {
 
     SBI( DEBUGA_POUT , DEBUGA_B );
 
-    CLOCK_IN_PIV;   // Read and throw away to clear the PORT1 pin change interrupt flag. Only clears the top one but we only expect to have one.
+    RV3032_INT_PIV;   // Read and throw away to clear the PORT1 pin change interrupt flag. Only clears the top one but we only expect to have one.
 
     if (*spin==1) {
 
