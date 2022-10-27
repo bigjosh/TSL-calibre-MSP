@@ -26,7 +26,9 @@ unsigned char USI_TWI_Write_Data_No_stop(unsigned char slave, unsigned char addr
 
 void USI_TWI_Master_disable( void );
 
+// Drive both pins low
 
+void i2c_shutdown();
 
 
 #endif /* I2C_MASTER_H_ */

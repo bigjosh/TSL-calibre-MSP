@@ -210,7 +210,10 @@ inline void lcd_show() {
 // Show the digit x at position p
 // where p=0 is the rightmost digit
 
-inline void lcd_show_f( char pos, char x ) {
+
+
+static
+inline void lcd_show_f( const char pos, const char x ) {
 
     const char nibble_a_thru_d =  digit_segments[x].nibble_a_thru_d;         // Look up which segments on the low pin we need to turn on to draw this digit
     const char nibble_e_thru_g =  digit_segments[x].nibble_e_thru_g;         // Look up which segments on the low pin we need to turn on to draw this digit
@@ -340,7 +343,7 @@ int main( void )
         P5OUT = 0x00;P6OUT = 0x00;P7OUT = 0x00;P8OUT = 0x00;
 
 
-        // CLKIN from RV3032 as INPUT, PULL-UP
+        // INT from RV3032 as INPUT, PULL-UP
 
         CBI( RV3032_INT_PDIR , RV3032_INT_B);
         SBI( RV3032_INT_PREN , RV3032_INT_B);
@@ -444,30 +447,29 @@ int main( void )
     else
     {
 
-        // Disable the GPIO power-on default high-impedance mode
-        // to activate previously configured port settings
-        PM5CTL0 &= ~LOCKLPM5;
-
+        // At startup, all IO pins are hi-Z. Here we init them all and then unlock them for the changes to take effect.
 
         //TODO: Init our own stack save the wasteful init
         //STACK_INIT();
 
 
         // TODO: use the full word-wide registers
-        // Initialize GPIO pins for low power
+        // Initialize all GPIO pins for low power OUTPUT + LOW
         P1DIR = 0xFF;P2DIR = 0xFF;P3DIR = 0xFF;P4DIR = 0xFF;
         P5DIR = 0xFF;P6DIR = 0xFF;P7DIR = 0xFF;P8DIR = 0xFF;
         // Configure all GPIO to Output Low
         P1OUT = 0x00;P2OUT = 0x00;P3OUT = 0x00;P4OUT = 0x00;
         P5OUT = 0x00;P6OUT = 0x00;P7OUT = 0x00;P8OUT = 0x00;
 
-        // CLKIN from RV3032 as INPUT
+        // ~INT in from RV3032 as INPUT with PULLUP
 
-        CBI( RV3032_INT_PDIR , RV3032_INT_B);
+        CBI( RV3032_INT_PDIR , RV3032_INT_B ); // INPUT
+        SBI( RV3032_INT_POUT , RV3032_INT_B ); // Pull-up
+        SBI( RV3032_INT_PREN , RV3032_INT_B ); // Pull resistor enable
+
 
         // Debug pins
         SBI( DEBUGA_PDIR , DEBUGA_B );
-
 
         // Disable the GPIO power-on default high-impedance mode
         // to activate previously configured port settings
@@ -588,29 +590,30 @@ int main( void )
         LCDCTL0 |= LCDON;                                           // Turn on LCD
 
 
-
-
         lcd_show_f( 0,0 );
-        lcd_show_f( 1,1 );
-        lcd_show_f( 2,2 );
-        lcd_show_f( 3,3 );
-        lcd_show_f( 4,4 );
-        lcd_show_f( 5,5 );
-        lcd_show_f( 6,6 );
-        lcd_show_f( 7,7 );
-        lcd_show_f( 8,8 );
-        lcd_show_f( 9,9 );
+        lcd_show_f( 1,0 );
+        lcd_show_f( 2,0 );
+        lcd_show_f( 3,0 );
+        lcd_show_f( 4,0 );
+        lcd_show_f( 5,0 );
+        lcd_show_f( 6,0 );
+        lcd_show_f( 7,0 );
+        lcd_show_f( 8,0 );
+        lcd_show_f( 9,0 );
         lcd_show_f(10,0 );
-        lcd_show_f(11,1 );
-        wiggleFlash();
+        lcd_show_f(11,0 );
+        //wiggleFlash();
+
+
 
 /*
+
         // Set up RTC
 
 
 
-//        RTCMOD = 10000;                                     // Set RTC modulo to 10000 to trigger interrupt each second on 10Khz VLO clock. This will get loaded into the shadow register on next trigger or reset
-        RTCMOD = 10000;                                     // Set RTC modulo to 1000 to trigger interrupt each 0.1 second on 10Khz VLO clock. This will get loaded into the shadow register on next trigger or reset
+        RTCMOD = 10000;                                     // Set RTC modulo to 10000 to trigger interrupt each second on 10Khz VLO clock. This will get loaded into the shadow register on next trigger or reset
+//        RTCMOD = 10000;                                     // Set RTC modulo to 1000 to trigger interrupt each 0.1 second on 10Khz VLO clock. This will get loaded into the shadow register on next trigger or reset
 
         RTCCTL |=  RTCSR;                    // reset RTC which will load overflow value into shadow reg and reset the counter to 0,  and generate RTC interrupt
 
@@ -640,6 +643,12 @@ int main( void )
         // Setup the RV3032
 
 
+        // Make the pin connected to RV3032 CLKOUT be input since when that chip first starts up, it will
+        // start toggling until we turn off the CLKOUT signal after we've initialized that chip.
+        // Once we disable CLKOUT on the RV3032, then it will drive that line low so we don't have to
+        // worry about it floating and wasting power on the MSP430.
+
+        CBI( RV3032_CLKOUT_PDIR,RV3032_CLKOUT_B);
 
         // First power up
 
@@ -655,19 +664,17 @@ int main( void )
 
 
         // Set all the registers
-        uint8_t pmu_reg = 0b01010000;           // CLKOUT off, Direct backup switching mode, no charge pump, 1K OHM trickle resistor
+        //uint8_t pmu_reg = 0b01010001;           // CLKOUT off, Direct backup switching mode, no charge pump, 1K OHM trickle resistor, trickle charge Vbackup to Vdd
+
+        uint8_t pmu_reg = 0b01000001;           // CLKOUT off, backup switchover disabled, no charge pump, 1K OHM trickle resistor, trickle charge Vbackup to Vdd
+
         i2c_write( RV_3032_I2C_ADDR , 0xc0 , &pmu_reg , 1 );
 
-        uint8_t clockout2_reg = 0b01100000;
-        i2c_write( RV_3032_I2C_ADDR , 0xc3 , &clockout2_reg , 1 ); // Switch CLKOUT to 1 Hz
 
-        // set TD to 00 for 4068Hz timer, TE=1 to enable periodic countdown timer
-        uint8_t control1_reg = 0b00001000;
-        i2c_write( RV_3032_I2C_ADDR , 0x10 , &control1_reg , 1 );
-
-        // Set TIE in Control 2 to 1 t enable interrupt pin for periodic countdown
-        uint8_t control2_reg = 0b00010000;
-        i2c_write( RV_3032_I2C_ADDR , 0x11 , &control2_reg , 1 );
+        // Now that CLKOUT is disabled on the RV3032, it is supposed to be driven low, but seems to float sometimes
+        // so lets pull it low on the MSP430 to prevent float leakage.
+        CBI( RV3032_CLKOUT_POUT , RV3032_CLKOUT_B );
+        SBI( RV3032_CLKOUT_PREN , RV3032_CLKOUT_B );
 
 
         // Periodic Timer value = 2048 for 500ms
@@ -678,23 +685,29 @@ int main( void )
         i2c_write( RV_3032_I2C_ADDR , 0x0b , &timerValueL  , 1 );
         i2c_write( RV_3032_I2C_ADDR , 0x0c , &timerValueH  , 1 );
 
-        // Set TD= 01 for 4096Hz
+        // Set TIE in Control 2 to 1 t enable interrupt pin for periodic countdown
+        uint8_t control2_reg = 0b00010000;
+        i2c_write( RV_3032_I2C_ADDR , 0x11 , &control2_reg , 1 );
 
-        //uint8_t pmu_reg = 0b01010000;       // No CLKOUT, Switchover when VDD < VBACKUP, Trickle Charger off
-        //i2c_write( RV_3032_I2C_ADDR , 0xc0 , &pmu_reg , 1 ); // Disable CLKOUT
-
-
-        // Now we need to setup interrupt on clock_in pin to wake us
-
-       RV3032_INT_PDIR &= ~_BV( RV3032_INT_B );
-       RV3032_INT_POUT |= _BV( RV3032_INT_B );// Pull-up
-       RV3032_INT_PREN |= _BV( RV3032_INT_B );
+        // set TD to 00 for 4068Hz timer, TE=1 to enable periodic countdown timer, EERD=1 to disable automatic EEPROM refresh (why would you want that?)
+        uint8_t control1_reg = 0b00001100;
+        i2c_write( RV_3032_I2C_ADDR , 0x10 , &control1_reg , 1 );
 
 
-       P1IFG = 0x00;
+        // OK, we will now get a 122uS low pulse on INT every 500ms.
 
-       RV3032_INT_PIE |= _BV( RV3032_INT_B );          // Enable interrupt on the clock_in pin. By default this will be low-to-high triggered
+        // We are done setting stuff up with the i2c connection, so drive the pins low
+        // This will hopefully reduce leakage and also keep them from floating into the
+        // RV3032 when the MSP430 looses power during a battery change.
 
+        i2c_shutdown();
+
+        // Now we need to setup interrupt on INT pin to wake us when it goes low
+
+       P1IFG = 0x00;            // CLear any pending interrupt flags on P1
+
+       SBI( RV3032_INT_PIES , RV3032_INT_B );          // Interrupt on high-to-low edge (the pin is pulled up by MSP430 and then RV3032 driven low with open collector by RV3032)
+       SBI( RV3032_INT_PIE  , RV3032_INT_B );          // Enable interrupt on the INT pin. By default this will be low-to-high triggered
 
 
         // TODO: Why doesn't this work?
@@ -712,7 +725,7 @@ int main( void )
         lcd_show< 8,8>();
         lcd_show< 9,9>();
         lcd_show<10,0>();
-        lcd_show<11,5>();
+        lcd_show<11,1>();
 
         unsigned f = PMMIFG;        // Read reset flags
 
@@ -763,7 +776,6 @@ int main( void )
         // "the WDTHOLD bit can be used to hold the WDTCNT, reducing power consumption."
 
 
-
         //WDTCTL = WDTPW | WDTSSEL__VLO | WDTHOLD;                               // Select VLO for WDT clock, halt watchdog timer
 
 
@@ -788,7 +800,7 @@ int main( void )
 
         SYSRSTIV = 0x00;            // Clear all pending reset sources
 
-
+        SBI( DEBUGA_POUT , DEBUGA_B );
         // Go into LPM3.5 sleep
         //PMMCTL0_H = PMMPW_H;                               // Open PMM Registers for write
         //PMMCTL0_L |= PMMREGOFF_L;                           // and set PMMREGOFF also clears SVS
@@ -826,11 +838,11 @@ __interrupt void PORT1_ISR(void) {
 
     if (*spin==1) {
 
-        lcd_show< 8,1>();
+        lcd_show< 8,8>();
         *spin=2;
 
     } else {
-        lcd_show< 8,2>();
+        lcd_show< 8,0>();
         *spin=1;
 
     }

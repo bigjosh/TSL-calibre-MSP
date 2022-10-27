@@ -150,6 +150,13 @@ void USI_TWI_Master_disable( void )
 
 }
 
+// Drive both pins low
+
+void i2c_shutdown() {
+    sda_drive_low();
+    scl_drive_low();
+}
+
 
 // Write a byte out to the slave and look for ACK bit
 // Assumes SCL low, SDA doesn't matter
