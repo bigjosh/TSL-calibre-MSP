@@ -10,14 +10,12 @@ PCB and firmware for the CW&T Time Since Launch project.
 
 ## Critical parts:
 
-* ATXMEGA128B3 processor for LCD driving and supervision. 
-* RX8900 RTC for precision timekeeping
-* 2x  AIExpress 6-digit, 7-segment dynamic LCD glass 
+* MSP430FR4133 processor for LCD driving and supervision. 
+* RV3032-C7 RTC for precision timekeeping
+* Custom 12-digit, dynamic LCD glass 
 * 2x Energizer Ultimate Lithium AA batteries
-* Optional 32768Hz tuning fork quartz watch crystal 
 
-
-## XMEGA EEPROM usage
+## EEPROM usage
 
 We use a block at the start of EEPROM to ...
 
