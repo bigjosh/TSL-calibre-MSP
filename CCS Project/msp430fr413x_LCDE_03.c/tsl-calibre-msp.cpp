@@ -100,19 +100,25 @@ struct lpin_t {
     }
 };
 
+// Each LCD lpin has one nibble, so there are two lpins for each LCD memory address.
+// These two functions compute the memory address and the nibble inside that address for a given lpin.
 
-constexpr static char lpin_lcdmem_offset(char lpin) {
+#pragma FUNC_ALWAYS_INLINE
+constexpr static char lpin_lcdmem_offset(const char lpin) {
     return (lpin>>1); // Intentionally looses bottom bit since consecutive L-pins share the same memory address (but different nibbles)
 }
 
-constexpr static nibble_t lpin_nibble(char lpin) {
+#pragma FUNC_ALWAYS_INLINE
+constexpr static nibble_t lpin_nibble(const char lpin) {
     return lpin & 0x01 ? UPPER : LOWER;  // Extract which nibble
 }
 
 
+
+
 // Write the specified nibble. The other nibble at address a is unchanged.
 
-void set_nibble( char * a , nibble_t nibble_index , char x ) {
+void set_nibble( char * a , const nibble_t nibble_index , const char x ) {
 
     if ( nibble_index == nibble_t::LOWER  ) {
 
@@ -126,6 +132,8 @@ void set_nibble( char * a , nibble_t nibble_index , char x ) {
     }
 
 }
+
+
 
 // Show the digit x at position p
 // where p=0 is the rightmost digit
@@ -142,7 +150,7 @@ inline void lcd_show() {
     constexpr char lcdmem_offset_a_thru_d = (lpin_t< lpin_a_thru_d >::lcdmem_offset()); // Look up the memory address for the low segment bits
     constexpr char lcdmem_offset_e_thru_g = lpin_t< lpin_e_thru_g >::lcdmem_offset(); // Look up the memory address for the high segment bits
 
-    char * lcd_mem_reg = LCDMEM;
+    char * const lcd_mem_reg = LCDMEM;
 
     /*
       I know that line above looks dumb, but if you just access LCDMEM directly the compiler does the wrong thing and loads the offset
@@ -211,9 +219,8 @@ inline void lcd_show() {
 // where p=0 is the rightmost digit
 
 
-
-static
-inline void lcd_show_f( const char pos, const char x ) {
+#pragma FUNC_ALWAYS_INLINE
+static inline void lcd_show_f( const char pos, const char x ) {
 
     const char nibble_a_thru_d =  digit_segments[x].nibble_a_thru_d;         // Look up which segments on the low pin we need to turn on to draw this digit
     const char nibble_e_thru_g =  digit_segments[x].nibble_e_thru_g;         // Look up which segments on the low pin we need to turn on to draw this digit
@@ -224,7 +231,7 @@ inline void lcd_show_f( const char pos, const char x ) {
     const char lcdmem_offset_a_thru_d = lpin_lcdmem_offset( lpin_a_thru_d ); // Look up the memory address for the low segment bits
     const char lcdmem_offset_e_thru_g = lpin_lcdmem_offset( lpin_e_thru_g ); // Look up the memory address for the high segment bits
 
-    char * lcd_mem_reg = LCDMEM;
+    char * const lcd_mem_reg = LCDMEM;
 
     /*
       I know that line above looks dumb, but if you just access LCDMEM directly the compiler does the wrong thing and loads the offset
@@ -275,95 +282,158 @@ inline void lcd_show_f( const char pos, const char x ) {
 
         const nibble_t lpin_a_thru_d_nibble_index = lpin_nibble(lpin_a_thru_d);
 
-        set_nibble( &lcd_mem_reg[lcdmem_offset_a_thru_d] , lpin_a_thru_d_nibble_index , nibble_a_thru_d );
+        if (lpin_a_thru_d_nibble_index == nibble_t::LOWER) {
+
+            // a-d pin uses in lower nibble
+
+            lcd_mem_reg[lcdmem_offset_a_thru_d] = (lcd_mem_reg[lcdmem_offset_a_thru_d] & 0xf0) | (( nibble_a_thru_d & 0x0f ) << 0 );    // Trailing & is unnecessary, there for clarity.
+
+        } else {
+
+            // a-d pin uses in upper nibble
+
+            lcd_mem_reg[lcdmem_offset_a_thru_d] = (lcd_mem_reg[lcdmem_offset_a_thru_d] & 0x0f) | (( nibble_a_thru_d & 0x0f  ) << 4 ) ;    // Trailing & is unnecessary, there for clarity.
+
+        }
 
 
         // Write the e_thru_f nibble to the memory address is lives in
 
         const nibble_t lpin_e_thru_g_nibble_index = lpin_nibble(lpin_e_thru_g);
 
-        set_nibble( &lcd_mem_reg[lcdmem_offset_e_thru_g] , lpin_e_thru_g_nibble_index , nibble_e_thru_g );
+        if (lpin_e_thru_g_nibble_index == nibble_t::LOWER) {
+
+            // e-f pin uses in lower nibble
+
+            lcd_mem_reg[lcdmem_offset_e_thru_g] = (lcd_mem_reg[lcdmem_offset_e_thru_g] & 0xf0) | (( nibble_e_thru_g & 0x0f ) << 0 );    // Trailing & is unnecessary, there for clarity.
+
+        } else {
+
+            // e-f pin uses in upper nibble
+
+            lcd_mem_reg[lcdmem_offset_e_thru_g] = (lcd_mem_reg[lcdmem_offset_e_thru_g] & 0x0f) | (( nibble_e_thru_g & 0x0f  ) << 4 ) ;    // Trailing & is unnecessary, there for clarity.
+
+        }
+
 
     }
 
 }
 
 
+void wiggleFlashQ1() {
+    SBI( Q1_TOP_LED_POUT , Q1_TOP_LED_B );
+    __delay_cycles(10000);
+    CBI( Q1_TOP_LED_POUT , Q1_TOP_LED_B );
+}
 
-// Wiggle the flash LED IO pins at about 10Hz for testing
+void wiggleFlashQ2() {
+    SBI( Q2_BOT_LED_POUT , Q2_BOT_LED_B );
+    __delay_cycles(10000);
+    CBI( Q2_BOT_LED_POUT , Q2_BOT_LED_B );
+}
+
+
+// Flash the bulbs in succession
+// Leaves transistors driven off and flash bulbs off
 
 void wiggleFlash() {
-    // Set Q1 & Q2 transistor pins to output
-    SBI( Q1_TOP_LED_PDIR , Q1_TOP_LED_B );
-    SBI( Q2_BOT_LED_PDIR , Q2_BOT_LED_B );
-
-    while (1) {
-
-        SBI( Q1_TOP_LED_POUT , Q1_TOP_LED_B );
-        CBI( Q2_BOT_LED_POUT , Q2_BOT_LED_B );
-        __delay_cycles(100000);
-
-        CBI( Q1_TOP_LED_POUT , Q1_TOP_LED_B );
-        SBI( Q2_BOT_LED_POUT , Q2_BOT_LED_B );
-        __delay_cycles(100000);
-
-    }
-
+    wiggleFlashQ1();
+    __delay_cycles(30000);
+    wiggleFlashQ2();
 }
 
 volatile unsigned char * Seconds = &BAKMEM0_L;               // Store seconds in the backup RAM module
 volatile unsigned char * Minutes = &BAKMEM0_H;               // Store minutes in the backup RAM module
 volatile unsigned char * Hours = &BAKMEM1_L;                 // Store hours in the backup RAM module
 volatile unsigned char * spin = &BAKMEM1_H;                 // Store hours in the backup RAM module
+volatile unsigned char * triggerSpin = &BAKMEM2_L;          // Current state of the trigger pin. Normally pulled up (lever depressed), low means pin pulled
+
+inline void initGPIO() {
+
+    // TODO: use the full word-wide registers
+    // Initialize all GPIO pins for low power OUTPUT + LOW
+    P1DIR = 0xFF;P2DIR = 0xFF;P3DIR = 0xFF;P4DIR = 0xFF;
+    P5DIR = 0xFF;P6DIR = 0xFF;P7DIR = 0xFF;P8DIR = 0xFF;
+    // Configure all GPIO to Output Low
+    P1OUT = 0x00;P2OUT = 0x00;P3OUT = 0x00;P4OUT = 0x00;
+    P5OUT = 0x00;P6OUT = 0x00;P7OUT = 0x00;P8OUT = 0x00;
+
+    // --- Flash bulbs off
+
+    // Set Q1 & Q2 transistor pins to output (will be driven low so LEDs off)
+    SBI( Q1_TOP_LED_PDIR , Q1_TOP_LED_B );
+    SBI( Q2_BOT_LED_PDIR , Q2_BOT_LED_B );
+
+    // --- Debug pins
+
+    // DEBUGA as output
+    // SBI( DEBUGA_PDIR , DEBUGA_B );
+
+    // --- RV3032
+
+    // Make the pin connected to RV3032 CLKOUT be input. CLKOUT is disabled, so RV3032 should be driving this LOW
+    CBI( RV3032_CLKOUT_PDIR,RV3032_CLKOUT_B);
+
+    // ~INT in from RV3032 as INPUT with PULLUP
+
+    CBI( RV3032_INT_PDIR , RV3032_INT_B ); // INPUT
+    SBI( RV3032_INT_POUT , RV3032_INT_B ); // Pull-up
+    SBI( RV3032_INT_PREN , RV3032_INT_B ); // Pull resistor enable
+
+    // Power to RV3032
+
+    SBI( RV3032_VCC_PDIR , RV3032_VCC_B);
+    SBI( RV3032_VCC_POUT , RV3032_VCC_B);
+
+    // Now we need to setup interrupt on INT pin to wake us when it goes low
+
+    SBI( RV3032_INT_PIES , RV3032_INT_B );          // Interrupt on high-to-low edge (the pin is pulled up by MSP430 and then RV3032 driven low with open collector by RV3032)
+    SBI( RV3032_INT_PIE  , RV3032_INT_B );          // Enable interrupt on the INT pin high to low edge.
+
+
+    // --- Trigger Pin
+
+    // Trigger pin as in input with pull-up
+
+    CBI( TRGIGER_SWITCH_POUT , TRGIGER_SWITCH_B );      // Set input
+    SBI( TRGIGER_SWITCH_PREN , TRGIGER_SWITCH_B );      // Enable pull resistor
+    SBI( TRGIGER_SWITCH_POUT , TRGIGER_SWITCH_B );      // Pull up
+
+    // Now we need to setup interrupt on trigger pin to wake us when it goes low
+
+    SBI( TRIGGER_SWITCH_PIES , TRGIGER_SWITCH_B );          // Interrupt on high-to-low edge (the pin is pulled up by MSP430 and then RV3032 driven low with open collector by RV3032)
+    SBI( TRIGGER_SWITCH_PIE  , TRGIGER_SWITCH_B );          // Enable interrupt on the INT pin high to low edge. Normally pulled-up when pin is inserted (switch lever is depressed)
+
+    // Configure LCD pins
+    SYSCFG2 |= LCDPCTL;
+
+
+    // Disable the GPIO power-on default high-impedance mode
+    // to activate previously configured port settings
+    PM5CTL0 &= ~LOCKLPM5;
+
+    // Clear any pending interrupt from the INT pin
+    //CBI( RV3032_INT_PIFG , RV3032_CLKOUT_B );
+
+    RV3032_INT_PIV;   // Read and throw away to clear the PORT1 pin change interrupt flag. Only clears the top one but we only expect to have one.
+
+}
 
 
 
 int main( void )
 {
     WDTCTL = WDTPW | WDTHOLD;                               // Stop watchdog timer
-    if ( 0 /* && SYSRSTIV == SYSRSTIV_LPM5WU */)                        // If LPM3.5 wakeup
+    if ( SYSRSTIV == SYSRSTIV_LPM5WU )                        // If LPMx.5 wakeup
     {
 
-        SBI( P1DIR , 1 );
-        SBI( P1OUT , 1 );
-        CBI( P1OUT , 1 );
 
-        /*
-         * When an overflow occurs, the RTCIFG bit in the RTCCTL register is set until it is cleared by a read of the
-         * RTCIV register. At the same time, an interrupt is submitted to the CPU for post-processing, if the RTCIE
-         * bit in the RTCCTL register is set. Reading RTCIV register clears the interrupt flag.
-         */
+        initGPIO();
 
-        RTCIV; // Clear RTC interrupt. If we do not do this then the RTC ISR will be needlessly called when drop into LPM3.5
+        RV3032_INT_PIV;   // Read and throw away to clear the PORT1 pin change interrupt flag. Only clears the top one but we only expect to have one.
 
-
-        // Initialize GPIO pins for low power
-        // Configure all GPIO to Output Low
-        P1OUT = 0x00;P2OUT = 0x00;P3OUT = 0x00;P4OUT = 0x00;
-        P5OUT = 0x00;P6OUT = 0x00;P7OUT = 0x00;P8OUT = 0x00;
-
-
-        // INT from RV3032 as INPUT, PULL-UP
-
-        CBI( RV3032_INT_PDIR , RV3032_INT_B);
-        SBI( RV3032_INT_PREN , RV3032_INT_B);
-
-
-       // Configure LCD pins
-       SYSCFG2 |= LCDPCTL;
-
-
-        // Disable the GPIO power-on default high-impedance mode
-        // to activate previously configured port settings
-        PM5CTL0 &= ~LOCKLPM5;
-
-
-        //CLOCK_IN_PIV;   // Read and throw away to clear the PORT1 pin change interrupt flag. Only clears the top one but we only expect to have one.
-        P1IFG = 0x00;
-
-        RV3032_INT_PIE |= _BV( RV3032_INT_B );          // Enable interrupt on the clock_in pin. By default this will be low-to-high triggered
-
-
+/*
         // toggle low power waveform so we can see if it is visible (turns out only visible from wide viewing angles)
         // Divide by 1 (so CLK will be 10Khz), Very Low Osc, Turn on LCD, 4-mux selected (LCD4MUX also includes LCDSON), Low power waveform
         //LCDCTL0 ^= LCDLP ;
@@ -427,25 +497,48 @@ int main( void )
                 break;
 
         }
+*/
+        if (*spin==1) {
 
+            lcd_show< 8,1>();
+            *spin=2;
 
-        if (TBI(RV3032_INT_PIN,RV3032_INT_B)) {
-            lcd_show<11,1>();
         } else {
-            lcd_show<11,0>();
+            lcd_show< 8,0>();
+            *spin=1;
 
         }
 
-        PMMCTL0_H = PMMPW_H;                                // Open PMM Registers for write
-        PMMCTL0_L |= PMMREGOFF_L;                           // and set PMMREGOFF
-        __bis_SR_register(LPM3_bits | GIE);                 // Re-enter LPM3.5
+        //RV3032_INT_PIV;   // Read and throw away to clear the PORT1 pin change interrupt flag. Only clears the top one but we only expect to have one.
 
-        // We never get here because LPM3.5 reboots on wake
+        /*
+            Reset interrupt vector. Generates a value that can be used as address offset for
+            fast interrupt service routine handling to identify the last cause of a reset (BOR,
+            POR, or PUC). Writing to this register clears all pending reset source flags.
+        */
+
+        //SYSRSTIV = 0x00;            // Clear all pending reset sources
+
+        SBI( DEBUGA_POUT , DEBUGA_B );
+
+        // Go into LPM4.5 sleep
+        PMMCTL0_H = PMMPW_H;                               // Open PMM Registers for write
+        PMMCTL0_L |= PMMREGOFF_L;                           // and set PMMREGOFF also clears SVS
+        // TODO: datasheets say SVS off makes wakeup 10x slower, so need to test when wake works
+
+        __bis_SR_register( LPM3_bits | GIE );                    // Enter LPM4.5
+
+
+        // We never get here because LPM4.5 reboots on wake
 
 
     }
     else
     {
+
+        initGPIO();
+
+        /*
 
         // At startup, all IO pins are hi-Z. Here we init them all and then unlock them for the changes to take effect.
 
@@ -474,6 +567,8 @@ int main( void )
         // Disable the GPIO power-on default high-impedance mode
         // to activate previously configured port settings
         PM5CTL0 &= ~LOCKLPM5;
+
+        */
 
 /*
         SBI( P1DIR , 1 );
@@ -528,8 +623,10 @@ int main( void )
 */
 
 
-        // LCD Operation - Mode 3, internal 3.08v, charge pump 256Hz, 3.4uA
+        // LCD Operation - Mode 3, internal 3.08v, charge pump 256Hz, ~5uA from 3.5V Vcc
         //LCDVCTL = LCDCPEN | LCDREFEN | VLCD_6 | (LCDCPFSEL0 | LCDCPFSEL1 | LCDCPFSEL2 | LCDCPFSEL3);
+
+
 
         // LCD Operation - internal V1 regulator=3.32v , charge pump 256Hz
         // LCDVCTL = LCDCPEN | LCDREFEN | VLCD_12 | (LCDCPFSEL0 | LCDCPFSEL1 | LCDCPFSEL2 | LCDCPFSEL3);
@@ -543,15 +640,34 @@ int main( void )
         //LCDVCTL = LCDSELVDD;
 
 
-        // LCD Operation - Pin R33 is connected to external V1, charge pump 256Hz, 1.7uA, Low Power Waveform
+        // LCD Operation - Pin R33 is connected to external V1, charge pump 256Hz, 1.7uA
         //LCDVCTL = LCDCPEN | (LCDCPFSEL0 | LCDCPFSEL1 | LCDCPFSEL2 | LCDCPFSEL3);
 
-        // LCD Operation - Charge pump enable, Vlcd=Vcc , charge pump FREQ=256Hz (lowest)
+
+        // LCD Operation - Mode 3, internal 2.96v, charge pump 256Hz, voltage reference only on 1/256th of the time. ~4.2uA from 3.5V Vcc
+        //LCDVCTL = LCDCPEN | LCDREFEN | VLCD_6 | (LCDCPFSEL0 | LCDCPFSEL1 | LCDCPFSEL2 | LCDCPFSEL3) | LCDREFMODE;
+
+
+        // LCD Operation - Mode 3, internal 2.78v, charge pump 256Hz, voltage reference only on 1/256th of the time. ~4.0uA from 3.5V Vcc
+        //LCDVCTL = LCDCPEN | LCDREFEN | VLCD_3 | (LCDCPFSEL0 | LCDCPFSEL1 | LCDCPFSEL2 | LCDCPFSEL3) | LCDREFMODE;
+
+
+        // LCD Operation - All 3 LCD voltages external. When generating all 3 with regulators, we get 2.48uA @ Vcc=3.5V so not worth it.
+        //LCDVCTL = 0;
+
+
+        // LCD Operation - All 3 LCD voltages external. When generating 1 regulators + 3 1M Ohm resistors, we get 2.9uA @ Vcc=3.5V so not worth it.
+        //LCDVCTL = 0;
+
+
+        // LCD Operation - Charge pump enable, Vlcd=Vcc , charge pump FREQ=256Hz (lowest)  2.5uA - Good for testing without a regulator
         LCDVCTL = LCDCPEN |  LCDSELVDD | (LCDCPFSEL0 | LCDCPFSEL1 | LCDCPFSEL2 | LCDCPFSEL3);
 
 
-        // LCD Operation - Charge pump enable, Vlcd=V1 pin , charge pump FREQ=256Hz (lowest)
+        /* WINNER for controlled Vlcd - Uses external TSP7A0228 regulator for Vlcd on R33 */
+        // LCD Operation - Charge pump enable, Vlcd=external from R33 pin , charge pump FREQ=256Hz (lowest). 2.1uA/180uA  @ Vcc=3.5V . Vlcd=2.8V  from TPS7A0228 no blinking.
         //LCDVCTL = LCDCPEN |  (LCDCPFSEL0 | LCDCPFSEL1 | LCDCPFSEL2 | LCDCPFSEL3);
+
 
 
         //LCDMEMCTL |= LCDCLRM;                                      // Clear LCD memory
@@ -590,20 +706,21 @@ int main( void )
         LCDCTL0 |= LCDON;                                           // Turn on LCD
 
 
-        lcd_show_f( 0,0 );
+        lcd_show_f( 0,1 );
         lcd_show_f( 1,0 );
-        lcd_show_f( 2,0 );
-        lcd_show_f( 3,0 );
-        lcd_show_f( 4,0 );
-        lcd_show_f( 5,0 );
-        lcd_show_f( 6,0 );
-        lcd_show_f( 7,0 );
-        lcd_show_f( 8,0 );
-        lcd_show_f( 9,0 );
-        lcd_show_f(10,0 );
+        lcd_show_f( 2,9 );
+        lcd_show_f( 3,8 );
+        lcd_show_f( 4,7 );
+        lcd_show_f( 5,6 );
+        lcd_show_f( 6,5 );
+        lcd_show_f( 7,4 );
+        lcd_show_f( 8,3 );
+        lcd_show_f( 9,2 );
+        lcd_show_f(10,1 );
         lcd_show_f(11,0 );
         //wiggleFlash();
 
+        *Seconds=00;        // Make it so we can see if we woke
 
 
 /*
@@ -643,17 +760,7 @@ int main( void )
         // Setup the RV3032
 
 
-        // Make the pin connected to RV3032 CLKOUT be input since when that chip first starts up, it will
-        // start toggling until we turn off the CLKOUT signal after we've initialized that chip.
-        // Once we disable CLKOUT on the RV3032, then it will drive that line low so we don't have to
-        // worry about it floating and wasting power on the MSP430.
 
-        CBI( RV3032_CLKOUT_PDIR,RV3032_CLKOUT_B);
-
-        // First power up
-
-        SBI( RV3032_VCC_PDIR , RV3032_VCC_B);
-        SBI( RV3032_VCC_POUT , RV3032_VCC_B);
 
         // Give the RV3230 a chance to wake up before we start pounding it.
         // POR refresh time(1) At power up ~66ms
@@ -664,8 +771,9 @@ int main( void )
 
 
         // Set all the registers
-        //uint8_t pmu_reg = 0b01010001;           // CLKOUT off, Direct backup switching mode, no charge pump, 1K OHM trickle resistor, trickle charge Vbackup to Vdd
 
+        // First control reg. Note that turning off backup switchover seems to save ~0.1uA
+        //uint8_t pmu_reg = 0b01010001;           // CLKOUT off, Direct backup switching mode, no charge pump, 1K OHM trickle resistor, trickle charge Vbackup to Vdd
         uint8_t pmu_reg = 0b01000001;           // CLKOUT off, backup switchover disabled, no charge pump, 1K OHM trickle resistor, trickle charge Vbackup to Vdd
 
         i2c_write( RV_3032_I2C_ADDR , 0xc0 , &pmu_reg , 1 );
@@ -702,18 +810,12 @@ int main( void )
 
         i2c_shutdown();
 
-        // Now we need to setup interrupt on INT pin to wake us when it goes low
-
-       P1IFG = 0x00;            // CLear any pending interrupt flags on P1
-
-       SBI( RV3032_INT_PIES , RV3032_INT_B );          // Interrupt on high-to-low edge (the pin is pulled up by MSP430 and then RV3032 driven low with open collector by RV3032)
-       SBI( RV3032_INT_PIE  , RV3032_INT_B );          // Enable interrupt on the INT pin. By default this will be low-to-high triggered
 
 
         // TODO: Why doesn't this work?
         //LCDMEMCTL |= LCDCLRM;                               // Clear LCD memory command (executed one shot)
         //while (LCDMEMCTL & LCDCLRM);                        // Wait for clear to complete before moving on
-
+/*
         lcd_show< 0,0>();
         lcd_show< 1,1>();
         lcd_show< 2,2>();
@@ -726,6 +828,7 @@ int main( void )
         lcd_show< 9,9>();
         lcd_show<10,0>();
         lcd_show<11,1>();
+*/
 
         unsigned f = PMMIFG;        // Read reset flags
 
@@ -754,7 +857,7 @@ int main( void )
 
         if (f & PMMBORIFG) {
               lcd_show< 2,1>();
-         }
+        }
 
 
         SYSRSTIV = 0x00;
@@ -798,16 +901,30 @@ int main( void )
             POR, or PUC). Writing to this register clears all pending reset source flags.
         */
 
+
         SYSRSTIV = 0x00;            // Clear all pending reset sources
 
+
+        __bis_SR_register( LPM4_bits | GIE );                    // Enter LPM4 - 2.12uA with static @ Vcc=3.5V, 2.2uA with simple counting
+
+/*
+        The LMPx.5 modes are very not worth it for us since they waste so much power on extended wake up time.
+        They would only be worth it if you were sleeping >minutes, not 500ms like we are.
+
+*/
+/*
         SBI( DEBUGA_POUT , DEBUGA_B );
-        // Go into LPM3.5 sleep
-        //PMMCTL0_H = PMMPW_H;                               // Open PMM Registers for write
-        //PMMCTL0_L |= PMMREGOFF_L;                           // and set PMMREGOFF also clears SVS
+
+
+        // Go into LPMx.5 sleep
+        PMMCTL0_H = PMMPW_H;                               // Open PMM Registers for write
+        PMMCTL0_L |= PMMREGOFF_L;                           // and set PMMREGOFF also clears SVS
         // TODO: datasheets say SVS off makes wakeup 10x slower, so need to test when wake works
 
-        __bis_SR_register( LPM4_bits | GIE );                    // Enter LPM3.5
+//        __bis_SR_register( LPM3_bits | GIE );                    // Enter LPM3.5 - 1.87uA with static @ Vcc=3.5V, , 4.8uA with simple counting
+//        __bis_SR_register( LPM4_bits | GIE );                    // Enter LPM4.5 - 1.87uA with static @ Vcc=3.5V, 4.5uA with simple counting
 
+*/
         /*
         PMMCTL0_H = PMMPW_H;                                // Open PMM Registers for write
         PMMCTL0_L = PMMREGOFF_L | SVSHE;                   // and set PMMREGOFF (go into a x.5 mode on next sleep) and disable low voltage monitor
@@ -832,18 +949,43 @@ int main( void )
 
 __interrupt void PORT1_ISR(void) {
 
-    SBI( DEBUGA_POUT , DEBUGA_B );
+    SBI( DEBUGA_POUT , DEBUGA_B );      // See latency to start ISR and how long it runs
 
-    RV3032_INT_PIV;   // Read and throw away to clear the PORT1 pin change interrupt flag. Only clears the top one but we only expect to have one.
+    if ( TBI( TRIGGER_SWITCH_PIFG , TRGIGER_SWITCH_B ) ) {
 
-    if (*spin==1) {
+        // Interrupt from the trigger pin high to low
 
-        lcd_show< 8,8>();
-        *spin=2;
+        // Show the flash
+        //wiggleFlashQ1();
 
-    } else {
-        lcd_show< 8,0>();
-        *spin=1;
+        // Note that the flash takes a fraction of a second, so will debounce the trigger pin
+        // and the following line will clear all the edges that happened.
+
+        if (*triggerSpin<9) {
+            (*triggerSpin)++;
+        } else {
+            (*triggerSpin)=0;
+        }
+
+        lcd_show_f(7, *triggerSpin);
+
+        CBI( TRIGGER_SWITCH_PIFG , TRGIGER_SWITCH_B );      // Clear pending interrupt flag
+
+    }
+
+
+    if ( TBI( RV3032_INT_PIFG , RV3032_INT_B ) ) {
+
+
+        if (*spin<9) {
+            (*spin)++;
+        } else {
+            (*spin)=0;
+        }
+
+        lcd_show_f(8, *spin);
+
+        CBI( RV3032_INT_PIFG , RV3032_INT_B );      // Clear pending interrupt flag
 
     }
 

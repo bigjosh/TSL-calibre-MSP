@@ -67,6 +67,10 @@
 #define TRGIGER_SWITCH_PDIR P1DIR
 #define TRGIGER_SWITCH_POUT P1OUT
 #define TRGIGER_SWITCH_PIN  P1IN
+#define TRIGGER_SWITCH_PIE  P1IE      // Interrupt enable
+#define TRIGGER_SWITCH_PIV  P1IV      // Interrupt vector (read this to get which pin caused interrupt, reading clears highest pending)
+#define TRIGGER_SWITCH_PIFG P1IFG     // Interrupt flag (bit 1 for each pin that interrupted)
+#define TRIGGER_SWITCH_PIES P1IES     // Interrupt Edge Select (0=low-to-high 1=high-to-low)
 
 #define TRGIGER_SWITCH_B (6)
 
