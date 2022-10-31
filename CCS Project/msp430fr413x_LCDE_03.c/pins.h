@@ -51,6 +51,15 @@
 #define RV3032_CLKOUT_B (1)
 
 
+// RV3032 Event input pin P1.3 which is pin number 25 on MSP430
+
+#define RV3032_EVI_PREN P1REN
+#define RV3032_EVI_PDIR P1DIR
+#define RV3032_EVI_POUT P1OUT
+#define RV3032_EVI_PIN  P1IN
+#define RV3032_EVI_B (3)
+
+
 // Power the RV3032 on pin P1.2 which is pin number 26 on MSP430
 
 #define RV3032_VCC_PREN P1REN
@@ -111,6 +120,22 @@
 #define Q2_BOT_LED_POUT P4OUT
 #define Q2_BOT_LED_PIN  P4IN
 #define Q2_BOT_LED_B (1)        // Bit
+
+
+// TSP voltage regulator
+
+#define TSP_ENABLE_PREN P7REN
+#define TSP_ENABLE_PDIR P7DIR
+#define TSP_ENABLE_POUT P7OUT
+#define TSP_ENABLE_PIN  P7IN
+#define TSP_ENABLE_B (0)       // Bit
+
+#define TSP_IN_PREN P4REN
+#define TSP_IN_PDIR P4DIR
+#define TSP_IN_POUT P4OUT
+#define TSP_IN_PIN  P4IN
+#define TSP_IN_B (2)       // Bit
+
 
 
 

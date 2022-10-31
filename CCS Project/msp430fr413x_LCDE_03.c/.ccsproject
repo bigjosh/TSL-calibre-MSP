@@ -12,5 +12,5 @@
 	<createSlaveProjects value=""/>
 	<filesToOpen value=""/>
 	<connection value="common/targetdb/connections/TIMSP430-USB.xml"/>
-	<isTargetManual value="true"/>
+	<isTargetManual value="false"/>
 </projectOptions>

@@ -44,8 +44,8 @@
 
 // Assumes OUT bits are still at startup default of 0
 
-static inline void scl_pull_init(void) {
-    I2C_CLK_PREN |= _BV(I2C_CLK_B);
+static inline void scl_init(void) {
+    I2C_CLK_PDIR |= _BV(I2C_CLK_B);
 }
 
 
@@ -72,23 +72,17 @@ static inline void sda_pull_disable(void) {
 
 }
 
-static inline void scl_pull_disable(void) {
-    I2C_CLK_PREN &= ~_BV(I2C_CLK_B);
-}
-
 
 static inline void scl_drive_low(void) {
     I2C_CLK_POUT &= ~_BV( I2C_CLK_B );
-    I2C_CLK_PDIR |= _BV( I2C_CLK_B );
 }
 
-static inline void scl_pull_high(void) {
-    I2C_CLK_PDIR &= ~_BV( I2C_CLK_B );
+static inline void scl_drive_high(void) {
     I2C_CLK_POUT |= _BV( I2C_CLK_B );
 }
 
 static inline uint8_t sda_read(void) {
-    return I2C_DTA_PDIR & _BV( I2C_DTA_B );
+    return I2C_DTA_PIN & _BV( I2C_DTA_B );
 }
 
 
@@ -123,8 +117,8 @@ void i2c_init( void )
   sda_pull_init();
   sda_pull_high();
 
-  scl_pull_init();
-  scl_pull_high();
+  scl_init();
+  scl_drive_high();
 
   /*
   while (1) {
@@ -140,21 +134,16 @@ void i2c_init( void )
 }
 
 
-// Completely disconnect TWI pins and leave floating!
-
-void USI_TWI_Master_disable( void )
-{
-
-    sda_pull_disable();
-    scl_pull_disable();
-
-}
-
 // Drive both pins low
 
 void i2c_shutdown() {
-    sda_drive_low();
+
+    // SCL low first so we don't do an inadvertent START
     scl_drive_low();
+    _delay_us(BIT_TIME_US);
+    sda_drive_low();
+    _delay_us(BIT_TIME_US);
+
 }
 
 
@@ -180,7 +169,7 @@ static unsigned char USI_TWI_Write_Byte( unsigned char data ) {
 
         _delay_us(BIT_TIME_US);
 
-        scl_pull_high();           // Clock in the next address bit
+        scl_drive_high();           // Clock in the next address bit
 
         _delay_us(BIT_TIME_US);
 
@@ -193,7 +182,7 @@ static unsigned char USI_TWI_Write_Byte( unsigned char data ) {
 
     sda_pull_high();            // Pull SDA high so we can see if the slave is driving low
     _delay_us(BIT_TIME_US);     // Not needed, but so we can see what is happening on the scope
-    scl_pull_high();
+    scl_drive_high();
     _delay_us(BIT_TIME_US);     // TODO: Don't need all these delays
 
     uint8_t ret = sda_read();   // slave should be driving low now
@@ -255,7 +244,7 @@ static void i2c_stop(void) {
 
     sda_drive_low();
     _delay_us(BIT_TIME_US);     // Give is a moment to stabilize in case
-    scl_pull_high();
+    scl_drive_high();
     _delay_us(BIT_TIME_US);
 
     sda_pull_high();            // SDA low to high while SCLK is high is a STOP
@@ -343,11 +332,14 @@ unsigned char i2c_read(unsigned char slave, unsigned char addr  , uint8_t *buffe
 
     // We are doing a restart here, so force clock high, then Start() will pull sda low with clock high
 
-    scl_pull_high();
+    scl_drive_high();
+    _delay_us(BIT_TIME_US);
+    _delay_us(BIT_TIME_US);
     _delay_us(BIT_TIME_US);
 
     i2c_start( slave , 1 );      // "CPU transfers RESTART condition [Sr] (in which case, CPU does not transfer a STOP condition [P])"
 
+    // SCL low
 
     while (count) {
 
@@ -357,7 +349,7 @@ unsigned char i2c_read(unsigned char slave, unsigned char addr  , uint8_t *buffe
 
             // Clock in the data bits
 
-            scl_pull_high();           // Clock in the first data bit
+            scl_drive_high();           // Clock in the first data bit
 
             _delay_us(BIT_TIME_US);
 
@@ -394,7 +386,7 @@ unsigned char i2c_read(unsigned char slave, unsigned char addr  , uint8_t *buffe
             _delay_us(BIT_TIME_US);     // Not needed, but so we can see what is happening on the scope
 
 
-            scl_pull_high();            // Clock out the ACK bit
+            scl_drive_high();            // Clock out the ACK bit
             _delay_us(BIT_TIME_US);
 
             scl_drive_low();
@@ -438,7 +430,7 @@ unsigned char i2c_read(unsigned char slave, unsigned char addr  , uint8_t *buffe
 
     */
 
-    scl_pull_high();            // SDA is is high, so we are clocking out a NAK
+    scl_drive_high();            // SDA is is high, so we are clocking out a NAK
     _delay_us(BIT_TIME_US);
     scl_drive_low();            // finish clocking out a NAK
 
