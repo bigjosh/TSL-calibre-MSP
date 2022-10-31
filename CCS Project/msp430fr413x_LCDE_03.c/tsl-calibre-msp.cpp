@@ -855,7 +855,6 @@ int main( void )
 
     SYSRSTIV = 0x00;            // Clear all pending reset sources
 
-
     __bis_SR_register( LPM4_bits | GIE );                    // Enter LPM4 - 2.12uA with static @ Vcc=3.5V, 2.2uA with simple counting
 
 /*

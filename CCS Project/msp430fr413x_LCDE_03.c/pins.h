@@ -51,13 +51,7 @@
 #define RV3032_CLKOUT_B (1)
 
 
-// RV3032 Event input pin P1.3 which is pin number 25 on MSP430
-
-#define RV3032_EVI_PREN P1REN
-#define RV3032_EVI_PDIR P1DIR
-#define RV3032_EVI_POUT P1OUT
-#define RV3032_EVI_PIN  P1IN
-#define RV3032_EVI_B (3)
+// RV3032 Event input pin is hardwired to ground to avoid having it float during battery changes (uses lots of power)
 
 
 // Power the RV3032 on pin P1.2 which is pin number 26 on MSP430
