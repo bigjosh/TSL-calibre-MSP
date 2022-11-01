@@ -34,13 +34,13 @@
 
 // Now we draw the digits using the segments as mapped in the LCD datasheet
 
-struct digit_segment_t {
+struct glyph_segment_t {
     const char nibble_a_thru_d;     // The COM bits for the digit's A-D segments
     const char nibble_e_thru_g;     // The COM bits for the digit's E-G segments
 };
 
 
-constexpr digit_segment_t digit_segments[] = {
+constexpr glyph_segment_t digit_segments[] = {
 
     {SEG_A_COM_BIT | SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT                  }, // "0"
     {                SEG_B_COM_BIT | SEG_C_COM_BIT                 ,                                               0}, // "1" (no high pin segments lit in the number 1)
@@ -62,6 +62,30 @@ constexpr digit_segment_t digit_segments[] = {
 
 };
 
+
+// Squiggle segments are used during the Ready To Launch mode before the pin is pulled
+
+constexpr unsigned SQUIGGLE_SEGMENTS_SIZE = 8;          // There really should be a better way to do this.
+
+constexpr glyph_segment_t squiggle_segments[SQUIGGLE_SEGMENTS_SIZE] = {
+    { SEG_A_COM_BIT , 0x00  },
+    { SEG_B_COM_BIT , 0x00 },
+    { 0x00          , SEG_G_COM_BIT  },
+    { 0x00          , SEG_E_COM_BIT  },
+    { SEG_D_COM_BIT , 0x00  },
+    { SEG_C_COM_BIT , 0x00  },
+    { 0x00          , SEG_G_COM_BIT  },
+    { 0x00          , SEG_F_COM_BIT  },
+};
+
+
+constexpr glyph_segment_t dash_segments = { 0x00 , SEG_G_COM_BIT };
+
+constexpr glyph_segment_t blank_segments = {  0x00 , 0x00 };
+
+constexpr glyph_segment_t x_segments = {  SEG_B_COM_BIT | SEG_C_COM_BIT   , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT };
+
+
 // This represents a logical digit that we will use to actually display numbers on the screen
 // Digit 0 is the rightmost and digit 11 is the leftmost
 // LPIN is the name of the pin on the MSP430 that the LCD pin for that digit is connected to.
@@ -74,7 +98,9 @@ struct logical_digit_t {
 
 };
 
-constexpr logical_digit_t logical_digits[] {
+constexpr char LOGICAL_DIGITS_SIZE = 12;
+
+constexpr logical_digit_t logical_digits[LOGICAL_DIGITS_SIZE] {
     { 33 , 32 },        //  0 (LCD 12) - rightmost digit
     { 35 , 34 },        //  1 (LCD 11)
     { 30 , 31 },        //  2 (LCD 10)
@@ -227,10 +253,10 @@ inline void lcd_show() {
 
 
 #pragma FUNC_ALWAYS_INLINE
-static inline void lcd_show_f( const char pos, const char x ) {
+static inline void lcd_show_f( const char pos, const glyph_segment_t segs ) {
 
-    const char nibble_a_thru_d =  digit_segments[x].nibble_a_thru_d;         // Look up which segments on the low pin we need to turn on to draw this digit
-    const char nibble_e_thru_g =  digit_segments[x].nibble_e_thru_g;         // Look up which segments on the low pin we need to turn on to draw this digit
+    const char nibble_a_thru_d =  segs.nibble_a_thru_d;         // Look up which segments on the low pin we need to turn on to draw this digit
+    const char nibble_e_thru_g =  segs.nibble_e_thru_g;         // Look up which segments on the low pin we need to turn on to draw this digit
 
     const char lpin_a_thru_d = logical_digits[pos].lpin_a_thru_d;     // Look up the L-pin for the low segment bits of this digit
     const char lpin_e_thru_g = logical_digits[pos].lpin_e_thru_g;     // Look up the L-pin for the high bits of this digit
@@ -344,7 +370,7 @@ void wiggleFlashQ2() {
 // Flash the bulbs in succession
 // Leaves transistors driven off and flash bulbs off
 
-void wiggleFlash() {
+void flash() {
     wiggleFlashQ1();
     __delay_cycles(30000);
     wiggleFlashQ2();
@@ -411,7 +437,7 @@ inline void initGPIO() {
 
     // Trigger pin as in input with pull-up
 
-    CBI( TRGIGER_SWITCH_POUT , TRGIGER_SWITCH_B );      // Set input
+    CBI( TRGIGER_SWITCH_PDIR , TRGIGER_SWITCH_B );      // Set input
     SBI( TRGIGER_SWITCH_PREN , TRGIGER_SWITCH_B );      // Enable pull resistor
     SBI( TRGIGER_SWITCH_POUT , TRGIGER_SWITCH_B );      // Pull up
 
@@ -428,13 +454,48 @@ inline void initGPIO() {
     // to activate previously configured port settings
     PM5CTL0 &= ~LOCKLPM5;
 
-    // Clear any pending interrupt from the INT pin
-    //CBI( RV3032_INT_PIFG , RV3032_CLKOUT_B );
+}
 
-    RV3032_INT_PIV;   // Read and throw away to clear the PORT1 pin change interrupt flag. Only clears the top one but we only expect to have one.
+
+// Sets the TE bit in the control1 register which...
+// "The Periodic Countdown Timer starts from the preset Timer Value in the registers 0Bh and 0Ch when
+//  writing 1 to the TE bit. The countdown is based on the Timer Clock Frequency selected in the TD field."
+
+void restart_rv3032_periodic_timer() {
+
+    // Initialize our i2c pins as pull-up
+    i2c_init();
+
+    // set TD to 00 for 4068Hz timer, TE=1 to enable periodic countdown timer, EERD=1 to disable automatic EEPROM refresh (why would you want that?). Bit 5 not used but must be set to 1.
+    uint8_t control1_reg = 0b00011100;
+    i2c_write( RV_3032_I2C_ADDR , 0x10 , &control1_reg , 1 );
+
+    // OK, we will now get a 122uS low pulse on INT after 500m, and every 500ms thereafter
+
+    i2c_shutdown();
 
 }
 
+enum mode_t {
+    UNARMED,                // Waiting for pin to be inserted (shows dashes)
+    ARMING,                 // Hold-off after pin is inserted to make sure we don't inadvertently trigger on a switch bounce (lasts 0.5s)
+    READY_TO_LAUNCH,        // Pin inserted, waiting for it to be removed (shows squiggles)
+    TIME_SINCE_LAUNCH       // Pin pulled, currently counting (shows count)
+};
+
+mode_t mode;
+
+char next_dash_step = 0;        // Used in UNARMED mode to show the sliding dash
+
+char next_squiggle_step = 0 ;     // Used in Ready to Launch mode, indicates the step of the squiggle in the leftmost digit.
+
+
+char secs=0;        // Start a 1 seconds on first update after launch
+char mins=0;
+char hours=0;
+unsigned long days=0;       // needs to be able to hold up to 1,000,000. I wish we had a 24 bit type here.
+                            // TODO: Make a 24 bit type.
+char halfsec=0;     // We tick at 2Hz, so keep track of half seconds
 
 int main( void )
 {
@@ -621,18 +682,18 @@ int main( void )
     LCDCTL0 |= LCDON;                                           // Turn on LCD
 
 
-    lcd_show_f( 0,0 );
-    lcd_show_f( 1,1 );
-    lcd_show_f( 2,2 );
-    lcd_show_f( 3,3 );
-    lcd_show_f( 4,4 );
-    lcd_show_f( 5,5 );
-    lcd_show_f( 6,6 );
-    lcd_show_f( 7,7 );
-    lcd_show_f( 8,8 );
-    lcd_show_f( 9,9 );
-    lcd_show_f(10,0x0a );
-    lcd_show_f(11,0x0b );
+    lcd_show_f( 0, digit_segments[0] );
+    lcd_show_f( 1, digit_segments[1] );
+    lcd_show_f( 2, digit_segments[2] );
+    lcd_show_f( 3, digit_segments[3] );
+    lcd_show_f( 4, digit_segments[4] );
+    lcd_show_f( 5, digit_segments[5] );
+    lcd_show_f( 6, digit_segments[6] );
+    lcd_show_f( 7, digit_segments[7] );
+    lcd_show_f( 8, digit_segments[8] );
+    lcd_show_f( 9, digit_segments[9] );
+    lcd_show_f(10, digit_segments[0x0a] );
+    lcd_show_f(11, digit_segments[0x0b] );
     //wiggleFlash();
 
     *Seconds=00;        // Make it so we can see if we woke
@@ -724,11 +785,9 @@ int main( void )
     i2c_read( RV_3032_I2C_ADDR , 0x0d , &status_reg , 1 );
 
     if ( (status_reg & 0x03) == 0 ) {               //If power on reset or low voltage drop detected then we have not been running continuously
-        lcd_show_f(1, 0x0f );
-        lcd_show_f(2, 0x00 );
-    } else {
-        lcd_show_f(1, 0x00 );
-        lcd_show_f(2, 0x0f );
+
+        // RESET or errormessage here
+
     }
     status_reg =0x00;   // Clear all flags for next time we check
     i2c_write( RV_3032_I2C_ADDR , 0x0d , &status_reg , 1 );
@@ -846,14 +905,31 @@ int main( void )
 
 
 
-    /*
-        Reset interrupt vector. Generates a value that can be used as address offset for
-        fast interrupt service routine handling to identify the last cause of a reset (BOR,
-        POR, or PUC). Writing to this register clears all pending reset source flags.
-    */
+    // Go into ready to launch mode (Show squiggles until trigger pin pulled)
+    mode = READY_TO_LAUNCH;
 
 
-    SYSRSTIV = 0x00;            // Clear all pending reset sources
+    // Clear any pending interrupts from the INT or trigger pins
+    //CBI( RV3032_INT_PIFG , RV3032_CLKOUT_B );
+
+    CBI( RV3032_INT_PIFG     , RV3032_INT_B    );
+    CBI( TRIGGER_SWITCH_PIFG , TRGIGER_SWITCH_B);
+
+    if (!TBI(TRGIGER_SWITCH_PIN,TRGIGER_SWITCH_B)) {
+
+        // Trigger pin not inserted
+
+        mode = UNARMED;
+
+    } else {
+
+        // Trigger pin inserted
+
+        mode = READY_TO_LAUNCH;
+
+
+    }
+
 
     __bis_SR_register( LPM4_bits | GIE );                    // Enter LPM4 - 2.12uA with static @ Vcc=3.5V, 2.2uA with simple counting
 
@@ -902,48 +978,221 @@ __interrupt void PORT1_ISR(void) {
     // Wake time measured at 48us
     // TODO: Make sure there are no avoidable push/pops happening at ISR entry (seems too long)
 
+    // TODO: Disable pull-up while in ISR
+
+
     SBI( DEBUGA_POUT , DEBUGA_B );      // See latency to start ISR and how long it runs
 
-    if ( TBI( TRIGGER_SWITCH_PIFG , TRGIGER_SWITCH_B ) ) {
+    if (mode == TIME_SINCE_LAUNCH) {
 
-        if ( !TBI( TRGIGER_SWITCH_PIN , TRGIGER_SWITCH_B ) ) {      // Just to be safe. make sure it is still low (slight amount of glitch filtering during ISR latency time)
-            // Interrupt from the trigger pin high to low
+        if (!halfsec) {
 
-            // Show the flash
-            //wiggleFlashQ1();
+            halfsec=1;
 
-            // Note that the flash takes a fraction of a second, so will debounce the trigger pin
-            // and the following line will clear all the edges that happened.
+        } else {
 
-            if (*triggerSpin<9) {
-                (*triggerSpin)++;
-            } else {
-                (*triggerSpin)=0;
+            // Show current time
+
+            halfsec = 0;
+
+            secs++;
+
+            if (secs == 60) {
+
+                secs=0;
+
+                mins++;
+
+                if (mins==60) {
+
+                    mins = 0;
+
+                    hours++;
+
+                    if (hours==24) {
+
+                        hours = 0;
+
+                        if (days=999999) {
+
+                            for( char i=0 ; i<LOGICAL_DIGITS_SIZE; i++ ) {
+
+                                // The long now
+
+                                lcd_show_f( i , x_segments );           // TODO: Think of something better to show here.
+                                                                        // TODO: Add a "long now" indicator on the LCD
+
+                            }
+
+
+
+                        } else {
+
+                            days++;
+
+                            lcd_show_f(  6 , digit_segments[ (days / 1      ) % 10 ] );
+                            lcd_show_f(  7 , digit_segments[ (days / 10     ) % 10 ] );
+                            lcd_show_f(  8 , digit_segments[ (days / 100    ) % 10 ] );
+                            lcd_show_f(  9 , digit_segments[ (days / 1000   ) % 10 ] );
+                            lcd_show_f( 10 , digit_segments[ (days / 10000  ) % 10 ] );
+                            lcd_show_f( 11 , digit_segments[ (days / 100000 ) % 10 ] );
+
+                        }
+
+
+                    }
+
+                    lcd_show_f( 4 , digit_segments[ hours % 10 ] );
+                    lcd_show_f( 5 , digit_segments[ hours / 10 ] );
+
+                }
+
+                lcd_show_f( 2 , digit_segments[ mins % 10 ] );
+                lcd_show_f( 3 , digit_segments[ mins / 10 ] );
+
             }
 
-            lcd_show_f( 9, *triggerSpin);
+
+            lcd_show_f( 0 , digit_segments[ secs % 10 ] );
+            lcd_show_f( 1 , digit_segments[ secs / 10 ] );
+
+
         }
+
+
+    } else if ( mode==READY_TO_LAUNCH ) {
+
+        // Check if trigger pin pulled (low)
+
+
+        if ( !TBI( TRGIGER_SWITCH_PIN , TRGIGER_SWITCH_B ) ) {
+
+            // WE HAVE LIFTOFF!
+
+            // We need to get everything below done withing 0.5 seconds so we do not miss the first tick.
+
+            // Disable the trigger pin and drive low to save power and prevent any more interrupts from it
+
+            CBI( TRGIGER_SWITCH_POUT , TRGIGER_SWITCH_B );      // low
+            SBI( TRGIGER_SWITCH_PDIR , TRGIGER_SWITCH_B );      // drive
+
+            for( char i=0 ; i<LOGICAL_DIGITS_SIZE; i++ ) {
+
+                lcd_show_f( i , digit_segments[0] );
+
+            }
+
+
+            // Start counting from now. We will get the first tick in 500ms
+
+            restart_rv3032_periodic_timer();
+
+            // Flash lights
+
+            flash();
+
+            // Record timestamp
+
+            // Clear any interrupt that raced and got in while we were doing all of the above.
+            // Note that the flash takes >122uS so we are assured that no additional extra interrupt can happen between when we reset the timer and now.
+
+            CBI( TRIGGER_SWITCH_PIFG , TRGIGER_SWITCH_B );      // Clear the pending trigger pin interrupt flag (should never get another now that pin is driven low)
+
+            mode = TIME_SINCE_LAUNCH;
+
+
+        } else {
+
+            char current_squiggle_step = next_squiggle_step;
+
+            for( char i=0 ; i<LOGICAL_DIGITS_SIZE; i++ ) {
+
+                lcd_show_f( i , squiggle_segments[ current_squiggle_step ]);
+
+                if ( current_squiggle_step == 0 ) {
+                    current_squiggle_step = SQUIGGLE_SEGMENTS_SIZE-1;
+                } else {
+                    current_squiggle_step--;
+                }
+
+            }
+
+
+            if ( next_squiggle_step == 0 ) {
+                next_squiggle_step = SQUIGGLE_SEGMENTS_SIZE-1;
+            } else {
+                next_squiggle_step--;
+            }
+        }
+    } else if ( mode==ARMING ) {
+
+        // Do nothing, this is just to add a delay between when the pin is inserted and when we are armed and ready to lanuch
+
+        // We are currently showing dashes, and we will switch to squiggles on next tick
+
+        mode = READY_TO_LAUNCH;
+
+        CBI( TRIGGER_SWITCH_PIFG , TRGIGER_SWITCH_B );      // Clear the pending trigger pin interrupt flag (should never get another now that pin is driven low)
+
+
+    } else { // mode==UNARMED
+
+        // Check if pin was inserted (pin high)
 
         CBI( TRIGGER_SWITCH_PIFG , TRGIGER_SWITCH_B );      // Clear pending interrupt flag
 
-    }
+        if ( TBI( TRGIGER_SWITCH_PIN , TRGIGER_SWITCH_B ) ) {
+
+            // Show a little full dash screen to indicate that we know you put the pin in
+
+              for( char i=0 ; i<LOGICAL_DIGITS_SIZE; i++ ) {
+
+                  lcd_show_f( i , dash_segments );
+
+              }
 
 
-    if ( TBI( RV3032_INT_PIFG , RV3032_INT_B ) ) {
+              //Start showing the ready to launch squiggles on next tick
 
-        // TODO: Disable pull-up while in ISR
+              mode = ARMING;
 
-        if (*spin<9) {
-            (*spin)++;
+              // note that here we wait a full tick before checking that it is out again. This will debounce the switch for 05.s when the pin is inserted.
+
         } else {
-            (*spin)=0;
+
+            // trigger pin still out
+            // show a little dash sliding towards the trigger pin
+
+            char current_dash_step = next_dash_step;
+
+            if (next_dash_step==0) {
+
+                next_dash_step = LOGICAL_DIGITS_SIZE-1;
+
+            } else {
+
+                next_dash_step--;
+
+            }
+
+
+            for( char i=0 ; i<LOGICAL_DIGITS_SIZE; i++ ) {
+
+
+                if (i==current_dash_step || i==next_dash_step ) {
+                    lcd_show_f( i , dash_segments );
+                } else {
+                    lcd_show_f( i , blank_segments );
+                }
+
+            }
+
         }
 
-        lcd_show_f( 0 , *spin);
-
-        CBI( RV3032_INT_PIFG , RV3032_INT_B );      // Clear pending interrupt flag
-
     }
+
+
+    CBI( RV3032_INT_PIFG , RV3032_INT_B );      // Clear RV3032 INT pending interrupt flag
 
     CBI( DEBUGA_POUT , DEBUGA_B );
 

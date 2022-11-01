@@ -64,15 +64,6 @@ static inline void sda_pull_high(void) {
     I2C_DTA_POUT |= _BV( I2C_DTA_B );
 }
 
-
-// Float the pin and disconnect input buffer
-
-static inline void sda_pull_disable(void) {
-    I2C_DTA_PREN &= ~_BV(I2C_DTA_B);
-
-}
-
-
 static inline void scl_drive_low(void) {
     I2C_CLK_POUT &= ~_BV( I2C_CLK_B );
 }
