@@ -85,6 +85,13 @@ constexpr glyph_segment_t blank_segments = {  0x00 , 0x00 };
 
 constexpr glyph_segment_t x_segments = {  SEG_B_COM_BIT | SEG_C_COM_BIT   , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT };
 
+constexpr glyph_segment_t all_segments = { SEG_A_COM_BIT | SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT };      // Note this is a just an '8' but good starting point for copy/paste!
+
+
+// These are little jaggy lines going one way and the other way
+constexpr glyph_segment_t left_tick_segments = {  SEG_C_COM_BIT , SEG_F_COM_BIT | SEG_G_COM_BIT };
+constexpr glyph_segment_t right_tick_segments = { SEG_B_COM_BIT , SEG_E_COM_BIT | SEG_G_COM_BIT };
+
 
 // This represents a logical digit that we will use to actually display numbers on the screen
 // Digit 0 is the rightmost and digit 11 is the leftmost
@@ -437,14 +444,9 @@ inline void initGPIO() {
 
     // Trigger pin as in input with pull-up
 
-    CBI( TRGIGER_SWITCH_PDIR , TRGIGER_SWITCH_B );      // Set input
-    SBI( TRGIGER_SWITCH_PREN , TRGIGER_SWITCH_B );      // Enable pull resistor
-    SBI( TRGIGER_SWITCH_POUT , TRGIGER_SWITCH_B );      // Pull up
-
-    // Now we need to setup interrupt on trigger pin to wake us when it goes low
-
-    SBI( TRIGGER_SWITCH_PIE  , TRGIGER_SWITCH_B );          // Enable interrupt on the INT pin high to low edge. Normally pulled-up when pin is inserted (switch lever is depressed)
-    SBI( TRIGGER_SWITCH_PIES , TRGIGER_SWITCH_B );          // Interrupt on high-to-low edge (the pin is pulled up by MSP430 and then RV3032 driven low with open collector by RV3032)
+    CBI( TRGIGER_SWITCH_PDIR , TRIGGER_SWITCH_B );      // Set input
+    SBI( TRGIGER_SWITCH_PREN , TRIGGER_SWITCH_B );      // Enable pull resistor
+    SBI( TRGIGER_SWITCH_POUT , TRIGGER_SWITCH_B );      // Pull up
 
     // Configure LCD pins
     SYSCFG2 |= LCDPCTL;
@@ -477,7 +479,7 @@ void restart_rv3032_periodic_timer() {
 }
 
 enum mode_t {
-    UNARMED,                // Waiting for pin to be inserted (shows dashes)
+    START,                  // Waiting for pin to be inserted (shows dashes)
     ARMING,                 // Hold-off after pin is inserted to make sure we don't inadvertently trigger on a switch bounce (lasts 0.5s)
     READY_TO_LAUNCH,        // Pin inserted, waiting for it to be removed (shows squiggles)
     TIME_SINCE_LAUNCH       // Pin pulled, currently counting (shows count)
@@ -487,7 +489,7 @@ mode_t mode;
 
 char next_dash_step = 0;        // Used in UNARMED mode to show the sliding dash
 
-char next_squiggle_step = 0 ;     // Used in Ready to Launch mode, indicates the step of the squiggle in the leftmost digit.
+char next_squiggle_step = SQUIGGLE_SEGMENTS_SIZE ;     // Used in Ready to Launch mode, indicates the step of the squiggle in the leftmost digit.
 
 
 char secs=0;        // Start a 1 seconds on first update after launch
@@ -499,10 +501,54 @@ char halfsec=0;     // We tick at 2Hz, so keep track of half seconds
 
 int main( void )
 {
+
     WDTCTL = WDTPW | WDTHOLD | WDTSSEL__VLO;   // Give WD password, Stop watchdog timer, set source to VLO
                                                // The thinking is that maybe the watchdog will request the SMCLK even though it is stopped (this is implied by the datasheet flowchart)
                                                // Since we have to have VLO on anyway, mind as well point the WDT to it.
                                                // TODO: Test to see if it matters, although no reason to change it.
+    #warning
+    if (SYSRSTIV == SYSRSTIV_LPM5WU)        // MSP430 just woke up from LPMx.5
+    {
+
+        initGPIO();
+        SBI( DEBUGA_POUT , DEBUGA_B);
+
+        CBI( RV3032_INT_PIFG     , RV3032_INT_B    );
+        CBI( TRIGGER_SWITCH_PIFG , TRIGGER_SWITCH_B);
+
+        (*Seconds)++;
+        if (*Seconds & 0x01 ) {
+            lcd_show_f( 0, digit_segments[3] );
+        } else {
+            lcd_show_f( 0, digit_segments[4] );
+        }
+
+        // Go into LPMx.5 sleep with Voltage Supervisor disabled.
+
+
+        // This code from LPM_4_5_2.c from TI resources
+        PMMCTL0_H = PMMPW_H;                // Open PMM Registers for write
+        //PMMCTL0_L &= ~(SVSHE);              // Disable high-side SVS
+        PMMCTL0_L |= PMMREGOFF;             // and set PMMREGOFF
+        // LPM4.5 SVS=OFF 1.471uA
+        // TODO: datasheets say SVS off makes wakeup 10x slower, so need to test when wake works
+
+
+        // LPM4 - 2.10uA with static @ Vcc=3.47V
+
+
+        /*
+            The LMPx.5 modes are very not worth it for us since they waste so much power on extended wake up time.
+            They would only be worth it if you were sleeping >minutes, not 500ms like we are. So we just settle for
+            LMP4.
+        */
+
+        #warning
+        CBI( DEBUGA_POUT , DEBUGA_B);
+        __bis_SR_register(LPM4_bits | GIE);                 // Enter LPM
+        __no_operation();
+
+    }
 
 
     initGPIO();
@@ -755,13 +801,20 @@ int main( void )
     i2c_write( RV_3032_I2C_ADDR , 0xc0 , &pmu_reg , 1 );
 
 
-    // Now that CLKOUT is disabled on the RV3032, it is supposed to be driven low, but seems to float sometimes
+    // Now that CLKOUT is disabled on the RV3032, it is supposed to be driven low by that chip, but seems to float sometimes
     // so lets pull it low on the MSP430 to prevent float leakage.
     CBI( RV3032_CLKOUT_POUT , RV3032_CLKOUT_B );
     SBI( RV3032_CLKOUT_PREN , RV3032_CLKOUT_B );
 
 
     // Periodic Timer value = 2048 for 500ms
+    // It would be nice if we could set it to 1s, but then the pulse is like 7ms wide and that would waste too much
+    // power against the pull-up that whole time. We could disable the pull-up on each INT, but then we'd need to wake again
+    // to reset it back so mind as well just wake on the 500ms timer.
+    // We could also pick a period of 4095/4096ths of a second, but then we'd need to sneak in the extra second every 4095 seconds
+    // and that would just look ugly having it jump.
+    // We could also maybe use the TI counter and only wake every 2 INTs but that means keeping the MSP430 timer hardware powered up which
+    // probably uses more power than just servicing the extra INT every second.
 
     const unsigned timerValue = 2048;
     uint8_t timerValueH = timerValue / 0x100;
@@ -810,8 +863,6 @@ int main( void )
     // RV3032 when the MSP430 looses power during a battery change.
 
     i2c_shutdown();
-
-
 
     // TODO: Why doesn't this work?
     //LCDMEMCTL |= LCDCLRM;                               // Clear LCD memory command (executed one shot)
@@ -906,58 +957,65 @@ int main( void )
 
 
     // Go into ready to launch mode (Show squiggles until trigger pin pulled)
-    mode = READY_TO_LAUNCH;
+    mode = START;
 
 
-    // Clear any pending interrupts from the INT or trigger pins
-    //CBI( RV3032_INT_PIFG , RV3032_CLKOUT_B );
+    // Clear any pending interrupts from the RV3032 INT pin
+    // We just started the timer so we should not get a real one for 500ms
 
     CBI( RV3032_INT_PIFG     , RV3032_INT_B    );
-    CBI( TRIGGER_SWITCH_PIFG , TRGIGER_SWITCH_B);
 
-    if (!TBI(TRGIGER_SWITCH_PIN,TRGIGER_SWITCH_B)) {
+    // We always start in START mode even if the trigger pin is inserted. This gives 500ms for the pull-on to actually pull it up,
+    // durring which we show a test pattern on the LCD.
+    // If we see the pin is still low on our first pass after 500ms, then we will go into ARMING, ARMED, and then READY_TO_LAUNCH. (500ms between each)
 
-        // Trigger pin not inserted
-
-        mode = UNARMED;
-
-    } else {
-
-        // Trigger pin inserted
-
-        mode = READY_TO_LAUNCH;
+    mode = START;
 
 
-    }
-
-
-    __bis_SR_register( LPM4_bits | GIE );                    // Enter LPM4 - 2.12uA with static @ Vcc=3.5V, 2.2uA with simple counting
+    // All LPM power tests done with all digits '0' on the display, no interrupts, RTC disconnected, Vcc=3.47V
 
 /*
-    The LMPx.5 modes are very not worth it for us since they waste so much power on extended wake up time.
-    They would only be worth it if you were sleeping >minutes, not 500ms like we are.
 
-*/
-/*
-    SBI( DEBUGA_POUT , DEBUGA_B );
-
-
-    // Go into LPMx.5 sleep
+    // Go into LPMx.5 sleep with Voltage Supervisor left enabled.
     PMMCTL0_H = PMMPW_H;                               // Open PMM Registers for write
     PMMCTL0_L |= PMMREGOFF_L;                           // and set PMMREGOFF also clears SVS
-    // TODO: datasheets say SVS off makes wakeup 10x slower, so need to test when wake works
-
-//        __bis_SR_register( LPM3_bits | GIE );                    // Enter LPM3.5 - 1.87uA with static @ Vcc=3.5V, , 4.8uA with simple counting
-//        __bis_SR_register( LPM4_bits | GIE );                    // Enter LPM4.5 - 1.87uA with static @ Vcc=3.5V, 4.5uA with simple counting
+    // LPM4.5 SVS=ON 1.625uA
 
 */
-    /*
-    PMMCTL0_H = PMMPW_H;                                // Open PMM Registers for write
-    PMMCTL0_L = PMMREGOFF_L | SVSHE;                   // and set PMMREGOFF (go into a x.5 mode on next sleep) and disable low voltage monitor
 
-    __bis_SR_register(LPM3_bits | GIE);                 // Enter LPM3.5
+
+/*
+    // Go into LPMx.5 sleep with Voltage Supervisor disabled.
+    // This code from LPM_4_5_2.c from TI resources
+    PMMCTL0_H = PMMPW_H;                // Open PMM Registers for write
+    PMMCTL0_L &= ~(SVSHE);              // Disable high-side SVS
+    PMMCTL0_L |= PMMREGOFF;             // and set PMMREGOFF
+    // LPM4.5 SVS=OFF 1.471uA
+    // TODO: datasheets say SVS off makes wakeup 10x slower, so need to test when wake works
+*/
+
+    // LPM4 - 2.10uA with static @ Vcc=3.47V
+
+
+
+
+    // Go into LPMx.5 sleep with Voltage Supervisor disabled.
+    // This code from LPM_4_5_2.c from TI resources
+    PMMCTL0_H = PMMPW_H;                // Open PMM Registers for write
+    PMMCTL0_L &= ~(SVSHE);              // Disable high-side SVS
+    // LPM4 SVS=OFF
+
+
+    /*
+        The LMPx.5 modes are very not worth it for us since they waste so much power on extended wake up time.
+        They would only be worth it if you were sleeping >minutes, not 500ms like we are. So we just settle for
+        LMP4.
+    */
+    #warning
+    CBI( DEBUGA_POUT , DEBUGA_B);
+    __bis_SR_register(LPM4_bits | GIE);                 // Enter LPM
     __no_operation();                                   // For debugger
-     */
+
 
     while (1) {
 
@@ -989,7 +1047,14 @@ __interrupt void PORT1_ISR(void) {
 
             halfsec=1;
 
+            #warning this is just to visualize the half ticks
+            lcd_show_f( 11 , left_tick_segments );
+
         } else {
+
+            #warning this is just to visualize the half ticks
+            lcd_show_f( 11 , right_tick_segments );
+
 
             // Show current time
 
@@ -1013,7 +1078,7 @@ __interrupt void PORT1_ISR(void) {
 
                         hours = 0;
 
-                        if (days=999999) {
+                        if (days==999999) {
 
                             for( char i=0 ; i<LOGICAL_DIGITS_SIZE; i++ ) {
 
@@ -1062,10 +1127,9 @@ __interrupt void PORT1_ISR(void) {
 
     } else if ( mode==READY_TO_LAUNCH ) {
 
-        // Check if trigger pin pulled (low)
+        // Check if trigger pulled (pin low)
 
-
-        if ( !TBI( TRGIGER_SWITCH_PIN , TRGIGER_SWITCH_B ) ) {
+        if ( !TBI( TRGIGER_SWITCH_PIN , TRIGGER_SWITCH_B ) ) {
 
             // WE HAVE LIFTOFF!
 
@@ -1073,8 +1137,10 @@ __interrupt void PORT1_ISR(void) {
 
             // Disable the trigger pin and drive low to save power and prevent any more interrupts from it
 
-            CBI( TRGIGER_SWITCH_POUT , TRGIGER_SWITCH_B );      // low
-            SBI( TRGIGER_SWITCH_PDIR , TRGIGER_SWITCH_B );      // drive
+            CBI( TRGIGER_SWITCH_POUT , TRIGGER_SWITCH_B );      // low
+            SBI( TRGIGER_SWITCH_PDIR , TRIGGER_SWITCH_B );      // drive
+
+            // Show all 0's on the LCD to instantly let the use know that we saw the pull
 
             for( char i=0 ; i<LOGICAL_DIGITS_SIZE; i++ ) {
 
@@ -1083,20 +1149,22 @@ __interrupt void PORT1_ISR(void) {
             }
 
 
-            // Start counting from now. We will get the first tick in 500ms
+            // Start counting from right..... now
 
             restart_rv3032_periodic_timer();
+
+            // We will get the next tick in 500ms
 
             // Flash lights
 
             flash();
 
-            // Record timestamp
+            // TODO: Record timestamp
 
             // Clear any interrupt that raced and got in while we were doing all of the above.
             // Note that the flash takes >122uS so we are assured that no additional extra interrupt can happen between when we reset the timer and now.
 
-            CBI( TRIGGER_SWITCH_PIFG , TRGIGER_SWITCH_B );      // Clear the pending trigger pin interrupt flag (should never get another now that pin is driven low)
+            CBI( TRIGGER_SWITCH_PIFG , TRIGGER_SWITCH_B );      // Clear the pending trigger pin interrupt flag (should never get another now that pin is driven low)
 
             mode = TIME_SINCE_LAUNCH;
 
@@ -1124,26 +1192,48 @@ __interrupt void PORT1_ISR(void) {
                 next_squiggle_step--;
             }
         }
+
     } else if ( mode==ARMING ) {
 
-        // Do nothing, this is just to add a delay between when the pin is inserted and when we are armed and ready to lanuch
+        // This phase is just to add a 500ms debounce to when the pin is initially inserted at the factory to make sure we do
+        // not accidentally fire then.
 
-        // We are currently showing dashes, and we will switch to squiggles on next tick
+        // We are currently showing dashes, and we will switch to squiggles on next tick if the pin is in now
 
-        mode = READY_TO_LAUNCH;
+        // If pin is still inserted (switch open, pin high), then go into READY_TO_LAUNCH were we wait for it to be pulled
 
-        CBI( TRIGGER_SWITCH_PIFG , TRGIGER_SWITCH_B );      // Clear the pending trigger pin interrupt flag (should never get another now that pin is driven low)
+        if ( TBI( TRGIGER_SWITCH_PIN , TRIGGER_SWITCH_B )  ) {
+
+            // Now we need to setup interrupt on trigger pin to wake us when it goes low
+            // This way we can react instantly when they pull the pin.
+
+            SBI( TRIGGER_SWITCH_PIE  , TRIGGER_SWITCH_B );          // Enable interrupt on the INT pin high to low edge. Normally pulled-up when pin is inserted (switch lever is depressed)
+            SBI( TRIGGER_SWITCH_PIES , TRIGGER_SWITCH_B );          // Interrupt on high-to-low edge (the pin is pulled up by MSP430 and then RV3032 driven low with open collector by RV3032)
+
+            // Clear any pending interrupt
+            CBI( TRIGGER_SWITCH_PIFG , TRIGGER_SWITCH_B);
+
+            mode = READY_TO_LAUNCH;
+
+        } else {
+
+            // In the unlikely case where the pin was inserted for less than 500ms, then go back to the beginning and show dash scroll and wait for it to be inserted again.
+            // This has the net effect of making an safety interlock that the pin has to be inserted for a full 1 second before we will arm.
+
+            mode = START;
 
 
-    } else { // mode==UNARMED
+        }
+
+
+    } else { // if mode==START
 
         // Check if pin was inserted (pin high)
 
-        CBI( TRIGGER_SWITCH_PIFG , TRGIGER_SWITCH_B );      // Clear pending interrupt flag
-
-        if ( TBI( TRGIGER_SWITCH_PIN , TRGIGER_SWITCH_B ) ) {
+        if ( TBI( TRGIGER_SWITCH_PIN , TRIGGER_SWITCH_B ) ) {       // Check if trigger pin is inserted
 
             // Show a little full dash screen to indicate that we know you put the pin in
+            // TODO: make this constexpr
 
               for( char i=0 ; i<LOGICAL_DIGITS_SIZE; i++ ) {
 
@@ -1156,9 +1246,10 @@ __interrupt void PORT1_ISR(void) {
 
               mode = ARMING;
 
-              // note that here we wait a full tick before checking that it is out again. This will debounce the switch for 05.s when the pin is inserted.
+              // note that here we wait a full tick before checking that the pin is out again. This will debounce the switch for 0.5s when the pin is inserted.
 
         } else {
+
 
             // trigger pin still out
             // show a little dash sliding towards the trigger pin
@@ -1178,7 +1269,6 @@ __interrupt void PORT1_ISR(void) {
 
             for( char i=0 ; i<LOGICAL_DIGITS_SIZE; i++ ) {
 
-
                 if (i==current_dash_step || i==next_dash_step ) {
                     lcd_show_f( i , dash_segments );
                 } else {
@@ -1192,7 +1282,7 @@ __interrupt void PORT1_ISR(void) {
     }
 
 
-    CBI( RV3032_INT_PIFG , RV3032_INT_B );      // Clear RV3032 INT pending interrupt flag
+    CBI( RV3032_INT_PIFG , RV3032_INT_B );      // Clear any RV3032 INT pending interrupt flag (if we just triggered, then we reset the timer so it will not fire first tick for 500ms anyway)
 
     CBI( DEBUGA_POUT , DEBUGA_B );
 

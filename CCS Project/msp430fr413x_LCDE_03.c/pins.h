@@ -75,7 +75,7 @@
 #define TRIGGER_SWITCH_PIFG P1IFG     // Interrupt flag (bit 1 for each pin that interrupted)
 #define TRIGGER_SWITCH_PIES P1IES     // Interrupt Edge Select (0=low-to-high 1=high-to-low)
 
-#define TRGIGER_SWITCH_B (6)
+#define TRIGGER_SWITCH_B (6)
 
 
 
