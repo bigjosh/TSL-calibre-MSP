@@ -971,6 +971,13 @@ int main( void )
 
     mode = START;
 
+    // Switch to MCLK = VLO
+
+    // With VLO         10kHz , the ISR for the scroll pattern takes 91ms at 80.7uA
+    // With DCOCLKDIV 1000kHz , the ISR for the scroll pattern takes  1ms at 281uA
+    // CSCTL4 =  SELA__REFOCLK | SELMS__VLOCLK;            /* ACLK Source Select REFOCLK , MCLK and SMCLK Source Select VLOCLK */
+    // TODO: Maybe we should go even faster? ISR currently takes about 0.5uA so might help but we can also optimize that down alot.
+
 
     // All LPM power tests done with all digits '0' on the display, no interrupts, RTC disconnected, Vcc=3.47V
 
