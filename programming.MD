@@ -7,9 +7,9 @@
 5. Select "Project->Build Project" from the CCS menu and make sure there are no errors. Note that this takes longer than you think it should and the only indication that it is working is in the lower right corner of the CCS window.   
 6. Plug the EZ-FET programming board into a USB port. 
 7. Connect the wires from the EZ-FET  to the TSP board like...
-   | TSL | EZ-FET |
+   |  EZ-FET | TSL |
    | -  | - |
-   | G | Ground |
+   | Ground | G | 
    | SBWTCK | T | 
    | SBWTDIO | R |
 8. Either put batteries into the TSL or connect the TSL `V` pin to the `3V3` pin on the EZ-FET.  
