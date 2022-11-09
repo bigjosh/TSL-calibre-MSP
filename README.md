@@ -10,10 +10,11 @@ PCB and firmware for the CW&T Time Since Launch project.
 
 ## Critical parts:
 
-* MSP430FR4133 processor for LCD driving and supervision. 
+* MSP430FR4133 processor for LCD driving and supervision
 * RV3032-C7 RTC for precision timekeeping
 * Custom 12-digit, dynamic LCD glass 
 * 2x Energizer Ultimate Lithium AA batteries
+* Optional TPS7A0230 3V regulator for generating LCD bias voltage
 
 ## EEPROM usage
 
@@ -98,7 +99,7 @@ Once the pin is in, we go into Ready To Launch mode.
 
 ### Warm up mode
 
-Every time the XMEGA powers up (on initial programming or after battery change), it will display a pretty sinewave pattern for 2 seconds while it waits for the RX8900 RTC to oscillator to stabilize. 
+Every time the MCU powers up (on initial programming or after battery change), it will display a pretty sinewave pattern for 2 seconds while it waits for the RX8900 RTC to oscillator to stabilize. 
 
 Do we need this? Well we certainly do not need it if the RTC is already running, but it is unclear if we can poll the RTC to see if it is running before the oscillator has settled. The datasheets are unclear. 
 > 
@@ -175,20 +176,11 @@ Indicates that the trigger pin has never been pulled, and that the real time was
 
 This likely means that the unit was stored as old new stock for 100+ years and the batteries we allowed to go completely dead before first use. The unit can be factory serviced to set the real time and then will be ready for first trigger.   
 
-### Low Battery mode
+### Low Battery detection
 
-Blinks the little battery icons at 1Hz to indicate that a low battery voltage was detected.
+We can run down to 1.8V but the display starts to become hard to read at about 2.5V, so depend on the user noticing that the display is getting dimmer to knwo it is time for a battery change, which is not predicted to happen for at least a century. Once the screen goes completely blank from all but extreem angles, the user still will have several decades to change the batteries before the time is lost. 
 
-The battery voltage is checked once at start power up and then every 8 days in Time Since Launch mode starting at the update from day 0 to day 1. If the voltage is less than about 2.6 volts, then we go into low battery mode.
-
-When you see this, you should swap out the batteries for new ones. No need to run, you likely have moths to years to get it done before the time is lost. Be sure to use Energizer Ultra.  
-
-Work quickly, you may have as little as 10 seconds of coast time if the battery voltage is very low. Be sure to have the new ones ready before you remove the old ones. Change the batteries one at a time - taking the first old one out and putting the new one in, then taking the second old one out and putting the new one in. This will minimize the amount of time that the unit is completely unpowered (even having low batteries installed will charge the RTC hold over capacitor). 
-
-If after you change the batteries you still see low battery mode, then pull one of the batteries out and wait for the LCD to go blank and then quickly put the battery back in. 
-
-Note that we intentionally do not check for low batteries during Ready to Launch mode. It is expected that a TSL will spend most of its decades in Time Since Launch mode, so no point in wasting good power right at the beginning of its long life. Also, what cut off would we use? Should it be higher than the cut off during Time Since Launch mode? If your TSL has been sitting around for more than 20 years and you are about to have a big moment and you want to play it safe, you can always prophylacticly put in new batteries. 
-
+Since the RTC is only powered by the backup capacitors while the batteries are out, you should work quickly. Target time is 60 seconds hold over, but TBD. 
 
 ### Long Now mode
 
@@ -299,79 +291,36 @@ The left LCD module shows `XXVOLt` where `XX` is the current Vcc voltage as read
 The right LCD module shows `VErXXX` where `XXX` is the current firmware version as defined in the TSL.c source code. There is an implied decimal point between the first and second digits so `VER101` indicates firmware version 1.01.    
    
 
-#### `T` Pin
-
-Grounding the `T` pin will show  current time as loaded from the RTC on the display. This will show even if the clock has not been initialized. 
-
-Left decimal point means low voltage flag set in RX8900 right now.
-
-Right decimal point means low voltage flag is set in EEPROM (we have seen a low voltage on RX8900 in the past). Once set, the low voltage flag in EEPROM stays set forever. 
-
-
-The low voltage flag indicates that the voltage to the RTC dropped low enough that the RTC at least stopped counting, and possibly lost all the values in the time registers.
-
-The RX8900 low voltage is checked and the EEPROM flag is set *after* this diagnostic screen, so you can see the RTC showing low voltage but the EEPROM flag not set if this is the first time we are powering up since the low voltage event happened on the RTC.  
-
-The low voltage flag is cleared in the RX8900 when it is programmed with the start time at the factory. 
-
-(Note this changed in ver 1.04)
-
-
 ## Interesting twists
 
-We actually have two oscillators running simultaneously here.
+We are using the MSP430's Very Low Power Oscilator (VLO) to drive the LCD since it is actually lower power than the 32Khz XTAL. It is also slower, so more power savings. 
 
-The ATMEGA uses either the XTAL or the internal ULP oscillator to drive the LCD controller. The xtal uses about 0.3uA less current, but requires an extra part (the ULP is built in to the XMEGA).  
+We do NOT use the MSP430's "LPMx.5" extra low power modes since they end up using more power than the "LPM4" mode that we are using. This is becuase it takes 250us to wake from the "x.5" modes and durring this time, the MCU pulls about 200uA. Since we wake 2 times per second, this is just not worth it. If we only woke every, say, 15 seconds then we could likely save ~0.3uA by using the "x.5" modes. 
 
-The RX8900 is programmed to generate a 1Hz output pulse (FOUT) that is connected to an IO pin on the XMEGA. The rising and falling edges of each of these pulses causes an interrupt on the XMEGA which wakes it from deep sleep. On waking, the XMEGA checks the FOUT pin to see if it has changed, and if not then it goes back to sleep. We do this to filter spurious interrupts that can be caused by noise from static electricity from rubbing the glass.  
+We are using the "peridoc timer" mode of the RV3032 to generate a 122us pulse on the INT pin. The MCU pulls this pin high with a ~50K OHM resistor so we are burning power durring the low pulse, but it is very little - [worst case is 0.0427uA](https://frinklang.org/fsp/frink.fsp?fromVal=%28%283.5V%29+%2F+%2820000+ohm%29%29+*+%28+%28122+micro+s%29%2F%28500+milli+s%29%29&toVal=micro+amp#calc) assuming Vcc=3.5V and the internal pull-up is only 20K ohm. 
 
-On the falling FOUT edge the XMEGA then increments the count and updates the display and goes back to deep sleep until the next interrupt. 
+We have to run the periodic timer at 2Hz rather than 1Hz becuase the width of the pulse is dependant on the period and at 1000ms period, the pulse width increases to 8ms which would burn more power than waking and ignoring every other tick. 
 
-The resistor on the FOUT line is to reduce the amount of current that flows from the RTC into the MCU during a battery change. This current can flow because there is an internal clamping diode inside the MCU that is forward biased if the pin voltage is higher than the Vcc voltage, which can happen during a battery change since the RTC is running off of the backup capacitors but there is no power to the MCU. We hope that RTC will stop driving FOUT when it sees FOE drop (FOE is connected to the MCU Vcc line). 
-
-Diode D1 serves two purposes. Firstly, it prevents power from flowing from the backup capacitors into the MCU during a battery change. This will hopefully extend the time the user has to successfully complete the change since the RTC alone uses much less power than the MCU. Both sides of the diode also serve to protect both the MCU and RTC from reverse voltage in the case the batteries are inserted backwards.     
-
-We also did a lot of work to save power on the display updates by basically writing an optimizing compiler that transforms a sequence of LCD steps (like `0000` to `5959`) into minimal cycle count AVR assembly language that will display those steps. Do read more about it in the [code2code.MD document](code2code.md).      
+Using the CLKOUT push-pull signal directly would use less power than using the INT signal against the pull-up, but if we used CLKOUT then the RV3032 would try to power 
+the MSP430 though the protection diodes durring battery changes.The SCL pin is input and SDA pins isopen collector to the RV3032, and they are also disabled when Vcc drops below the voltage on the backup capacitors, so we do not have to worry about them durring battery change. We tie the EVT pin to GND to avoid having it float durring battery changes. 
 
 ## Build notes
 
-
-gcc optimization: `-O3 -flto`
-
-```
--x c -funsigned-char -funsigned-bitfields -I"C:\Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\XMEGAB_DFP\1.1.55\include"  -O3 -flto -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -g2 -Wall -mmcu=atxmega128b3 -B "C:\Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\XMEGAB_DFP\1.1.55\gcc\dev\atxmega128b3" -c -std=gnu99 -MD -MP -MF "$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)" 
-```
-
-## Fuse programming notes
-
-The only change we make to default fuses is to change `FuseByte4` to `0xEE`.
-
-This sets the `RSTDISBL` fuse...
-
-> Bit: 4 – RSTDISBL: External Reset Disable
-> This fuse can be programmed to disable the external reset pin functionality. When this is done, pulling the r
-> ill not cause an external reset. A reset is required before this bit will be read correctly after it is changed
-
-We do this to avoid inadvertent resets. We have seen cases where the built-in pull-up on the reset line is not enough to resist a strong electric field generated by static electricity on the outside of the tube in dry winter conditions. 
-
-## Unit factory programing
-
-Check out the [programming readme](programming/readmne.MD) for more info. 
-
 ## Current Usage
+
+THESE ARE PRELIM
 
 | Mode | Vcc=3.55V| Vcc=2.6V |
 | - | -: | -: | 
-| Ready to Launch | 5.5uA | 5.3uA | 
-| Time Since Launch | 6.0uA | 5.4uA |
-| Long Now | 4.7uA | 4.2uA | 
-| Low Battery | 3.9uA |  3.5uA |
-| quiescent | 3.9uA | 3.4uA |
+| Ready to Launch | 1.8uA | 1.8uA | 
+| Time Since Launch | 2.3uA | 2.3uA |
+| Long Now | TBD | TBD | 
+| quiescent | TBD | TBD |
 
-Quiescent mode means that all LCD segments are turned off, interrupts are disabled, and the XMEGA is put into Power Save mode. The only current draw should be from the RX8900 and the XMEGA quiescent power.   
+Quiescent mode means that all LCD segments are turned off, interrupts are disabled, and the MCU is sleeping.
 
 3.55V is approximately the voltage of a pair of fresh Energizer Ultra batteries.
-2.6V is approximately the voltage when we drop to Low Battery mode.
+2.6V is approximately the voltage when the screen starts to become hard to read. 
 
 Note that voltage drop over time is not expected to be linear with Energizer Ultra cells. These batteries are predicted to spend most of their lives towards the higher end of the voltage range and only start dropping when they get near to their end of life.  
 
@@ -405,32 +354,4 @@ Production board from initial batch. Bare PCB on my desk (not in tube).
 
 ## Status
 
-Firmware is Feature complete but could use more testing. 
-
-We are at an average of <6uA running current over the full voltage range.
-
-If the battery datasheets are to be believed, this suggests a runtime of ~66 years. Even derating a few percent for internal leakage, we should get a decent run time between battery changes. 
-
-
-## Future directions
-
-### Software 
-Find a way to suppress the ISR call on interrupts. Maybe by playing with interrupt priorities? We do not use the ISR and just do an empty return, so why waste all those cycle on PUSHing and POPing. 
-
-### Hardware
-
-Trivially reroute J2:2 and J2:3 to avoid the unnecessary vias. I know one will ever see these because they are under the LCD and battery holder, but still they bug me.    
-
-Add a supplemental pull-up resistor to ~RESET line. In dry conditions it is possible to reset the XMEGA over the built-in pull-up when it is in the tube using static fields. Don't really need this since the firmware is spurious RESET tolerant, but cleaner.
-
-Try using the ~INT line from the RTC to trigger an update on the MCU. We would use an internal pullup on the MUC pin. Since this pin on the RTC is open collector, this would eliminate any power drain from the RTC to the MCU during battery changes. To be seen if this set up uses significantly more power during normal operation since the RTC is shorting the pull-up to ground. We could potentially turn off the pull-up very quickly after waking, and then wait to turn it back on until we know that the ~INT pin is open again. The ~INT pin is closed fort about 7ms and then automatically opened again, so we could probably use the Watchdog timer to sleep during this period.
-
-Add an Ultra-Low Quiescent Current Low-Dropout Linear Regulator in front of the XMEGA. The current drops from 5.6uA@3.2V to 4.2uA@2.0V, so some potential for savings here, but worth the extra part?  
-
-Try driving the LCD bias voltages directly from the battery voltage. The Energizer Ultra's have remarkably stable voltage over most of their lives and we go into Low Battery mode when they start to drop, so might be able to save power by disabling the XMEGA charge pump and finding contrast settings that work with the battery voltage direct?
-
-If possible find a static LCD and bit bang the segments. Since our batteries have such a flat voltage curve, we could avoid the biasing circuits and charge pump and save a lot of power.  
-
-If the datasheets are to be believed, switching to an ultra low power ARM (like SAM22L or STM32L) or STM8 could reduce power drastically, at the cost of higher cost. This needs to be tested.
-
-It might be possible to do temperature compensation inside the MCU and get rid of the RX8900 while achieving more accuracy (would take a higher precision temp sensor than the one in the RX, and better characterization of each individual unit) . While this could also potentially save power in theory, it seems unlikely that it would in practice since that part astonishingly pulls less than 1uA in practice. 
+Firmware is Feature complete but not optimized. I hope to at least recode the seconds update code into a state machine with only a couple of instructions per tick.  
