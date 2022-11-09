@@ -2,7 +2,7 @@
 No ultrasound cleaning - RTC clock part U2 is sensitive to vibration.
 
 2.
-LCD parts are to be hand soldered. They mount with the LCD face on the FRONT side of the PCB. Back of LCD must have clearance above parts below. Use a jig or 
+LCD parts are to be hand soldered. The LCD face on the TOP side of the PCB. LCD must have clearance above parts below. Use a 1.6mm jig or 
 shim to maintain uniform standoff between LCD and PCB while solderning. 
 
 3.
