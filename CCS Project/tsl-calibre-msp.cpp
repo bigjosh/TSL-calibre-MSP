@@ -489,7 +489,7 @@ mode_t mode;
 
 char next_dash_step = 0;        // Used in UNARMED mode to show the sliding dash
 
-char next_squiggle_step = SQUIGGLE_SEGMENTS_SIZE ;     // Used in Ready to Launch mode, indicates the step of the squiggle in the leftmost digit.
+char next_squiggle_step = SQUIGGLE_SEGMENTS_SIZE-1 ;     // Used in Ready to Launch mode, indicates the step of the squiggle in the leftmost digit.
 
 
 char secs=0;        // Start a 1 seconds on first update after launch
@@ -956,15 +956,14 @@ int main( void )
 
 
 
-    // Go into ready to launch mode (Show squiggles until trigger pin pulled)
-    mode = START;
-
-
     // Clear any pending interrupts from the RV3032 INT pin
     // We just started the timer so we should not get a real one for 500ms
 
     CBI( RV3032_INT_PIFG     , RV3032_INT_B    );
 
+
+
+    // Go into ready to launch mode (Show squiggles until trigger pin pulled)
     // We always start in START mode even if the trigger pin is inserted. This gives 500ms for the pull-on to actually pull it up,
     // durring which we show a test pattern on the LCD.
     // If we see the pin is still low on our first pass after 500ms, then we will go into ARMING, ARMED, and then READY_TO_LAUNCH. (500ms between each)
@@ -1026,9 +1025,9 @@ int main( void )
 
     while (1) {
 
-        lcd_show< 9,2>();
+        lcd_show< 9,5>();
         __delay_cycles(1000000);
-        lcd_show< 9,3>();
+        lcd_show< 9,6>();
         __delay_cycles(1000000);
 
     }
