@@ -816,7 +816,10 @@ int main( void )
     // We could also maybe use the TI counter and only wake every 2 INTs but that means keeping the MSP430 timer hardware powered up which
     // probably uses more power than just servicing the extra INT every second.
 
-    const unsigned timerValue = 2048;
+//    const unsigned timerValue = 2048;
+#warning for testing only
+    const unsigned timerValue = 200;
+
     uint8_t timerValueH = timerValue / 0x100;
     uint8_t timerValueL = timerValue % 0x100;
     i2c_write( RV_3032_I2C_ADDR , 0x0b , &timerValueL  , 1 );
@@ -1133,18 +1136,33 @@ __interrupt void PORT1_ISR(void) {
 
     } else if ( mode==READY_TO_LAUNCH ) {
 
-        // Check if trigger pulled (pin low)
+        // First grab the instantaneous trigger pin level
 
-        if ( !TBI( TRGIGER_SWITCH_PIN , TRIGGER_SWITCH_B ) ) {
+        unsigned triggerpin_level = TBI( TRGIGER_SWITCH_PIN , TRIGGER_SWITCH_B );
+
+        // Then clear any interrupt flag that got us here.
+        // Timing here is critical, we must clear the flag *after* we capture the pin state or we might mess a change
+
+        CBI( TRIGGER_SWITCH_PIFG , TRIGGER_SWITCH_B );      // Clear any pending trigger pin interrupt flag
+
+        // Now we can check to see if the trigger pin was set
+        // Note there is a bit of a glitch filter here since the pin must stay low long enough after it sets the interrupt flag for
+        // us to also see it low above after the ISR latency - otherwise it will be ignored. In practice I have seen glitches on this pin that are this short.
+
+        if ( !triggerpin_level ) {      // was pin low when we sampled it?
 
             // WE HAVE LIFTOFF!
 
-            // We need to get everything below done withing 0.5 seconds so we do not miss the first tick.
+            // We need to get everything below done within 0.5 seconds so we do not miss the first tick.
 
             // Disable the trigger pin and drive low to save power and prevent any more interrupts from it
+            // (if it stayed pulled up then it would draw power though the pull-up resistor whenever the pin was inserted)
 
             CBI( TRGIGER_SWITCH_POUT , TRIGGER_SWITCH_B );      // low
             SBI( TRGIGER_SWITCH_PDIR , TRIGGER_SWITCH_B );      // drive
+
+            CBI( TRIGGER_SWITCH_PIFG , TRIGGER_SWITCH_B );      // Clear any pending interrupt from us driving it low (it could have gone high again since we sampled it)
+
 
             // Show all 0's on the LCD to instantly let the use know that we saw the pull
 
@@ -1167,15 +1185,13 @@ __interrupt void PORT1_ISR(void) {
 
             // TODO: Record timestamp
 
-            // Clear any interrupt that raced and got in while we were doing all of the above.
-            // Note that the flash takes >122uS so we are assured that no additional extra interrupt can happen between when we reset the timer and now.
-
-            CBI( TRIGGER_SWITCH_PIFG , TRIGGER_SWITCH_B );      // Clear the pending trigger pin interrupt flag (should never get another now that pin is driven low)
-
             mode = TIME_SINCE_LAUNCH;
 
-
         } else {
+
+            // note that if the pin was not still low when we sampled it, then it will generate another interrupt next time it
+            // goes low and there is no race condition.
+
 
             char current_squiggle_step = next_squiggle_step;
 
@@ -1197,6 +1213,7 @@ __interrupt void PORT1_ISR(void) {
             } else {
                 next_squiggle_step--;
             }
+
         }
 
     } else if ( mode==ARMING ) {
