@@ -401,7 +401,7 @@ inline void initGPIO() {
 
     // --- Flash bulbs off
 
-    // Set Q1 & Q2 transistor pins to output (will be driven low so LEDs off)
+    // Set Q1 & Q2 transistor pins to output (will be driven low by defualt so LEDs off)
     SBI( Q1_TOP_LED_PDIR , Q1_TOP_LED_B );
     SBI( Q2_BOT_LED_PDIR , Q2_BOT_LED_B );
 
@@ -440,20 +440,25 @@ inline void initGPIO() {
     // Now we need to setup interrupt on INT pin to wake us when it goes low
 
     SBI( RV3032_INT_PIES , RV3032_INT_B );          // Interrupt on high-to-low edge (the pin is pulled up by MSP430 and then RV3032 driven low with open collector by RV3032)
-    SBI( RV3032_INT_PIE  , RV3032_INT_B );          // Enable interrupt on the INT pin high to low edge.
-
+    SBI( RV3032_INT_PIE  , RV3032_INT_B );          // Enable interrupt on the INT pin high to low edge. Calls rtc_isr()
 
     // --- Trigger Pin
 
     // Trigger pin as in input with pull-up
 
-    CBI( TRGIGER_SWITCH_PDIR , TRIGGER_SWITCH_B );      // Set input
-    SBI( TRGIGER_SWITCH_PREN , TRIGGER_SWITCH_B );      // Enable pull resistor
-    SBI( TRGIGER_SWITCH_POUT , TRIGGER_SWITCH_B );      // Pull up
+    CBI( TRIGGER_PDIR , TRIGGER_B );      // Set input
+    SBI( TRIGGER_PREN , TRIGGER_B );      // Enable pull resistor
+    SBI( TRIGGER_POUT , TRIGGER_B );      // Pull up
+
+    // Note that we do not enable the trigger pin interrupt here. It will get enabled when we
+    // switch to ready-to-lanch mode when the pin is inserted at the factory. The interrupt will then get
+    // disabled again and the pull up will get disabled after the pin is pulled since once that happens we
+    // dont care about the pin state anymore and we don't want to waste power with either the pull-up getting shorted to ground
+    // if they leave the pin out, or from unnecessary ISR calls if they put the pin in and pull it out again.
+
 
     // Configure LCD pins
     SYSCFG2 |= LCDPCTL;
-
 
     // Disable the GPIO power-on default high-impedance mode
     // to activate previously configured port settings
@@ -516,7 +521,7 @@ int main( void )
         SBI( DEBUGA_POUT , DEBUGA_B);
 
         CBI( RV3032_INT_PIFG     , RV3032_INT_B    );
-        CBI( TRIGGER_SWITCH_PIFG , TRIGGER_SWITCH_B);
+        CBI( TRIGGER_PIFG , TRIGGER_B);
 
         (*Seconds)++;
         if (*Seconds & 0x01 ) {
@@ -973,6 +978,9 @@ int main( void )
 
     mode = START;
 
+#warning
+    mode = TIME_SINCE_LAUNCH;
+
     // Switch to MCLK = VLO
 
     // With VLO         10kHz , the ISR for the scroll pattern takes 91ms at 80.7uA
@@ -1037,20 +1045,20 @@ int main( void )
 
 }
 
+// Called when RV3032 ~INT pin is pulled low (we drive it using the periodic timer)
 
-#pragma vector = PORT1_VECTOR
+#pragma vector = RV3032_INT_VECTOR
 
-__interrupt void PORT1_ISR(void) {
+__interrupt void rtc_isr(void) {
 
     // Wake time measured at 48us
     // TODO: Make sure there are no avoidable push/pops happening at ISR entry (seems too long)
 
     // TODO: Disable pull-up while in ISR
 
-
     SBI( DEBUGA_POUT , DEBUGA_B );      // See latency to start ISR and how long it runs
 
-    if (mode == TIME_SINCE_LAUNCH) {
+    if (mode == TIME_SINCE_LAUNCH) {            // This is where we will spend most of out live, so optimize for this case
 
         if (!halfsec) {
 
@@ -1063,7 +1071,6 @@ __interrupt void PORT1_ISR(void) {
 
             #warning this is just to visualize the half ticks
             lcd_show_f( 11 , right_tick_segments );
-
 
             // Show current time
 
@@ -1136,87 +1143,30 @@ __interrupt void PORT1_ISR(void) {
 
     } else if ( mode==READY_TO_LAUNCH ) {
 
-        // First grab the instantaneous trigger pin level
-
-        unsigned triggerpin_level = TBI( TRGIGER_SWITCH_PIN , TRIGGER_SWITCH_B );
-
-        // Then clear any interrupt flag that got us here.
-        // Timing here is critical, we must clear the flag *after* we capture the pin state or we might mess a change
-
-        CBI( TRIGGER_SWITCH_PIFG , TRIGGER_SWITCH_B );      // Clear any pending trigger pin interrupt flag
-
-        // Now we can check to see if the trigger pin was set
-        // Note there is a bit of a glitch filter here since the pin must stay low long enough after it sets the interrupt flag for
-        // us to also see it low above after the ISR latency - otherwise it will be ignored. In practice I have seen glitches on this pin that are this short.
-
-        if ( !triggerpin_level ) {      // was pin low when we sampled it?
-
-            // WE HAVE LIFTOFF!
-
-            // We need to get everything below done within 0.5 seconds so we do not miss the first tick.
-
-            // Disable the trigger pin and drive low to save power and prevent any more interrupts from it
-            // (if it stayed pulled up then it would draw power though the pull-up resistor whenever the pin was inserted)
-
-            CBI( TRGIGER_SWITCH_POUT , TRIGGER_SWITCH_B );      // low
-            SBI( TRGIGER_SWITCH_PDIR , TRIGGER_SWITCH_B );      // drive
-
-            CBI( TRIGGER_SWITCH_PIFG , TRIGGER_SWITCH_B );      // Clear any pending interrupt from us driving it low (it could have gone high again since we sampled it)
+        // We depend on the rtc ISR to move use from ready-to-launch to time-since-launch
 
 
-            // Show all 0's on the LCD to instantly let the use know that we saw the pull
+        char current_squiggle_step = next_squiggle_step;
 
-            //#pragma UNROLL( LOGICAL_DIGITS_SIZE )
+        for( char i=0 ; i<LOGICAL_DIGITS_SIZE; i++ ) {
 
-            for( char i=0 ; i<LOGICAL_DIGITS_SIZE; i++ ) {
+            lcd_show_f( i , squiggle_segments[ current_squiggle_step ]);
 
-                lcd_show_f( i , digit_segments[0] );
-
-            }
-
-
-            // Start counting from right..... now
-
-            restart_rv3032_periodic_timer();
-
-            // We will get the next tick in 500ms
-
-            // Flash lights
-
-            flash();
-
-            // TODO: Record timestamp
-
-            mode = TIME_SINCE_LAUNCH;
-
-        } else {
-
-            // note that if the pin was not still low when we sampled it, then it will generate another interrupt next time it
-            // goes low and there is no race condition.
-
-
-            char current_squiggle_step = next_squiggle_step;
-
-            for( char i=0 ; i<LOGICAL_DIGITS_SIZE; i++ ) {
-
-                lcd_show_f( i , squiggle_segments[ current_squiggle_step ]);
-
-                if ( current_squiggle_step == 0 ) {
-                    current_squiggle_step = SQUIGGLE_SEGMENTS_SIZE-1;
-                } else {
-                    current_squiggle_step--;
-                }
-
-            }
-
-
-            if ( next_squiggle_step == 0 ) {
-                next_squiggle_step = SQUIGGLE_SEGMENTS_SIZE-1;
+            if ( current_squiggle_step == 0 ) {
+                current_squiggle_step = SQUIGGLE_SEGMENTS_SIZE-1;
             } else {
-                next_squiggle_step--;
+                current_squiggle_step--;
             }
 
         }
+
+
+        if ( next_squiggle_step == 0 ) {
+            next_squiggle_step = SQUIGGLE_SEGMENTS_SIZE-1;
+        } else {
+            next_squiggle_step--;
+        }
+
 
     } else if ( mode==ARMING ) {
 
@@ -1227,16 +1177,16 @@ __interrupt void PORT1_ISR(void) {
 
         // If pin is still inserted (switch open, pin high), then go into READY_TO_LAUNCH were we wait for it to be pulled
 
-        if ( TBI( TRGIGER_SWITCH_PIN , TRIGGER_SWITCH_B )  ) {
+        if ( TBI( TRIGGER_PIN , TRIGGER_B )  ) {
 
             // Now we need to setup interrupt on trigger pin to wake us when it goes low
             // This way we can react instantly when they pull the pin.
 
-            SBI( TRIGGER_SWITCH_PIE  , TRIGGER_SWITCH_B );          // Enable interrupt on the INT pin high to low edge. Normally pulled-up when pin is inserted (switch lever is depressed)
-            SBI( TRIGGER_SWITCH_PIES , TRIGGER_SWITCH_B );          // Interrupt on high-to-low edge (the pin is pulled up by MSP430 and then RV3032 driven low with open collector by RV3032)
+            SBI( TRIGGER_PIE  , TRIGGER_B );          // Enable interrupt on the INT pin high to low edge. Normally pulled-up when pin is inserted (switch lever is depressed)
+            SBI( TRIGGER_PIES , TRIGGER_B );          // Interrupt on high-to-low edge (the pin is pulled up by MSP430 and then RV3032 driven low with open collector by RV3032)
 
-            // Clear any pending interrupt
-            CBI( TRIGGER_SWITCH_PIFG , TRIGGER_SWITCH_B);
+            // Clear any pending interrupt so we will need a new transition to trigger
+            CBI( TRIGGER_PIFG , TRIGGER_B);
 
             mode = READY_TO_LAUNCH;
 
@@ -1255,7 +1205,9 @@ __interrupt void PORT1_ISR(void) {
 
         // Check if pin was inserted (pin high)
 
-        if ( TBI( TRGIGER_SWITCH_PIN , TRIGGER_SWITCH_B ) ) {       // Check if trigger pin is inserted
+        if ( TBI( TRIGGER_PIN , TRIGGER_B ) ) {       // Check if trigger pin has been inserted yet
+
+            // Trigger pin is in, we can arm now.
 
             // Show a little full dash screen to indicate that we know you put the pin in
             // TODO: make this constexpr
@@ -1313,46 +1265,80 @@ __interrupt void PORT1_ISR(void) {
 
 }
 
+// Called when trigger pin changes high to low, indicating the trigger pin has been pulled and we should start ticking.
 
-#pragma vector = RTC_VECTOR
+#pragma vector = TRIGGER_VECTOR
 
-__interrupt void RTC_ISR(void) {
+__interrupt void trigger_isr(void) {
 
-    lcd_show< 9,1>();
-
+    #warning
     SBI( DEBUGA_POUT , DEBUGA_B );
 
-    // Currently we never make it here in LPM3.5
+    // First we delay for about 1000 / 1.1Mhz  = ~1ms
+    // This will filter glitches since the pin will not still be low when we sample it after this delay
+    __delay_cycles( 1000 );
 
-    //RTCIV;
-    //__no_operation();                                   // For debugger
+    // Grab the current trigger pin level
+
+    unsigned triggerpin_level = TBI( TRIGGER_PIN , TRIGGER_B );
+
+    // Then clear any interrupt flag that got us here.
+    // Timing here is critical, we must clear the flag *after* we capture the pin state or we might mess a change
+
+    CBI( TRIGGER_PIFG , TRIGGER_B );      // Clear any pending trigger pin interrupt flag
+
+    // Now we can check to see if the trigger pin was set
+    // Note there is a bit of a glitch filter here since the pin must stay low long enough after it sets the interrupt flag for
+    // us to also see it low above after the ISR latency - otherwise it will be ignored. In practice I have seen glitches on this pin that are this short.
+
+    if ( !triggerpin_level ) {      // was pin low when we sampled it?
+
+        // WE HAVE LIFTOFF!
+
+        // We need to get everything below done within 0.5 seconds so we do not miss the first tick.
+
+        // Disable the trigger pin and drive low to save power and prevent any more interrupts from it
+        // (if it stayed pulled up then it would draw power though the pull-up resistor whenever the pin was inserted)
+
+        CBI( TRIGGER_POUT , TRIGGER_B );      // low
+        SBI( TRIGGER_PDIR , TRIGGER_B );      // drive
+
+        CBI( TRIGGER_PIFG , TRIGGER_B );      // Clear any pending interrupt from us driving it low (it could have gone high again since we sampled it)
 
 
-    //(LCDMEM[pos4])++;//= digit[4];
+        // Show all 0's on the LCD to instantly let the use know that we saw the pull
 
-    /*
+        #pragma UNROLL( LOGICAL_DIGITS_SIZE )
 
-    (LCDMEM[pos2])= digit[1];
+        for( char i=0 ; i<LOGICAL_DIGITS_SIZE; i++ ) {
+
+            lcd_show_f( i , digit_segments[0] );
+
+        }
 
 
-    PMMCTL0_H = PMMPW_H;                                // Open PMM Registers for write
-    PMMCTL0_L |= PMMREGOFF_L;                           // and set PMMREGOFF
-    __bis_SR_register(LPM3_bits | GIE);                 // Re-enter LPM3.5
+        // Start counting from right..... now
 
-    (LCDMEM[pos2])= digit[6];
+        restart_rv3032_periodic_timer();
 
-    */
+        // We will get the next tick in 500ms. Make sure we return from this ISR within 500ms from now. (we really could wait up to 999ms since that would just delay the half tick and not miss the following real tick).
 
-    /*
+        // Clear any pending RTC interrupt so we will not tick until the next pulse comes from RTC in 500ms
+        // There could be a race where an RTC interrupt comes in just after the trigger was pulled, in which case we would
+        // have a pending interrupt that would get serviced immedeately after we return from here, which would look ugly.
 
-    Inc_RTC();
+        CBI( TRIGGER_PIFG , TRIGGER_B );      // Clear any pending interrupt from us driving it low (it could have gone high again since we sampled it)
 
-    (LCDMEM[pos4]) = digit[4];
+        // Flash lights
 
-    PMMCTL0_H = PMMPW_H;                                // Open PMM Registers for write
-    PMMCTL0_L |= PMMREGOFF_L;                           // and set PMMREGOFF
-    __bis_SR_register(LPM3_bits | GIE);                 // Re-enter LPM3.5
-*/
+        flash();
+
+        // TODO: Record timestamp
+
+        mode = TIME_SINCE_LAUNCH;
+
+    }
+
 
     CBI( DEBUGA_POUT , DEBUGA_B );
 
