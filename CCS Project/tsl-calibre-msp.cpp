@@ -818,9 +818,7 @@ int main( void )
     // We could also maybe use the TI counter and only wake every 2 INTs but that means keeping the MSP430 timer hardware powered up which
     // probably uses more power than just servicing the extra INT every second.
 
-//    const unsigned timerValue = 2048;
-#warning for testing only
-    const unsigned timerValue = 200;
+    const unsigned timerValue = 2048;
 
     uint8_t timerValueH = timerValue / 0x100;
     uint8_t timerValueL = timerValue % 0x100;
