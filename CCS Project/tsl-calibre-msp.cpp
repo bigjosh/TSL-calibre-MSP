@@ -427,9 +427,12 @@ inline void initGPIO() {
     SBI( RV3032_INT_PREN , RV3032_INT_B ); // Pull resistor enable
 
 
-    // Note that we can leave the RV3032 EVI pin as is - tied LOW so it does not float (we do not use it)
+    // Note that we can leave the RV3032 EVI pin as is - tied LOW on the PCB so it does not float (we do not use it)
 
     // Power to RV3032
+
+    CBI( RV3032_GND_POUT , RV3032_GND_B);
+    SBI( RV3032_GND_PDIR , RV3032_GND_B);
 
     SBI( RV3032_VCC_PDIR , RV3032_VCC_B);
     SBI( RV3032_VCC_POUT , RV3032_VCC_B);
@@ -501,7 +504,6 @@ char halfsec=0;     // We tick at 2Hz, so keep track of half seconds
 
 int main( void )
 {
-
     WDTCTL = WDTPW | WDTHOLD | WDTSSEL__VLO;   // Give WD password, Stop watchdog timer, set source to VLO
                                                // The thinking is that maybe the watchdog will request the SMCLK even though it is stopped (this is implied by the datasheet flowchart)
                                                // Since we have to have VLO on anyway, mind as well point the WDT to it.
@@ -1165,6 +1167,8 @@ __interrupt void PORT1_ISR(void) {
 
 
             // Show all 0's on the LCD to instantly let the use know that we saw the pull
+
+            //#pragma UNROLL( LOGICAL_DIGITS_SIZE )
 
             for( char i=0 ; i<LOGICAL_DIGITS_SIZE; i++ ) {
 

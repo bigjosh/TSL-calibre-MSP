@@ -63,6 +63,18 @@
 
 #define RV3032_VCC_B (2)
 
+// Ground the RV3032 on pin P1.3 which is pin number 23 on MSP430
+// Having the RV30332 ground come from the MCU should give extra isolation since it runs though the MSP decoupling cap
+// and this also makes sure their grounds are close together.
+
+#define RV3032_GND_PREN P1REN
+#define RV3032_GND_PDIR P1DIR
+#define RV3032_GND_POUT P1OUT
+#define RV3032_GND_PIN  P1IN
+
+#define RV3032_GND_B (3)
+
+
 
 // Trigger switch pin P1.6 which is pin number 22 on MSP430
 
