@@ -387,7 +387,6 @@ volatile unsigned char * Seconds = &BAKMEM0_L;               // Store seconds in
 volatile unsigned char * Minutes = &BAKMEM0_H;               // Store minutes in the backup RAM module
 volatile unsigned char * Hours = &BAKMEM1_L;                 // Store hours in the backup RAM module
 volatile unsigned char * spin = &BAKMEM1_H;                 // Store hours in the backup RAM module
-volatile unsigned char * triggerSpin = &BAKMEM2_L;          // Current state of the trigger pin. Normally pulled up (lever depressed), low means pin pulled
 
 inline void initGPIO() {
 
@@ -401,7 +400,7 @@ inline void initGPIO() {
 
     // --- Flash bulbs off
 
-    // Set Q1 & Q2 transistor pins to output (will be driven low by defualt so LEDs off)
+    // Set Q1 & Q2 transistor pins to output (will be driven low by default so LEDs off)
     SBI( Q1_TOP_LED_PDIR , Q1_TOP_LED_B );
     SBI( Q2_BOT_LED_PDIR , Q2_BOT_LED_B );
 
@@ -415,6 +414,7 @@ inline void initGPIO() {
 
     // DEBUGA as output
     // SBI( DEBUGA_PDIR , DEBUGA_B );
+    // SBI( DEBUGB_PDIR , DEBUGB_B );
 
     // --- RV3032
 
@@ -425,7 +425,6 @@ inline void initGPIO() {
     CBI( RV3032_INT_PDIR , RV3032_INT_B ); // INPUT
     SBI( RV3032_INT_POUT , RV3032_INT_B ); // Pull-up
     SBI( RV3032_INT_PREN , RV3032_INT_B ); // Pull resistor enable
-
 
     // Note that we can leave the RV3032 EVI pin as is - tied LOW on the PCB so it does not float (we do not use it)
 
@@ -442,182 +441,38 @@ inline void initGPIO() {
     SBI( RV3032_INT_PIES , RV3032_INT_B );          // Interrupt on high-to-low edge (the pin is pulled up by MSP430 and then RV3032 driven low with open collector by RV3032)
     SBI( RV3032_INT_PIE  , RV3032_INT_B );          // Enable interrupt on the INT pin high to low edge. Calls rtc_isr()
 
-    // --- Trigger Pin
+    // --- Trigger
 
-    // Trigger pin as in input with pull-up
+    // Trigger pin as in input with pull-up. This will keep it from floating and will let us detect when the trigger is inserted.
 
     CBI( TRIGGER_PDIR , TRIGGER_B );      // Set input
     SBI( TRIGGER_PREN , TRIGGER_B );      // Enable pull resistor
     SBI( TRIGGER_POUT , TRIGGER_B );      // Pull up
 
     // Note that we do not enable the trigger pin interrupt here. It will get enabled when we
-    // switch to ready-to-lanch mode when the pin is inserted at the factory. The interrupt will then get
-    // disabled again and the pull up will get disabled after the pin is pulled since once that happens we
-    // dont care about the pin state anymore and we don't want to waste power with either the pull-up getting shorted to ground
-    // if they leave the pin out, or from unnecessary ISR calls if they put the pin in and pull it out again.
+    // switch to ready-to-lanch mode when the trigger is inserted at the factory. The interrupt will then get
+    // disabled again and the pull up will get disabled after the trigger is pulled since once that happens we
+    // dont care about the trigger state anymore and we don't want to waste power with either the pull-up getting shorted to ground
+    // if they leave the trigger out, or from unnecessary ISR calls if they put the trigger in and pull it out again (or if it breaks and bounces).
 
 
     // Configure LCD pins
     SYSCFG2 |= LCDPCTL;
 
     // Disable the GPIO power-on default high-impedance mode
-    // to activate previously configured port settings
+    // to activate the above configured port settings
     PM5CTL0 &= ~LOCKLPM5;
 
 }
 
-
-// Sets the TE bit in the control1 register which...
-// "The Periodic Countdown Timer starts from the preset Timer Value in the registers 0Bh and 0Ch when
-//  writing 1 to the TE bit. The countdown is based on the Timer Clock Frequency selected in the TD field."
-
-void restart_rv3032_periodic_timer() {
-
-    // Initialize our i2c pins as pull-up
-    i2c_init();
-
-    // set TD to 00 for 4068Hz timer, TE=1 to enable periodic countdown timer, EERD=1 to disable automatic EEPROM refresh (why would you want that?). Bit 5 not used but must be set to 1.
-    uint8_t control1_reg = 0b00011100;
-    i2c_write( RV_3032_I2C_ADDR , 0x10 , &control1_reg , 1 );
-
-    // OK, we will now get a 122uS low pulse on INT after 500m, and every 500ms thereafter
-
-    i2c_shutdown();
-
-}
-
-enum mode_t {
-    START,                  // Waiting for pin to be inserted (shows dashes)
-    ARMING,                 // Hold-off after pin is inserted to make sure we don't inadvertently trigger on a switch bounce (lasts 0.5s)
-    READY_TO_LAUNCH,        // Pin inserted, waiting for it to be removed (shows squiggles)
-    TIME_SINCE_LAUNCH       // Pin pulled, currently counting (shows count)
-};
-
-mode_t mode;
-
-char next_dash_step = 0;        // Used in UNARMED mode to show the sliding dash
-
-char next_squiggle_step = SQUIGGLE_SEGMENTS_SIZE-1 ;     // Used in Ready to Launch mode, indicates the step of the squiggle in the leftmost digit.
-
-
-char secs=0;        // Start a 1 seconds on first update after launch
-char mins=0;
-char hours=0;
-unsigned long days=0;       // needs to be able to hold up to 1,000,000. I wish we had a 24 bit type here.
-                            // TODO: Make a 24 bit type.
-char halfsec=0;     // We tick at 2Hz, so keep track of half seconds
-
-int main( void )
-{
-    WDTCTL = WDTPW | WDTHOLD | WDTSSEL__VLO;   // Give WD password, Stop watchdog timer, set source to VLO
-                                               // The thinking is that maybe the watchdog will request the SMCLK even though it is stopped (this is implied by the datasheet flowchart)
-                                               // Since we have to have VLO on anyway, mind as well point the WDT to it.
-                                               // TODO: Test to see if it matters, although no reason to change it.
-    #warning
-    if (SYSRSTIV == SYSRSTIV_LPM5WU)        // MSP430 just woke up from LPMx.5
-    {
-
-        initGPIO();
-        SBI( DEBUGA_POUT , DEBUGA_B);
-
-        CBI( RV3032_INT_PIFG     , RV3032_INT_B    );
-        CBI( TRIGGER_PIFG , TRIGGER_B);
-
-        (*Seconds)++;
-        if (*Seconds & 0x01 ) {
-            lcd_show_f( 0, digit_segments[3] );
-        } else {
-            lcd_show_f( 0, digit_segments[4] );
-        }
-
-        // Go into LPMx.5 sleep with Voltage Supervisor disabled.
-
-
-        // This code from LPM_4_5_2.c from TI resources
-        PMMCTL0_H = PMMPW_H;                // Open PMM Registers for write
-        //PMMCTL0_L &= ~(SVSHE);              // Disable high-side SVS
-        PMMCTL0_L |= PMMREGOFF;             // and set PMMREGOFF
-        // LPM4.5 SVS=OFF 1.471uA
-        // TODO: datasheets say SVS off makes wakeup 10x slower, so need to test when wake works
-
-
-        // LPM4 - 2.10uA with static @ Vcc=3.47V
-
-
-        /*
-            The LMPx.5 modes are very not worth it for us since they waste so much power on extended wake up time.
-            They would only be worth it if you were sleeping >minutes, not 500ms like we are. So we just settle for
-            LMP4.
-        */
-
-        #warning
-        CBI( DEBUGA_POUT , DEBUGA_B);
-        __bis_SR_register(LPM4_bits | GIE);                 // Enter LPM
-        __no_operation();
-
-    }
-
-
-    initGPIO();
-
-    /*
-
-    // At startup, all IO pins are hi-Z. Here we init them all and then unlock them for the changes to take effect.
-
-    //TODO: Init our own stack save the wasteful init
-    //STACK_INIT();
-
-
-    // TODO: use the full word-wide registers
-    // Initialize all GPIO pins for low power OUTPUT + LOW
-    P1DIR = 0xFF;P2DIR = 0xFF;P3DIR = 0xFF;P4DIR = 0xFF;
-    P5DIR = 0xFF;P6DIR = 0xFF;P7DIR = 0xFF;P8DIR = 0xFF;
-    // Configure all GPIO to Output Low
-    P1OUT = 0x00;P2OUT = 0x00;P3OUT = 0x00;P4OUT = 0x00;
-    P5OUT = 0x00;P6OUT = 0x00;P7OUT = 0x00;P8OUT = 0x00;
-
-    // ~INT in from RV3032 as INPUT with PULLUP
-
-    CBI( RV3032_INT_PDIR , RV3032_INT_B ); // INPUT
-    SBI( RV3032_INT_POUT , RV3032_INT_B ); // Pull-up
-    SBI( RV3032_INT_PREN , RV3032_INT_B ); // Pull resistor enable
-
-
-    // Debug pins
-    SBI( DEBUGA_PDIR , DEBUGA_B );
-
-    // Disable the GPIO power-on default high-impedance mode
-    // to activate previously configured port settings
-    PM5CTL0 &= ~LOCKLPM5;
-
-    */
-
-/*
-    SBI( P1DIR , 1 );
-    SBI( P1OUT , 1 );
-
-*/
-
-    /*
-        // This code is for testing LCD individual segments, it outputs out of phase square waves on MSP430 pins 1 and 2.
-        // Connect one to SEG and one to COM and the segment should lite.
-        while (1) {
-            P7OUT = 0b10101010;
-            __delay_cycles( 10000 );    // 100Hz
-            P7OUT = 0b01010101;
-            __delay_cycles( 10000 );    // 100Hz
-        }
-    */
-
-
-    //RTCCTL = RTCSS__VLOCLK ;                    // Initialize RTC to use VLO clock
+void initLCD() {
 
     // Configure LCD pins
     SYSCFG2 |= LCDPCTL;                                 // LCD R13/R23/R33/LCDCAP0/LCDCAP1 pins enabled
 
     // TODO: We can make a template to compute these from logical_digits
     LCDPCTL0 = 0b1110111100111110;  // LCD pins L15-L01, 1=enabled
-    LCDPCTL1 = 0b1111111000111111;  // LCD pins L31-L16, 1=enabled
+    LCDPCTL1 = 0b1111110000111111;  // LCD pins L31-L16, 1=enabled
     LCDPCTL2 = 0b0000000000001111;  // LCD pins L35-L32, 1=enabled
 
     // LCDCTL0 = LCDSSEL_0 | LCDDIV_7;                     // flcd ref freq is xtclk
@@ -667,7 +522,7 @@ int main( void )
 
 
     // LCD Operation - Mode 3, internal 2.96v, charge pump 256Hz, voltage reference only on 1/256th of the time. ~4.2uA from 3.5V Vcc
-    LCDVCTL = LCDCPEN | LCDREFEN | VLCD_6 | (LCDCPFSEL0 | LCDCPFSEL1 | LCDCPFSEL2 | LCDCPFSEL3) | LCDREFMODE;
+    // LCDVCTL = LCDCPEN | LCDREFEN | VLCD_6 | (LCDCPFSEL0 | LCDCPFSEL1 | LCDCPFSEL2 | LCDCPFSEL3) | LCDREFMODE;
 
     // LCD Operation - Mode 3, internal 3.02v, charge pump 256Hz, voltage reference only on 1/256th of the time. ~4.2uA from 3.5V Vcc
     //LCDVCTL = LCDCPEN | LCDREFEN | VLCD_7 | (LCDCPFSEL0 | LCDCPFSEL1 | LCDCPFSEL2 | LCDCPFSEL3) | LCDREFMODE;
@@ -698,19 +553,7 @@ int main( void )
     LCDVCTL = LCDCPEN |  (LCDCPFSEL0 | LCDCPFSEL1 | LCDCPFSEL2 | LCDCPFSEL3);
 
 
-
     //LCDMEMCTL |= LCDCLRM;                                      // Clear LCD memory
-
-/*
-    // For MSP430FR4133-EXP
-     *
-    LCDCSSEL0 = 0x000F;                                 // Configure COMs and SEGs
-    LCDCSSEL1 = 0x0000;                                 // L0, L1, L2, L3: COM pins
-    LCDCSSEL2 = 0x0000;
-
-    LCDM0 = 0x21;                                       // L0 = COM0, L1 = COM1
-    LCDM1 = 0x84;                                       // L2 = COM2, L3 = COM3
-*/
 
     // For TSL
     // Configure COMs and SEGs
@@ -726,56 +569,24 @@ int main( void )
     // Once we have selected the COM lines above, we have to connect them in the LCD memory. See Figure 17-2 in MSP430FR4x family guide.
     // Each nibble in the LCDMx regs holds 4 bits connecting the L pin to one of the 4 COM lines (two L pins per reg)
 
-
     LCDM4 =  0b01001000;  // L09=MSP_COM2  L08=MSP_COM3
     LCDM5 =  0b00010010;  // L10=MSP_COM0  L11=MSP_COM1
 
-
-
     LCDCTL0 |= LCDON;                                           // Turn on LCD
 
+}
 
-    lcd_show_f( 0, digit_segments[0] );
-    lcd_show_f( 1, digit_segments[1] );
-    lcd_show_f( 2, digit_segments[2] );
-    lcd_show_f( 3, digit_segments[3] );
-    lcd_show_f( 4, digit_segments[4] );
-    lcd_show_f( 5, digit_segments[5] );
-    lcd_show_f( 6, digit_segments[6] );
-    lcd_show_f( 7, digit_segments[7] );
-    lcd_show_f( 8, digit_segments[8] );
-    lcd_show_f( 9, digit_segments[9] );
-    lcd_show_f(10, digit_segments[0x0a] );
-    lcd_show_f(11, digit_segments[0x0b] );
-    //wiggleFlash();
+// Returns with the RV3032...
+// 1. Generating a short low pulse on ~INT at 2Hz
+// 2. CLKOUT output disabled on RV3032.
+// 3. CLKOUT input on RV3032 pulled low.
+// 2. i2c pins idle (driven low)
 
-    *Seconds=00;        // Make it so we can see if we woke
+// TODO: Make this set our time variables to clock time
+// TODO: Make a function to set the RTC and check if they have been set.
+// TODO: Break out a function to close the RTC when we are done interacting with it.
 
-
-/*
-
-    // Set up RTC
-
-
-
-    RTCMOD = 10000;                                     // Set RTC modulo to 10000 to trigger interrupt each second on 10Khz VLO clock. This will get loaded into the shadow register on next trigger or reset
-//        RTCMOD = 10000;                                     // Set RTC modulo to 1000 to trigger interrupt each 0.1 second on 10Khz VLO clock. This will get loaded into the shadow register on next trigger or reset
-
-    RTCCTL |=  RTCSR;                    // reset RTC which will load overflow value into shadow reg and reset the counter to 0,  and generate RTC interrupt
-
-    RTCIV;                      // Clear any pending RTC interrupt
-
-    // TRY THIS, MUST ALSO ADJUST LCDSEL
-    // Use VLO instead of XTAL
-    //RTCCTL = RTCSS__VLOCLK | RTCIE;                    // Initialize RTC to use Very Low Oscillator and enable RTC interrupt on rollover
-    RTCCTL = 0x00;                    // Disable RTC
-
-*/
-
-
-
-    // Setup the RV3032
-
+void initRV3032() {
     // We will only be using the ~INT signal form the RV3032 to tick our ticker. We will use the periodic timer running at 500ms
     // to generate that tick. It would be better to use the 1s tick (fewer ISR wake-ups) but the width of the pulse is 7.8ms (much wider) for the seconds
     // timebase and that would waste power fighting against the pull-up, so we must use the shorter one which is 122us.
@@ -788,13 +599,13 @@ int main( void )
     // DSM=01 - Direct switchover mode, switches whenever Vbackup>Vcc
     // TCR=00 - Selects a 1K ohm trickle charge resistor
 
-    // Give the RV3230 a chance to wake up before we start pounding it.
-    // POR refresh time(1) At power up ~66ms
-    __delay_cycles(100000);
-
     // Initialize our i2c pins as pull-up
     i2c_init();
 
+
+    // Give the RV3230 a chance to wake up before we start pounding it.
+    // POR refresh time(1) At power up ~66ms
+    __delay_cycles(100000);
 
     // Set all the registers
 
@@ -850,18 +661,15 @@ int main( void )
         // RESET or errormessage here
 
     }
+
     status_reg =0x00;   // Clear all flags for next time we check
     i2c_write( RV_3032_I2C_ADDR , 0x0d , &status_reg , 1 );
 
 
-    // Next check if the RV3032 just powered up, or if it was already running and show a 1 in digit 10 if it was running (0 if not)
+    // Next check if the RV3032 just powered up
     uint8_t sec_reg=0xff;
     i2c_read( RV_3032_I2C_ADDR , 0x01 , &sec_reg , 1 );
 
-    /*
-    lcd_show_f( 11 , sec_reg / 0x10  );
-    lcd_show_f( 10 , sec_reg & 0x0f );
-    */
 
     i2c_write( RV_3032_I2C_ADDR , 0x01 , &sec_reg , 1 );
 
@@ -872,180 +680,52 @@ int main( void )
 
     i2c_shutdown();
 
-    // TODO: Why doesn't this work?
-    //LCDMEMCTL |= LCDCLRM;                               // Clear LCD memory command (executed one shot)
-    //while (LCDMEMCTL & LCDCLRM);                        // Wait for clear to complete before moving on
-/*
-    lcd_show< 0,0>();
-    lcd_show< 1,1>();
-    lcd_show< 2,2>();
-    lcd_show< 3,3>();
-    lcd_show< 4,4>();
-    lcd_show< 5,5>();
-    lcd_show< 6,6>();
-    lcd_show< 7,7>();
-    lcd_show< 8,8>();
-    lcd_show< 9,9>();
-    lcd_show<10,0>();
-    lcd_show<11,1>();
-*/
-
-    /*
-    unsigned f = PMMIFG;        // Read reset flags
-
-    if (f & PMMLPM5IFG) {       // Wake from LPMx.5
-        lcd_show< 7,1>();
-    }
+}
 
 
-    if (f & SVSHIFG) {          // SVS low side interrupt flag (power up)
-        lcd_show< 6,1>();
-    }
+// Sets the TE bit in the control1 register which...
+// "The Periodic Countdown Timer starts from the preset Timer Value in the registers 0Bh and 0Ch when
+//  writing 1 to the TE bit. The countdown is based on the Timer Clock Frequency selected in the TD field."
 
+void restart_rv3032_periodic_timer() {
 
-    if (f & PMMPORIFG) {
-        lcd_show< 5,1>();
-    }
+    // Initialize our i2c pins as pull-up
+    i2c_init();
 
-    if (f & PMMPORIFG) {
-        lcd_show< 4,1>();
-    }
+    // set TD to 00 for 4068Hz timer, TE=1 to enable periodic countdown timer, EERD=1 to disable automatic EEPROM refresh (why would you want that?). Bit 5 not used but must be set to 1.
+    uint8_t control1_reg = 0b00011100;
+    i2c_write( RV_3032_I2C_ADDR , 0x10 , &control1_reg , 1 );
 
-    if (f & PMMRSTIFG) {            // Reset pin
-          lcd_show< 3,1>();
-      }
+    // OK, we will now get a 122uS low pulse on INT after 500m, and every 500ms thereafter
 
-
-    if (f & PMMBORIFG) {
-          lcd_show< 2,1>();
-    }
-
-
-    SYSRSTIV = 0x00;
-    unsigned iv = SYSRSTIV;
-
-    if (iv!=0x0000) {
-        lcd_show< 8,1>();
-    }
-
-    */
-
-    //Enter LPM3 with SVS off
-    //PMMCTL0_L &= ~SVSHE ;                           // disable SVS (prob ~0.2uA, default is on)
-    //TODO:Turn off LPM3.5 switch before sleeping? //LPM5SW
-
-    // Datasheet says this will be 1.25uA with LCD...
-    // Low-power mode 3, VLO, excludes SVS test conditions:
-    // Current for watchdog timer clocked by VLO included. RTC disabled. Current for brownout included. SVS disabled (SVSHE = 0).
-    // CPUOFF = 1, SCG0 = 1 SCG1 = 1, OSCOFF = 0 (LPM3),
-
-    // "the WDTHOLD bit can be used to hold the WDTCNT, reducing power consumption."
-
-
-    //WDTCTL = WDTPW | WDTSSEL__VLO | WDTHOLD;                               // Select VLO for WDT clock, halt watchdog timer
-
-
-    // "After reset, RTCSS defaults to 00b (disabled), which means that no clock source is selected."
-
-
-
-/*
-    // Disabling the System Voltage Supervisor is supposed to save us about 2uA, but no effect found in testing. If anything, seems to add about 0.01uA.
-
-    PMMCTL0_H = PMMPW_H;            // Open PMM Registers for write
-    CBI( PMMCTL0_L  , SVSHE ) ;     // 0b = High-side SVS (SVSH) is disabled in LPM2, LPM3, LPM4, LPM3.5, and LPM4.5 (prob ~0.2uA, default is on)
-
-*/
-
-
-    // TODO: Try switching MCLK to VLO. We will run really slow.... but maybe save power?
-    // CSCTL4 = SELMS__VLOCLK;
-    // Nope, uses MORE power 4.5uA vs 2.3uA. Maybe the FLO clock is still running?
-
-
-
-    // Clear any pending interrupts from the RV3032 INT pin
-    // We just started the timer so we should not get a real one for 500ms
-
-    CBI( RV3032_INT_PIFG     , RV3032_INT_B    );
-
-
-
-    // Go into ready to launch mode (Show squiggles until trigger pin pulled)
-    // We always start in START mode even if the trigger pin is inserted. This gives 500ms for the pull-on to actually pull it up,
-    // durring which we show a test pattern on the LCD.
-    // If we see the pin is still low on our first pass after 500ms, then we will go into ARMING, ARMED, and then READY_TO_LAUNCH. (500ms between each)
-
-    mode = START;
-
-#warning
-    mode = TIME_SINCE_LAUNCH;
-
-    // Switch to MCLK = VLO
-
-    // With VLO         10kHz , the ISR for the scroll pattern takes 91ms at 80.7uA
-    // With DCOCLKDIV 1000kHz , the ISR for the scroll pattern takes  1ms at 281uA
-    // CSCTL4 =  SELA__REFOCLK | SELMS__VLOCLK;            /* ACLK Source Select REFOCLK , MCLK and SMCLK Source Select VLOCLK */
-    // TODO: Maybe we should go even faster? ISR currently takes about 0.5uA so might help but we can also optimize that down alot.
-
-
-    // All LPM power tests done with all digits '0' on the display, no interrupts, RTC disconnected, Vcc=3.47V
-
-/*
-
-    // Go into LPMx.5 sleep with Voltage Supervisor left enabled.
-    PMMCTL0_H = PMMPW_H;                               // Open PMM Registers for write
-    PMMCTL0_L |= PMMREGOFF_L;                           // and set PMMREGOFF also clears SVS
-    // LPM4.5 SVS=ON 1.625uA
-
-*/
-
-
-/*
-    // Go into LPMx.5 sleep with Voltage Supervisor disabled.
-    // This code from LPM_4_5_2.c from TI resources
-    PMMCTL0_H = PMMPW_H;                // Open PMM Registers for write
-    PMMCTL0_L &= ~(SVSHE);              // Disable high-side SVS
-    PMMCTL0_L |= PMMREGOFF;             // and set PMMREGOFF
-    // LPM4.5 SVS=OFF 1.471uA
-    // TODO: datasheets say SVS off makes wakeup 10x slower, so need to test when wake works
-*/
-
-    // LPM4 - 2.10uA with static @ Vcc=3.47V
-
-
-
-
-    // Go into LPMx.5 sleep with Voltage Supervisor disabled.
-    // This code from LPM_4_5_2.c from TI resources
-    PMMCTL0_H = PMMPW_H;                // Open PMM Registers for write
-    PMMCTL0_L &= ~(SVSHE);              // Disable high-side SVS
-    // LPM4 SVS=OFF
-
-
-    /*
-        The LMPx.5 modes are very not worth it for us since they waste so much power on extended wake up time.
-        They would only be worth it if you were sleeping >minutes, not 500ms like we are. So we just settle for
-        LMP4.
-    */
-    #warning
-    CBI( DEBUGA_POUT , DEBUGA_B);
-    __bis_SR_register(LPM4_bits | GIE);                 // Enter LPM
-    __no_operation();                                   // For debugger
-
-
-    while (1) {
-
-        lcd_show< 9,5>();
-        __delay_cycles(1000000);
-        lcd_show< 9,6>();
-        __delay_cycles(1000000);
-
-    }
+    i2c_shutdown();
 
 }
 
-// Called when RV3032 ~INT pin is pulled low (we drive it using the periodic timer)
+enum mode_t {
+    START,                  // Waiting for pin to be inserted (shows dashes)
+    ARMING,                 // Hold-off after pin is inserted to make sure we don't inadvertently trigger on a switch bounce (lasts 0.5s)
+    READY_TO_LAUNCH,        // Pin inserted, waiting for it to be removed (shows squiggles)
+    TIME_SINCE_LAUNCH       // Pin pulled, currently counting (shows count)
+};
+
+mode_t mode;
+
+char next_dash_step = 0;        // Used in UNARMED mode to show the sliding dash
+
+char next_squiggle_step = SQUIGGLE_SEGMENTS_SIZE-1 ;     // Used in Ready to Launch mode, indicates the step of the squiggle in the leftmost digit.
+
+
+char secs=0;        // Start a 1 seconds on first update after launch
+char mins=0;
+char hours=0;
+unsigned long days=0;       // needs to be able to hold up to 1,000,000. I wish we had a 24 bit type here.
+                            // TODO: Make a 24 bit type.
+
+char halfsec=0;     // We tick at 2Hz, so toggle on and off to keep track of half seconds
+
+
+// Called when RV3032 ~INT pin is pulled low by the RV3032 periodic timer (2Hz)
 
 #pragma vector = RV3032_INT_VECTOR
 
@@ -1054,7 +734,7 @@ __interrupt void rtc_isr(void) {
     // Wake time measured at 48us
     // TODO: Make sure there are no avoidable push/pops happening at ISR entry (seems too long)
 
-    // TODO: Disable pull-up while in ISR
+    // TODO: Disable pull-up while in ISR?
 
     SBI( DEBUGA_POUT , DEBUGA_B );      // See latency to start ISR and how long it runs
 
@@ -1145,7 +825,6 @@ __interrupt void rtc_isr(void) {
 
         // We depend on the rtc ISR to move use from ready-to-launch to time-since-launch
 
-
         char current_squiggle_step = next_squiggle_step;
 
         for( char i=0 ; i<LOGICAL_DIGITS_SIZE; i++ ) {
@@ -1170,16 +849,16 @@ __interrupt void rtc_isr(void) {
 
     } else if ( mode==ARMING ) {
 
-        // This phase is just to add a 500ms debounce to when the pin is initially inserted at the factory to make sure we do
+        // This phase is just to add a 500ms debounce to when the trigger is initially inserted at the factory to make sure we do
         // not accidentally fire then.
 
-        // We are currently showing dashes, and we will switch to squiggles on next tick if the pin is in now
+        // We are currently showing dashes, and we will switch to squiggles on next tick if the trigger is still in
 
-        // If pin is still inserted (switch open, pin high), then go into READY_TO_LAUNCH were we wait for it to be pulled
+        // If trigger is still inserted (switch open, pin high), then go into READY_TO_LAUNCH were we wait for it to be pulled
 
         if ( TBI( TRIGGER_PIN , TRIGGER_B )  ) {
 
-            // Now we need to setup interrupt on trigger pin to wake us when it goes low
+            // Now we need to setup interrupt on trigger pull to wake us when pin  goes low
             // This way we can react instantly when they pull the pin.
 
             SBI( TRIGGER_PIE  , TRIGGER_B );          // Enable interrupt on the INT pin high to low edge. Normally pulled-up when pin is inserted (switch lever is depressed)
@@ -1205,9 +884,9 @@ __interrupt void rtc_isr(void) {
 
         // Check if pin was inserted (pin high)
 
-        if ( TBI( TRIGGER_PIN , TRIGGER_B ) ) {       // Check if trigger pin has been inserted yet
+        if ( TBI( TRIGGER_PIN , TRIGGER_B ) ) {       // Check if trigger has been inserted yet
 
-            // Trigger pin is in, we can arm now.
+            // Trigger is in, we can arm now.
 
             // Show a little full dash screen to indicate that we know you put the pin in
             // TODO: make this constexpr
@@ -1228,8 +907,8 @@ __interrupt void rtc_isr(void) {
         } else {
 
 
-            // trigger pin still out
-            // show a little dash sliding towards the trigger pin
+            // trigger still out
+            // show a little dash sliding towards the trigger
 
             char current_dash_step = next_dash_step;
 
@@ -1259,13 +938,15 @@ __interrupt void rtc_isr(void) {
     }
 
 
-    CBI( RV3032_INT_PIFG , RV3032_INT_B );      // Clear any RV3032 INT pending interrupt flag (if we just triggered, then we reset the timer so it will not fire first tick for 500ms anyway)
+    CBI( RV3032_INT_PIFG , RV3032_INT_B );      // Clear the pending RV3032 INT interrupt flag that got us into this ISR.
 
     CBI( DEBUGA_POUT , DEBUGA_B );
 
 }
 
-// Called when trigger pin changes high to low, indicating the trigger pin has been pulled and we should start ticking.
+// Called when trigger pin changes high to low, indicating the trigger has been pulled and we should start ticking.
+// Note that this interrupt is only enabled when we enter ready-to-launch mode, and then it is disabled and also the pin in driven low
+// when we then switch to time-since-lanuch mode, so this ISR can only get called in ready-to-lanuch mode.
 
 #pragma vector = TRIGGER_VECTOR
 
@@ -1306,7 +987,7 @@ __interrupt void trigger_isr(void) {
         CBI( TRIGGER_PIFG , TRIGGER_B );      // Clear any pending interrupt from us driving it low (it could have gone high again since we sampled it)
 
 
-        // Show all 0's on the LCD to instantly let the use know that we saw the pull
+        // Show all 0's on the LCD to instantly let the user know that we saw the pull
 
         #pragma UNROLL( LOGICAL_DIGITS_SIZE )
 
@@ -1316,8 +997,8 @@ __interrupt void trigger_isr(void) {
 
         }
 
-
-        // Start counting from right..... now
+        // Reset the RV3032's internal timer
+        // Start counting the current second over again from right..... now
 
         restart_rv3032_periodic_timer();
 
@@ -1325,7 +1006,7 @@ __interrupt void trigger_isr(void) {
 
         // Clear any pending RTC interrupt so we will not tick until the next pulse comes from RTC in 500ms
         // There could be a race where an RTC interrupt comes in just after the trigger was pulled, in which case we would
-        // have a pending interrupt that would get serviced immedeately after we return from here, which would look ugly.
+        // have a pending interrupt that would get serviced immediately after we return from here, which would look ugly.
 
         CBI( TRIGGER_PIFG , TRIGGER_B );      // Clear any pending interrupt from us driving it low (it could have gone high again since we sampled it)
 
@@ -1344,3 +1025,64 @@ __interrupt void trigger_isr(void) {
 
 }
 
+int main( void )
+{
+    WDTCTL = WDTPW | WDTHOLD | WDTSSEL__VLO;   // Give WD password, Stop watchdog timer, set WD source to VLO
+                                               // The thinking is that maybe the watchdog will request the SMCLK even though it is stopped (this is implied by the datasheet flowchart)
+                                               // Since we have to have VLO on for LCD anyway, mind as well point the WDT to it.
+                                               // TODO: Test to see if it matters, although no reason to change it.
+
+    initGPIO();
+
+    initLCD();
+
+    //TODO: Init our own stack save the wasteful init
+    //STACK_INIT();
+
+
+    // Show a quick test pattern on the LCD
+    lcd_show_f( 0, digit_segments[0] );
+    lcd_show_f( 1, digit_segments[1] );
+    lcd_show_f( 2, digit_segments[2] );
+    lcd_show_f( 3, digit_segments[3] );
+    lcd_show_f( 4, digit_segments[4] );
+    lcd_show_f( 5, digit_segments[5] );
+    lcd_show_f( 6, digit_segments[6] );
+    lcd_show_f( 7, digit_segments[7] );
+    lcd_show_f( 8, digit_segments[8] );
+    lcd_show_f( 9, digit_segments[9] );
+    lcd_show_f(10, digit_segments[0x0a] );
+    lcd_show_f(11, digit_segments[0x0b] );
+
+
+    // Setup the RV3032
+    initRV3032();
+
+    // Clear any pending interrupts from the RV3032 INT pin
+    // We just started the timer so we should not get a real one for 500ms
+
+    CBI( RV3032_INT_PIFG     , RV3032_INT_B    );
+
+
+    // Go into start mode which will wait for the trigger to be inserted.
+    // We don;t have to worry about any races here because once we do see the trigger is in then we go into
+    // ARMING mode which waits an additional 500ms to debounce the switch
+
+    mode = START;
+
+    // Go into LPM sleep with Voltage Supervisor disabled.
+    // This code from LPM_4_5_2.c from TI resources
+    PMMCTL0_H = PMMPW_H;                // Open PMM Registers for write
+    PMMCTL0_L &= ~(SVSHE);              // Disable high-side SVS
+    // LPM4 SVS=OFF
+
+
+    __bis_SR_register(LPM4_bits | GIE);                 // Enter LPM4
+    __no_operation();                                   // For debugger
+
+    // We should never get here
+
+    // TODO: Show an error message
+
+
+}

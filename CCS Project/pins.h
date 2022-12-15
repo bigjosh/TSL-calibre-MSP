@@ -105,12 +105,12 @@
 
 // Debug out B on pin P8.3 which is pin number 19 on MSP430
 
-#define DEBUGB_PREN P81REN
-#define DEBUGB_PDIR P8DIR
-#define DEBUGB_POUT P8OUT
-#define DEBUGB_PIN  P8IN
+#define DEBUGB_PREN P11REN
+#define DEBUGB_PDIR P1DIR
+#define DEBUGB_POUT P1OUT
+#define DEBUGB_PIN  P1IN
 
-#define DEBUGB_B (3)
+#define DEBUGB_B (6)
 
 
 // Q1 Top flash LED
