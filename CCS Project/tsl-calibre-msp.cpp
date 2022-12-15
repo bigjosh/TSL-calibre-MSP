@@ -113,11 +113,11 @@ constexpr logical_digit_t logical_digits[LOGICAL_DIGITS_SIZE] {
     { 30 , 31 },        //  2 (LCD 10)
     { 28 , 29 },        //  3 {LCD 09)
     { 26 , 27 },        //  4 {LCD 08)
-    { 24 , 25 },        //  5 {LCD 07)
-    { 17 , 21 },        //  6 (LCD 06)
-    { 15 , 16 },        //  7 (LCD 05)
-    { 13 , 14 },        //  8 (LCD 04)
-    {  1 , 12 },        //  9 (LCD 03)
+    { 20 , 21 },        //  5 {LCD 07)
+    { 18 , 19 },        //  6 (LCD 06)
+    { 16 , 17 },        //  7 (LCD 05)
+    { 14 , 15 },        //  8 (LCD 04)
+    {  1 , 13 },        //  9 (LCD 03)
     {  3 ,  2 },        // 10 (LCD 02)
     {  5 ,  4 },        // 11 (LCD 01) - leftmost digit
     // Rest TBD
@@ -611,8 +611,8 @@ int main( void )
     SYSCFG2 |= LCDPCTL;                                 // LCD R13/R23/R33/LCDCAP0/LCDCAP1 pins enabled
 
     // TODO: We can make a template to compute these from logical_digits
-    LCDPCTL0 = 0b1111111111111110;  // LCD pins L15-L01, 1=enabled
-    LCDPCTL1 = 0b1111111111100011;  // LCD pins L31-20, L17-L16, 1=enabled
+    LCDPCTL0 = 0b1110111100111110;  // LCD pins L15-L01, 1=enabled
+    LCDPCTL1 = 0b1111111000111111;  // LCD pins L31-L16, 1=enabled
     LCDPCTL2 = 0b0000000000001111;  // LCD pins L35-L32, 1=enabled
 
     // LCDCTL0 = LCDSSEL_0 | LCDDIV_7;                     // flcd ref freq is xtclk
