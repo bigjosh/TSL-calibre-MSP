@@ -711,9 +711,9 @@ enum mode_t {
 
 mode_t mode;
 
-char next_dash_step = 0;        // Used in UNARMED mode to show the sliding dash
-
-char next_squiggle_step = SQUIGGLE_SEGMENTS_SIZE-1 ;     // Used in Ready to Launch mode, indicates the step of the squiggle in the leftmost digit.
+char step;          // START             - Used to keep the position of the dash moving across the display (0=leftmost position, only one dash showing)
+                    // READY_TO_LAUNCH   - Which step of the squigle animation
+                    // TIME_SINCE_LAUNCH - Count the half-seconds (0=1st 500ms, 1=2nd 500ms)
 
 
 char secs=0;        // Start a 1 seconds on first update after launch
@@ -721,8 +721,6 @@ char mins=0;
 char hours=0;
 unsigned long days=0;       // needs to be able to hold up to 1,000,000. I wish we had a 24 bit type here.
                             // TODO: Make a 24 bit type.
-
-char halfsec=0;     // We tick at 2Hz, so toggle on and off to keep track of half seconds
 
 
 // Called when RV3032 ~INT pin is pulled low by the RV3032 periodic timer (2Hz)
@@ -740,9 +738,9 @@ __interrupt void rtc_isr(void) {
 
     if (mode == TIME_SINCE_LAUNCH) {            // This is where we will spend most of out live, so optimize for this case
 
-        if (!halfsec) {
+        if (!step) {
 
-            halfsec=1;
+            step=1;
 
             #warning this is just to visualize the half ticks
             lcd_show_f( 11 , left_tick_segments );
@@ -754,7 +752,7 @@ __interrupt void rtc_isr(void) {
 
             // Show current time
 
-            halfsec = 0;
+            step = 0;
 
             secs++;
 
@@ -823,9 +821,9 @@ __interrupt void rtc_isr(void) {
 
     } else if ( mode==READY_TO_LAUNCH ) {
 
-        // We depend on the rtc ISR to move use from ready-to-launch to time-since-launch
+        // We depend on the trigger ISR to move use from ready-to-launch to time-since-launch
 
-        char current_squiggle_step = next_squiggle_step;
+        char current_squiggle_step = step;
 
         for( char i=0 ; i<LOGICAL_DIGITS_SIZE; i++ ) {
 
@@ -840,10 +838,12 @@ __interrupt void rtc_isr(void) {
         }
 
 
-        if ( next_squiggle_step == 0 ) {
-            next_squiggle_step = SQUIGGLE_SEGMENTS_SIZE-1;
+        if ( step  == 0 ) {
+
+            step = SQUIGGLE_SEGMENTS_SIZE-1;
+
         } else {
-            next_squiggle_step--;
+            step--;
         }
 
 
@@ -868,6 +868,7 @@ __interrupt void rtc_isr(void) {
             CBI( TRIGGER_PIFG , TRIGGER_B);
 
             mode = READY_TO_LAUNCH;
+            step = SQUIGGLE_SEGMENTS_SIZE-1;        // The ready_to_launch animation starts at the last frame and counts backwards for efficiency
 
         } else {
 
@@ -875,7 +876,7 @@ __interrupt void rtc_isr(void) {
             // This has the net effect of making an safety interlock that the pin has to be inserted for a full 1 second before we will arm.
 
             mode = START;
-
+            step = LOGICAL_DIGITS_SIZE+3;       // start at leftmost position
 
         }
 
@@ -910,25 +911,44 @@ __interrupt void rtc_isr(void) {
             // trigger still out
             // show a little dash sliding towards the trigger
 
-            char current_dash_step = next_dash_step;
+            // In position`step` we draw a trailing space that will erase the tail of the moving dash
+            // Remember that positon 11 is the leftmost position and we want the dash to animate to the right to point to the physical trigger switch.
 
-            if (next_dash_step==0) {
+            if (step < LOGICAL_DIGITS_SIZE  ) {
 
-                next_dash_step = LOGICAL_DIGITS_SIZE-1;
-
-            } else {
-
-                next_dash_step--;
+                lcd_show_f( step , blank_segments );
 
             }
 
 
-            for( char i=0 ; i<LOGICAL_DIGITS_SIZE; i++ ) {
+            if (step==0) {
 
-                if (i==current_dash_step || i==next_dash_step ) {
-                    lcd_show_f( i , dash_segments );
-                } else {
-                    lcd_show_f( i , blank_segments );
+                // The blank made it to the right side, so start over again with the dash past the left side of the display
+
+                step=LOGICAL_DIGITS_SIZE+3;
+
+            } else {
+
+
+                // Animate one step to the right
+                step--;
+
+                // We are no where the left side of the dash will go if it is on the screen
+                if (step < LOGICAL_DIGITS_SIZE  ) {
+
+                    lcd_show_f( step , dash_segments );
+
+                }
+
+                // Is there room on the right side of the screen for the right dash?
+
+                if (step > 0 )  {
+
+                    if (step < LOGICAL_DIGITS_SIZE+1 ) {
+
+                        lcd_show_f( step-1 , dash_segments );
+
+                    }
                 }
 
             }
@@ -1017,6 +1037,7 @@ __interrupt void trigger_isr(void) {
         // TODO: Record timestamp
 
         mode = TIME_SINCE_LAUNCH;
+        step = 0;           // Start at the top of the first second.
 
     }
 
@@ -1069,6 +1090,7 @@ int main( void )
     // ARMING mode which waits an additional 500ms to debounce the switch
 
     mode = START;
+    step = LOGICAL_DIGITS_SIZE+3;           // Start the dash animation at the leftmost position
 
     // Go into LPM sleep with Voltage Supervisor disabled.
     // This code from LPM_4_5_2.c from TI resources
