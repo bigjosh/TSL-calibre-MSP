@@ -581,12 +581,20 @@ void initLCD() {
 // 2. CLKOUT output disabled on RV3032.
 // 3. CLKOUT input on RV3032 pulled low.
 // 2. i2c pins idle (driven low)
+//
+// Returns 0=RV3032 has been running no problems, 1=Low power condition detected since last call.
 
 // TODO: Make this set our time variables to clock time
 // TODO: Make a function to set the RTC and check if they have been set.
 // TODO: Break out a function to close the RTC when we are done interacting with it.
 
-void initRV3032() {
+
+char secs=0;        // Start a 1 seconds on first update after launch
+char mins=0;
+char hours=0;
+unsigned long days=0;       // needs to be able to hold up to 1,000,000. I wish we had a 24 bit type here.
+
+char initRV3032() {
     // We will only be using the ~INT signal form the RV3032 to tick our ticker. We will use the periodic timer running at 500ms
     // to generate that tick. It would be better to use the 1s tick (fewer ISR wake-ups) but the width of the pulse is 7.8ms (much wider) for the seconds
     // timebase and that would waste power fighting against the pull-up, so we must use the shorter one which is 122us.
@@ -598,6 +606,8 @@ void initRV3032() {
     // TCM=01 - Connects Vdd to the charging circuit
     // DSM=01 - Direct switchover mode, switches whenever Vbackup>Vcc
     // TCR=00 - Selects a 1K ohm trickle charge resistor
+
+    char retValue=0;
 
     // Initialize our i2c pins as pull-up
     i2c_init();
@@ -611,7 +621,7 @@ void initRV3032() {
 
     // First control reg. Note that turning off backup switch-over seems to save ~0.1uA
     //uint8_t pmu_reg = 0b01000001;         // CLKOUT off, backup switchover disabled, no charge pump, 1K OHM trickle resistor, trickle charge Vbackup to Vdd.
-    uint8_t pmu_reg = 0b01010001;         // CLKOUT off, Direct backup switching mode, no charge pump, 1K OHM trickle resistor, trickle charge Vbackup to Vdd. Only predicted to use 50nA more than disabled.
+    uint8_t pmu_reg = 0b01010001;          // CLKOUT off, Direct backup switching mode, no charge pump, 1K OHM trickle resistor, trickle charge Vbackup to Vdd. Only predicted to use 50nA more than disabled.
     //uint8_t pmu_reg = 0b01100001;         // CLKOUT off, Level backup switching mode (2v) , no charge pump, 1K OHM trickle resistor, trickle charge Vbackup to Vdd
 
     //uint8_t pmu_reg = 0b01110001;         // CLKOUT off, Other disabled backup switching mode  , no charge pump, 1K OHM trickle resistor, trickle charge Vbackup to Vdd
@@ -656,13 +666,14 @@ void initRV3032() {
     uint8_t status_reg=0xff;
     i2c_read( RV_3032_I2C_ADDR , 0x0d , &status_reg , 1 );
 
-    if ( (status_reg & 0x03) == 0 ) {               //If power on reset or low voltage drop detected then we have not been running continuously
+    if ( (status_reg & 0x03) != 0x00 ) {               //If power on reset or low voltage drop detected then we have not been running continuously
 
-        // RESET or errormessage here
+        // Signal to caller that we have had a low power event.
+        retValue = 1;
 
     }
 
-    status_reg =0x00;   // Clear all flags for next time we check
+    status_reg =0x00;   // Clear all flags for next time we check. This will clear the low voltage and power up flags that we tested above.
     i2c_write( RV_3032_I2C_ADDR , 0x0d , &status_reg , 1 );
 
 
@@ -670,8 +681,9 @@ void initRV3032() {
     uint8_t sec_reg=0xff;
     i2c_read( RV_3032_I2C_ADDR , 0x01 , &sec_reg , 1 );
 
+    secs = sec_reg;
 
-    i2c_write( RV_3032_I2C_ADDR , 0x01 , &sec_reg , 1 );
+    //i2c_write( RV_3032_I2C_ADDR , 0x01 , &sec_reg , 1 );
 
 
     // We are done setting stuff up with the i2c connection, so drive the pins low
@@ -679,6 +691,8 @@ void initRV3032() {
     // RV3032 when the MSP430 looses power during a battery change.
 
     i2c_shutdown();
+
+    return retValue;
 
 }
 
@@ -716,10 +730,6 @@ char step;          // START             - Used to keep the position of the dash
                     // TIME_SINCE_LAUNCH - Count the half-seconds (0=1st 500ms, 1=2nd 500ms)
 
 
-char secs=0;        // Start a 1 seconds on first update after launch
-char mins=0;
-char hours=0;
-unsigned long days=0;       // needs to be able to hold up to 1,000,000. I wish we had a 24 bit type here.
                             // TODO: Make a 24 bit type.
 
 
@@ -735,6 +745,11 @@ __interrupt void rtc_isr(void) {
     // TODO: Disable pull-up while in ISR?
 
     SBI( DEBUGA_POUT , DEBUGA_B );      // See latency to start ISR and how long it runs
+
+#warning
+    lcd_show_f( 4 , digit_segments[ hours % 10 ] );
+    lcd_show_f( 5 , digit_segments[ hours / 10 ] );
+
 
     if (mode == TIME_SINCE_LAUNCH) {            // This is where we will spend most of out live, so optimize for this case
 
@@ -1077,7 +1092,13 @@ int main( void )
 
 
     // Setup the RV3032
-    initRV3032();
+    char rtcLowVoltageFlag = initRV3032();
+
+    if (rtcLowVoltageFlag) {
+        hours=10;
+    } else {
+        hours=50;
+    }
 
     // Clear any pending interrupts from the RV3032 INT pin
     // We just started the timer so we should not get a real one for 500ms
