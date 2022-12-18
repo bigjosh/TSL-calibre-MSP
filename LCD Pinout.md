@@ -6,10 +6,6 @@ Each digit has 7 segments, and on the LCD they are arranged so that those segmen
 
 We are using a 4-mux LCD and in this mode the MSP430 puts 2 physical pins in each writeable LCD memory register. In each MSP430 LCD memory byte, the lower 4 bits are the the 4 common pins for one segment pin and the upper 4 bit are the 4 common pins on the next segment pin. Each segment pin has a logical name starting with "L0" and counting up to "L37".
 
-![image](https://user-images.githubusercontent.com/5520281/200155162-8eabf6fa-99d3-417d-a64b-665698596570.png)
-
-(note that our chip only goes up to "L37")
-
 Importantly note that the pairs are always an even then odd pin number since they start at `L0/L1`. So `L22` and `L23` can be connected to the same digit on the LCD since we can update both with a single write to `LCDM11`, but if we connected LCD digit #1 to MSP pins `L21` and `L22` then we would need to write to both `LCDM11` and `LCDM10` to update the digit on the LCD display (and mess up whatever was on `L23` and `L20`).
 
 Note that the MSP430 is a 16 bit processor, so it is also possible to update two digits with a single word write if the registers connected to them are next to each other in memory and do not cross a word boundary. This is probably only worth the additional effort to save a single cycle in the seconds digits. 
