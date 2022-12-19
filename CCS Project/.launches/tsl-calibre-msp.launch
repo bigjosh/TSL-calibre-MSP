@@ -24,7 +24,7 @@
     <stringAttribute key="com.ti.ccstudio.debug.debugModel.ATTR_PROJECT.MSP430FR4133.ccxml.TI MSP430 USB2_0/MSP430" value="tsl-calibre-msp"/>
     <stringAttribute key="com.ti.ccstudio.debug.debugModel.ATTR_TARGET_CONFIG" value="${target_config_active_default:tsl-calibre-msp}"/>
     <stringAttribute key="com.ti.ccstudio.debug.debugModel.MRU_PROGRAM.MSP430FR4133.ccxml.TI MSP430 USB1/MSP430" value="${build_artifact:tsl-calibre-msp}"/>
-    <stringAttribute key="com.ti.ccstudio.debug.debugModel.MRU_PROGRAM.MSP430FR4133.ccxml.TI MSP430 USB1_0/MSP430" value="${build_artifact:tsl-calibre-msp}"/>
+    <stringAttribute key="com.ti.ccstudio.debug.debugModel.MRU_PROGRAM.MSP430FR4133.ccxml.TI MSP430 USB1_0/MSP430" value="D:\Github\TSL-calibre-MSP\CCS Project\Release\tsl-calibre-msp.out"/>
     <stringAttribute key="com.ti.ccstudio.debug.debugModel.MRU_PROGRAM.MSP430FR4133.ccxml.TI MSP430 USB2_0/MSP430" value="${build_artifact:tsl-calibre-msp}"/>
     <listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_PATHS">
         <listEntry value="/tsl-calibre-msp"/>
