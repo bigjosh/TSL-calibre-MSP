@@ -606,8 +606,8 @@ static uint8_t daysInMonth( uint8_t m , uint8_t y) {
 
         case  2:
 
-                    if ( y % 4 == 0 ) {         // "A leap year is set whenever the year value is a multiple of four (such as 04, 08, 12, 88, 92, or 96)."
-                                                // Empirical testing also shows that 00 is a leap year to the RX8900
+                    if ( y % 4 == 0 ) {         // "Leap years are correctly handled from 2000 to 2099."
+                                                // Empirical testing also shows that 00 is a leap year to the RV3032.
                                                 // https://electronics.stackexchange.com/questions/385952/does-the-epson-rx8900-real-time-clock-count-the-year-00-as-a-leap-year
 
                         return 29 ;             // "February in leap year 01, 02, 03 ... 28, 29, 01
@@ -830,6 +830,91 @@ uint8_t initRV3032() {
     i2c_shutdown();
 
     return retValue;
+
+}
+
+// Test to see if the RV3032 considers (21)00 a leap year
+// Note: Confirms that year "00" in a leap year with 29 days.
+
+void testLeapYear() {
+
+    // Initialize our i2c pins as pull-up
+    i2c_init();
+
+    // Feb 28, 2100 (or 2000)
+    // Numbers in BCD
+    uint8_t b23 = 0x23;
+    uint8_t b59 = 0x59;
+
+    uint8_t b02 = 0x02;
+    uint8_t b28 = 0x28;
+    uint8_t b00 = 0x00;
+
+
+    i2c_write( RV_3032_I2C_ADDR , RV3032_HUNDS_REG , &b00 , 1 );
+    i2c_write( RV_3032_I2C_ADDR , RV3032_SECS_REG  , &b00 , 1 );
+    i2c_write( RV_3032_I2C_ADDR , RV3032_MINS_REG  , &b59 , 1 );
+    i2c_write( RV_3032_I2C_ADDR , RV3032_HOURS_REG , &b23 , 1 );
+    i2c_write( RV_3032_I2C_ADDR , RV3032_DAYS_REG  , &b28 , 1 );
+    i2c_write( RV_3032_I2C_ADDR , RV3032_MONS_REG  , &b02 , 1 );
+    i2c_write( RV_3032_I2C_ADDR , RV3032_YEARS_REG , &b00 , 1 );
+
+    i2c_shutdown();
+
+
+    while (1) {
+
+
+        __delay_cycles(1000000);
+
+        i2c_init();
+
+        uint8_t t;
+
+        i2c_read( RV_3032_I2C_ADDR , RV3032_SECS_REG  , &t , 1 );
+        secs = bcd2c(t);
+
+        i2c_read( RV_3032_I2C_ADDR , RV3032_MINS_REG  , &t , 1 );
+        mins = bcd2c(t);
+
+        i2c_read( RV_3032_I2C_ADDR , RV3032_HOURS_REG , &t , 1 );
+        hours = bcd2c(t);
+
+        uint8_t y;
+        uint8_t m;
+        uint8_t d;
+
+        i2c_read( RV_3032_I2C_ADDR , RV3032_DAYS_REG  , &t , 1 );
+        d = bcd2c(t);
+
+        i2c_read( RV_3032_I2C_ADDR , RV3032_MONS_REG  , &t , 1 );
+        m = bcd2c(t);
+
+        i2c_read( RV_3032_I2C_ADDR , RV3032_YEARS_REG , &t , 1 );
+        y = bcd2c(t);
+
+        i2c_shutdown();
+
+        lcd_show_f(  6 , digit_segments[ ( d / 1      ) % 10 ] );
+        lcd_show_f(  7 , digit_segments[ ( d / 10     ) % 10 ] );
+        lcd_show_f(  8 , digit_segments[ ( m / 1      ) % 10 ] );
+        lcd_show_f(  9 , digit_segments[ ( m / 10     ) % 10 ] );
+        lcd_show_f( 10 , digit_segments[ ( y / 1      ) % 10 ] );
+        lcd_show_f( 11 , digit_segments[ ( y / 10     ) % 10 ] );
+
+        lcd_show_f( 4 , digit_segments[ hours % 10 ] );
+        lcd_show_f( 5 , digit_segments[ hours / 10 ] );
+
+        lcd_show_f( 2 , digit_segments[ mins % 10 ] );
+        lcd_show_f( 3 , digit_segments[ mins / 10 ] );
+
+        lcd_show_f( 0 , digit_segments[ secs % 10 ] );
+        lcd_show_f( 1 , digit_segments[ secs / 10 ] );
+
+
+    }
+
+
 
 }
 
@@ -1237,7 +1322,6 @@ int main( void )
     initGPIO();
 
     initLCD();
-
 
     // Power up display -just so we are not showing garbage
 
