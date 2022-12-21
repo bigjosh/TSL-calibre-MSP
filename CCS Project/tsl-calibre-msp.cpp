@@ -5,6 +5,16 @@
 
 #define RV_3032_I2C_ADDR (0b01010001)           // Datasheet 6.6
 
+// RV3032 Registers
+
+#define RV3032_HUNDS_REG 0x00    // Hundredths of seconds
+#define RV3032_SECS_REG  0x01
+#define RV3032_MINS_REG  0x02
+#define RV3032_HOURS_REG 0x03
+#define RV3032_DAYS_REG  0x05
+#define RV3032_MONS_REG  0x06
+#define RV3032_YEARS_REG 0x07
+
 
 // *** LCD layout
 
@@ -35,8 +45,8 @@
 // Now we draw the digits using the segments as mapped in the LCD datasheet
 
 struct glyph_segment_t {
-    const char nibble_a_thru_d;     // The COM bits for the digit's A-D segments
-    const char nibble_e_thru_g;     // The COM bits for the digit's E-G segments
+    const uint8_t nibble_a_thru_d;     // The COM bits for the digit's A-D segments
+    const uint8_t nibble_e_thru_g;     // The COM bits for the digit's E-G segments
 };
 
 
@@ -100,12 +110,12 @@ constexpr glyph_segment_t right_tick_segments = { SEG_B_COM_BIT , SEG_E_COM_BIT 
 // These mappings come from our PCB trace layout
 
 struct logical_digit_t {
-    const char lpin_e_thru_g;       // The LPIN for segments E-G
-    const char lpin_a_thru_d;       // The LPIN for segments A-D
+    const uint8_t lpin_e_thru_g;       // The LPIN for segments E-G
+    const uint8_t lpin_a_thru_d;       // The LPIN for segments A-D
 
 };
 
-constexpr char LOGICAL_DIGITS_SIZE = 12;
+constexpr uint8_t LOGICAL_DIGITS_SIZE = 12;
 
 constexpr logical_digit_t logical_digits[LOGICAL_DIGITS_SIZE] {
     { 33 , 32 },        //  0 (LCD 12) - rightmost digit
@@ -129,9 +139,9 @@ constexpr logical_digit_t logical_digits[LOGICAL_DIGITS_SIZE] {
 
 enum nibble_t {LOWER,UPPER};
 
-template <char lpin>
+template <uint8_t lpin>
 struct lpin_t {
-    constexpr static char lcdmem_offset() {
+    constexpr static uint8_t lcdmem_offset() {
         return (lpin>>1); // Intentionally looses bottom bit since consecutive L-pins share the same memory address (but different nibbles)
     };
 
@@ -144,12 +154,12 @@ struct lpin_t {
 // These two functions compute the memory address and the nibble inside that address for a given lpin.
 
 #pragma FUNC_ALWAYS_INLINE
-constexpr static char lpin_lcdmem_offset(const char lpin) {
+constexpr static uint8_t lpin_lcdmem_offset(const uint8_t lpin) {
     return (lpin>>1); // Intentionally looses bottom bit since consecutive L-pins share the same memory address (but different nibbles)
 }
 
 #pragma FUNC_ALWAYS_INLINE
-constexpr static nibble_t lpin_nibble(const char lpin) {
+constexpr static nibble_t lpin_nibble(const uint8_t lpin) {
     return lpin & 0x01 ? UPPER : LOWER;  // Extract which nibble
 }
 
@@ -158,7 +168,7 @@ constexpr static nibble_t lpin_nibble(const char lpin) {
 
 // Write the specified nibble. The other nibble at address a is unchanged.
 
-void set_nibble( char * a , const nibble_t nibble_index , const char x ) {
+void set_nibble( uint8_t * a , const nibble_t nibble_index , const uint8_t x ) {
 
     if ( nibble_index == nibble_t::LOWER  ) {
 
@@ -178,19 +188,19 @@ void set_nibble( char * a , const nibble_t nibble_index , const char x ) {
 // Show the digit x at position p
 // where p=0 is the rightmost digit
 
-template <char pos, char x>                    // Use template to force everything to compile down to an individualized, optimized function for each pos+x combination
+template <uint8_t pos, uint8_t x>                    // Use template to force everything to compile down to an individualized, optimized function for each pos+x combination
 inline void lcd_show() {
 
-    constexpr char nibble_a_thru_d =  digit_segments[x].nibble_a_thru_d;         // Look up which segments on the low pin we need to turn on to draw this digit
-    constexpr char nibble_e_thru_g =  digit_segments[x].nibble_e_thru_g;         // Look up which segments on the low pin we need to turn on to draw this digit
+    constexpr uint8_t nibble_a_thru_d =  digit_segments[x].nibble_a_thru_d;         // Look up which segments on the low pin we need to turn on to draw this digit
+    constexpr uint8_t nibble_e_thru_g =  digit_segments[x].nibble_e_thru_g;         // Look up which segments on the low pin we need to turn on to draw this digit
 
-    constexpr char lpin_a_thru_d = logical_digits[pos].lpin_a_thru_d;     // Look up the L-pin for the low segment bits of this digit
-    constexpr char lpin_e_thru_g = logical_digits[pos].lpin_e_thru_g;     // Look up the L-pin for the high bits of this digit
+    constexpr uint8_t lpin_a_thru_d = logical_digits[pos].lpin_a_thru_d;     // Look up the L-pin for the low segment bits of this digit
+    constexpr uint8_t lpin_e_thru_g = logical_digits[pos].lpin_e_thru_g;     // Look up the L-pin for the high bits of this digit
 
-    constexpr char lcdmem_offset_a_thru_d = (lpin_t< lpin_a_thru_d >::lcdmem_offset()); // Look up the memory address for the low segment bits
-    constexpr char lcdmem_offset_e_thru_g = lpin_t< lpin_e_thru_g >::lcdmem_offset(); // Look up the memory address for the high segment bits
+    constexpr uint8_t lcdmem_offset_a_thru_d = (lpin_t< lpin_a_thru_d >::lcdmem_offset()); // Look up the memory address for the low segment bits
+    constexpr uint8_t lcdmem_offset_e_thru_g = lpin_t< lpin_e_thru_g >::lcdmem_offset(); // Look up the memory address for the high segment bits
 
-    char * const lcd_mem_reg = LCDMEM;
+    uint8_t * const lcd_mem_reg = LCDMEM;
 
     /*
       I know that line above looks dumb, but if you just access LCDMEM directly the compiler does the wrong thing and loads the offset
@@ -215,21 +225,21 @@ inline void lcd_show() {
         // Note that the whole process that gets us here is static at compile time, so the whole lcd_show() call will compile down
         // to just a single immediate byte write, which is very efficient.
 
-        const char lpin_a_thru_d_nibble = lpin_t< lpin_a_thru_d >::nibble();
+        const uint8_t lpin_a_thru_d_nibble = lpin_t< lpin_a_thru_d >::nibble();
 
         if ( lpin_a_thru_d_nibble == nibble_t::LOWER  ) {
 
             // the A-D segments go into the lower nibble
             // the E-G segments go into the upper nibble
 
-            lcd_mem_reg[lcdmem_offset_a_thru_d] = (char) ( nibble_e_thru_g << 4 ) | (nibble_a_thru_d);     // Combine the nibbles, write them to the mem address
+            lcd_mem_reg[lcdmem_offset_a_thru_d] = (uint8_t) ( nibble_e_thru_g << 4 ) | (nibble_a_thru_d);     // Combine the nibbles, write them to the mem address
 
         } else {
 
             // the A-D segments go into the lower nibble
             // the E-G segments go into the upper nibble
 
-            lcd_mem_reg[lcdmem_offset_a_thru_d] = (char) ( nibble_a_thru_d << 4 ) | (nibble_e_thru_g);     // Combine the nibbles, write them to the mem address
+            lcd_mem_reg[lcdmem_offset_a_thru_d] = (uint8_t) ( nibble_a_thru_d << 4 ) | (nibble_e_thru_g);     // Combine the nibbles, write them to the mem address
 
         }
 
@@ -260,18 +270,18 @@ inline void lcd_show() {
 
 
 #pragma FUNC_ALWAYS_INLINE
-static inline void lcd_show_f( const char pos, const glyph_segment_t segs ) {
+static inline void lcd_show_f( const uint8_t pos, const glyph_segment_t segs ) {
 
-    const char nibble_a_thru_d =  segs.nibble_a_thru_d;         // Look up which segments on the low pin we need to turn on to draw this digit
-    const char nibble_e_thru_g =  segs.nibble_e_thru_g;         // Look up which segments on the low pin we need to turn on to draw this digit
+    const uint8_t nibble_a_thru_d =  segs.nibble_a_thru_d;         // Look up which segments on the low pin we need to turn on to draw this digit
+    const uint8_t nibble_e_thru_g =  segs.nibble_e_thru_g;         // Look up which segments on the low pin we need to turn on to draw this digit
 
-    const char lpin_a_thru_d = logical_digits[pos].lpin_a_thru_d;     // Look up the L-pin for the low segment bits of this digit
-    const char lpin_e_thru_g = logical_digits[pos].lpin_e_thru_g;     // Look up the L-pin for the high bits of this digit
+    const uint8_t lpin_a_thru_d = logical_digits[pos].lpin_a_thru_d;     // Look up the L-pin for the low segment bits of this digit
+    const uint8_t lpin_e_thru_g = logical_digits[pos].lpin_e_thru_g;     // Look up the L-pin for the high bits of this digit
 
-    const char lcdmem_offset_a_thru_d = lpin_lcdmem_offset( lpin_a_thru_d ); // Look up the memory address for the low segment bits
-    const char lcdmem_offset_e_thru_g = lpin_lcdmem_offset( lpin_e_thru_g ); // Look up the memory address for the high segment bits
+    const uint8_t lcdmem_offset_a_thru_d = lpin_lcdmem_offset( lpin_a_thru_d ); // Look up the memory address for the low segment bits
+    const uint8_t lcdmem_offset_e_thru_g = lpin_lcdmem_offset( lpin_e_thru_g ); // Look up the memory address for the high segment bits
 
-    char * const lcd_mem_reg = LCDMEM;
+    uint8_t * const lcd_mem_reg = (uint8_t *) LCDMEM;
 
     /*
       I know that line above looks dumb, but if you just access LCDMEM directly the compiler does the wrong thing and loads the offset
@@ -296,21 +306,21 @@ static inline void lcd_show_f( const char pos, const glyph_segment_t segs ) {
         // Note that the whole process that gets us here is static at compile time, so the whole lcd_show() call will compile down
         // to just a single immediate byte write, which is very efficient.
 
-        const char lpin_a_thru_d_nibble = lpin_nibble( lpin_a_thru_d );
+        const uint8_t lpin_a_thru_d_nibble = lpin_nibble( lpin_a_thru_d );
 
         if ( lpin_a_thru_d_nibble == nibble_t::LOWER  ) {
 
             // the A-D segments go into the lower nibble
             // the E-G segments go into the upper nibble
 
-            lcd_mem_reg[lcdmem_offset_a_thru_d] = (char) ( nibble_e_thru_g << 4 ) | (nibble_a_thru_d);     // Combine the nibbles, write them to the mem address
+            lcd_mem_reg[lcdmem_offset_a_thru_d] = (uint8_t) ( nibble_e_thru_g << 4 ) | (nibble_a_thru_d);     // Combine the nibbles, write them to the mem address
 
         } else {
 
             // the A-D segments go into the lower nibble
             // the E-G segments go into the upper nibble
 
-            lcd_mem_reg[lcdmem_offset_a_thru_d] = (char) ( nibble_a_thru_d << 4 ) | (nibble_e_thru_g);     // Combine the nibbles, write them to the mem address
+            lcd_mem_reg[lcdmem_offset_a_thru_d] = (uint8_t) ( nibble_a_thru_d << 4 ) | (nibble_e_thru_g);     // Combine the nibbles, write them to the mem address
 
         }
 
@@ -382,11 +392,6 @@ void flash() {
     __delay_cycles(30000);
     wiggleFlashQ2();
 }
-
-volatile unsigned char * Seconds = &BAKMEM0_L;               // Store seconds in the backup RAM module
-volatile unsigned char * Minutes = &BAKMEM0_H;               // Store minutes in the backup RAM module
-volatile unsigned char * Hours = &BAKMEM1_L;                 // Store hours in the backup RAM module
-volatile unsigned char * spin = &BAKMEM1_H;                 // Store hours in the backup RAM module
 
 inline void initGPIO() {
 
@@ -576,6 +581,115 @@ void initLCD() {
 
 }
 
+
+
+// This table of days per month came from the RX8900 datasheet page 9
+
+static uint8_t daysInMonth( uint8_t m , uint8_t y) {
+
+    switch ( m ) {
+
+        case  1:
+        case  3:
+        case  5:
+        case  7:
+        case  8:
+        case 10:
+        case 12:    // Interestingly, we will never hit 12. See why?
+                    return 31 ;
+
+        case  4:
+        case  6:
+        case  9:
+        case 11:
+                    return 30 ;
+
+        case  2:
+
+                    if ( y % 4 == 0 ) {         // "A leap year is set whenever the year value is a multiple of four (such as 04, 08, 12, 88, 92, or 96)."
+                                                // Empirical testing also shows that 00 is a leap year to the RX8900
+                                                // https://electronics.stackexchange.com/questions/385952/does-the-epson-rx8900-real-time-clock-count-the-year-00-as-a-leap-year
+
+                        return 29 ;             // "February in leap year 01, 02, 03 ... 28, 29, 01
+
+                    } else {
+
+                        return 28;              // February in normal year 01, 02, 03 ... 28, 01, 02
+                    }
+
+    }
+
+    // unreachable
+
+}
+
+static const unsigned long days_per_century = ( 100UL * 365 ) + 25;       // 25 leap years in every RX8900 century
+
+// Convert the y/m/d values from the RX8900 to a count of the number of days since 00/1/1
+// rx8900_date_to_days( 0 , 1, 1 ) = 0
+// rx8900_date_to_days( 0 , 1, 31) = 30
+// rx8900_date_to_days( 0 , 2, 1 ) = 31
+// rx8900_date_to_days( 1 , 1, 1 ) = 366 (00 is a leap year!)
+
+static unsigned long  date_to_days( uint8_t c , uint8_t y , uint8_t m, uint8_t d ) {
+
+    uint32_t dayCount=0;
+
+    // Count days in centuries past
+
+    dayCount += days_per_century * c;
+
+    // Count days in years past this century
+
+    for( uint8_t y_scan = 0; y_scan < y ; y_scan++ ) {
+
+        if ( y_scan % 4 == 0 ) {
+            // leap year every 4 years on RX8900
+            dayCount += 366UL;      // 366 days per year past in leap years
+
+        } else {
+
+            dayCount += 365UL;      // 365 days per year past in normal years
+        }
+
+    }
+
+
+    // Now accumulate the days in months past so far this year
+
+    for( uint8_t m_scan = 1; m_scan < m ; m_scan++ ) {      // Don't count current month
+
+        dayCount += daysInMonth( m_scan , y );       // Year is needed to count leap day in feb in leap years.
+
+
+    }
+
+    // Now include the passed days so far this month
+
+    dayCount += (uint32_t) d-1;     // 1st day of a month is 1, so if it is the 1st of the month then no days has elapsed this month yet.
+
+    return dayCount;
+
+}
+
+
+uint8_t bcd2c( uint8_t bcd ) {
+
+    uint8_t tens = bcd/16;
+    uint8_t ones = bcd - (tens*16);
+
+    return (tens*10) + ones;
+}
+
+uint8_t c2bcd( uint8_t c ) {
+
+    uint8_t tens = c/10;
+    uint8_t ones = c - (tens*10);
+
+    return (tens*16) + ones;
+
+}
+
 // Returns with the RV3032...
 // 1. Generating a short low pulse on ~INT at 2Hz
 // 2. CLKOUT output disabled on RV3032.
@@ -589,12 +703,15 @@ void initLCD() {
 // TODO: Break out a function to close the RTC when we are done interacting with it.
 
 
-char secs=0;        // Start a 1 seconds on first update after launch
-char mins=0;
-char hours=0;
-unsigned long days=0;       // needs to be able to hold up to 1,000,000. I wish we had a 24 bit type here.
+uint8_t secs=0;        // Start a 1 seconds on first update after launch
+uint8_t mins=0;
+uint8_t hours=0;
+uint32_t days=0;       // needs to be able to hold up to 1,000,000. I wish we had a 24 bit type here.
 
-char initRV3032() {
+// Returns  0=above time variables have been set to those held in the RTC
+//         !0=either RTC has been reset or trigger never pulled.
+
+uint8_t initRV3032() {
     // We will only be using the ~INT signal form the RV3032 to tick our ticker. We will use the periodic timer running at 500ms
     // to generate that tick. It would be better to use the 1s tick (fewer ISR wake-ups) but the width of the pulse is 7.8ms (much wider) for the seconds
     // timebase and that would waste power fighting against the pull-up, so we must use the shorter one which is 122us.
@@ -607,7 +724,7 @@ char initRV3032() {
     // DSM=01 - Direct switchover mode, switches whenever Vbackup>Vcc
     // TCR=00 - Selects a 1K ohm trickle charge resistor
 
-    char retValue=0;
+    uint8_t retValue=0;
 
     // Initialize our i2c pins as pull-up
     i2c_init();
@@ -671,19 +788,39 @@ char initRV3032() {
         // Signal to caller that we have had a low power event.
         retValue = 1;
 
+    } else {
+
+        // Read time
+
+        uint8_t t;
+
+        i2c_read( RV_3032_I2C_ADDR , RV3032_SECS_REG  , &t , 1 );
+        secs = bcd2c(t);
+
+        i2c_read( RV_3032_I2C_ADDR , RV3032_MINS_REG  , &t , 1 );
+        mins = bcd2c(t);
+
+        i2c_read( RV_3032_I2C_ADDR , RV3032_HOURS_REG , &t , 1 );
+        hours = bcd2c(t);
+
+        uint8_t c;
+        uint8_t y;
+        uint8_t m;
+        uint8_t d;
+
+        i2c_read( RV_3032_I2C_ADDR , RV3032_DAYS_REG  , &t , 1 );
+        d = bcd2c(t);
+
+        i2c_read( RV_3032_I2C_ADDR , RV3032_MONS_REG  , &t , 1 );
+        m = bcd2c(t);
+
+        i2c_read( RV_3032_I2C_ADDR , RV3032_YEARS_REG , &t , 1 );
+        y = bcd2c(t);
+        c=0; // TODO: How to get this from RV_3032?
+
+        days = date_to_days(c, y, m, d);
+
     }
-
-    status_reg =0x00;   // Clear all flags for next time we check. This will clear the low voltage and power up flags that we tested above.
-    i2c_write( RV_3032_I2C_ADDR , 0x0d , &status_reg , 1 );
-
-
-    // Next check if the RV3032 just powered up
-    uint8_t sec_reg=0xff;
-    i2c_read( RV_3032_I2C_ADDR , 0x01 , &sec_reg , 1 );
-
-    secs = sec_reg;
-
-    //i2c_write( RV_3032_I2C_ADDR , 0x01 , &sec_reg , 1 );
 
 
     // We are done setting stuff up with the i2c connection, so drive the pins low
@@ -693,6 +830,36 @@ char initRV3032() {
     i2c_shutdown();
 
     return retValue;
+
+}
+
+// Write zeros to all time regs in RV3032
+
+void zeroRV3032() {
+
+
+    // Initialize our i2c pins as pull-up
+    i2c_init();
+
+    // Zero out all of the timekeep regs
+    uint8_t zero_byte =0x00;
+    uint8_t one_byte =0x01;      // We need this because month and day start at 0
+
+    i2c_write( RV_3032_I2C_ADDR , RV3032_HUNDS_REG , &zero_byte , 1 );
+    i2c_write( RV_3032_I2C_ADDR , RV3032_SECS_REG  , &zero_byte , 1 );
+    i2c_write( RV_3032_I2C_ADDR , RV3032_MINS_REG  , &zero_byte , 1 );
+    i2c_write( RV_3032_I2C_ADDR , RV3032_HOURS_REG , &zero_byte , 1 );
+    i2c_write( RV_3032_I2C_ADDR , RV3032_DAYS_REG  , &one_byte , 1 );
+    i2c_write( RV_3032_I2C_ADDR , RV3032_MONS_REG  , &one_byte , 1 );
+    i2c_write( RV_3032_I2C_ADDR , RV3032_YEARS_REG , &zero_byte , 1 );
+
+
+    // Clear the status regs so we know trigger was pulled.
+
+    uint8_t status_reg =0x00;   // Clear all flags for next time we check. This will clear the low voltage and power up flags that we tested above.
+    i2c_write( RV_3032_I2C_ADDR , 0x0d , &status_reg , 1 );
+
+    i2c_shutdown();
 
 }
 
@@ -725,7 +892,7 @@ enum mode_t {
 
 mode_t mode;
 
-char step;          // START             - Used to keep the position of the dash moving across the display (0=leftmost position, only one dash showing)
+uint8_t step;          // START             - Used to keep the position of the dash moving across the display (0=leftmost position, only one dash showing)
                     // READY_TO_LAUNCH   - Which step of the squigle animation
                     // TIME_SINCE_LAUNCH - Count the half-seconds (0=1st 500ms, 1=2nd 500ms)
 
@@ -746,24 +913,19 @@ __interrupt void rtc_isr(void) {
 
     SBI( DEBUGA_POUT , DEBUGA_B );      // See latency to start ISR and how long it runs
 
-#warning
-    lcd_show_f( 4 , digit_segments[ hours % 10 ] );
-    lcd_show_f( 5 , digit_segments[ hours / 10 ] );
-
-
     if (mode == TIME_SINCE_LAUNCH) {            // This is where we will spend most of out live, so optimize for this case
 
         if (!step) {
 
             step=1;
 
-            #warning this is just to visualize the half ticks
-            lcd_show_f( 11 , left_tick_segments );
+            //#warning this is just to visualize the half ticks
+            //lcd_show_f( 11 , left_tick_segments );
 
         } else {
 
-            #warning this is just to visualize the half ticks
-            lcd_show_f( 11 , right_tick_segments );
+            //#warning this is just to visualize the half ticks
+            //lcd_show_f( 11 , right_tick_segments );
 
             // Show current time
 
@@ -789,7 +951,7 @@ __interrupt void rtc_isr(void) {
 
                         if (days==999999) {
 
-                            for( char i=0 ; i<LOGICAL_DIGITS_SIZE; i++ ) {
+                            for( uint8_t i=0 ; i<LOGICAL_DIGITS_SIZE; i++ ) {
 
                                 // The long now
 
@@ -838,9 +1000,9 @@ __interrupt void rtc_isr(void) {
 
         // We depend on the trigger ISR to move use from ready-to-launch to time-since-launch
 
-        char current_squiggle_step = step;
+        uint8_t current_squiggle_step = step;
 
-        for( char i=0 ; i<LOGICAL_DIGITS_SIZE; i++ ) {
+        for( uint8_t i=0 ; i<LOGICAL_DIGITS_SIZE; i++ ) {
 
             lcd_show_f( i , squiggle_segments[ current_squiggle_step ]);
 
@@ -907,7 +1069,7 @@ __interrupt void rtc_isr(void) {
             // Show a little full dash screen to indicate that we know you put the pin in
             // TODO: make this constexpr
 
-              for( char i=0 ; i<LOGICAL_DIGITS_SIZE; i++ ) {
+              for( uint8_t i=0 ; i<LOGICAL_DIGITS_SIZE; i++ ) {
 
                   lcd_show_f( i , dash_segments );
 
@@ -1026,7 +1188,7 @@ __interrupt void trigger_isr(void) {
 
         #pragma UNROLL( LOGICAL_DIGITS_SIZE )
 
-        for( char i=0 ; i<LOGICAL_DIGITS_SIZE; i++ ) {
+        for( uint8_t i=0 ; i<LOGICAL_DIGITS_SIZE; i++ ) {
 
             lcd_show_f( i , digit_segments[0] );
 
@@ -1049,7 +1211,11 @@ __interrupt void trigger_isr(void) {
 
         flash();
 
-        // TODO: Record timestamp
+        // Record timestamp
+
+        zeroRV3032();
+
+        // Start ticking!
 
         mode = TIME_SINCE_LAUNCH;
         step = 0;           // Start at the top of the first second.
@@ -1072,11 +1238,9 @@ int main( void )
 
     initLCD();
 
-    //TODO: Init our own stack save the wasteful init
-    //STACK_INIT();
 
+    // Power up display -just so we are not showing garbage
 
-    // Show a quick test pattern on the LCD
     lcd_show_f( 0, digit_segments[0] );
     lcd_show_f( 1, digit_segments[1] );
     lcd_show_f( 2, digit_segments[2] );
@@ -1092,12 +1256,58 @@ int main( void )
 
 
     // Setup the RV3032
-    char rtcLowVoltageFlag = initRV3032();
+    uint8_t rtcLowVoltageFlag = initRV3032();
 
     if (rtcLowVoltageFlag) {
-        hours=10;
+
+        // We are starting fresh
+
+
+        // TODO: Only enable the pull-up once per second when we check it
+
+        mode = START;
+        step = LOGICAL_DIGITS_SIZE+3;           // Start the dash animation at the leftmost position
+
     } else {
-        hours=50;
+
+        // We have already been triggered and time is already loaded into variables
+
+        // Disable the pull-up
+
+        // Disable the trigger pin and drive low to save power and prevent any more interrupts from it
+        // (if it stayed pulled up then it would draw power though the pull-up resistor whenever the pin was inserted)
+
+        CBI( TRIGGER_POUT , TRIGGER_B );      // low
+        SBI( TRIGGER_PDIR , TRIGGER_B );      // drive
+
+        CBI( TRIGGER_PIFG , TRIGGER_B );      // Clear any pending interrupt from us driving it low (it could have gone high again since we sampled it)
+
+
+
+        // Show the time on the display
+        // Note that the time was loaded from the RTC when we initialized it.
+
+        lcd_show_f(  6 , digit_segments[ (days / 1      ) % 10 ] );
+        lcd_show_f(  7 , digit_segments[ (days / 10     ) % 10 ] );
+        lcd_show_f(  8 , digit_segments[ (days / 100    ) % 10 ] );
+        lcd_show_f(  9 , digit_segments[ (days / 1000   ) % 10 ] );
+        lcd_show_f( 10 , digit_segments[ (days / 10000  ) % 10 ] );
+        lcd_show_f( 11 , digit_segments[ (days / 100000 ) % 10 ] );
+
+        lcd_show_f( 4 , digit_segments[ hours % 10 ] );
+        lcd_show_f( 5 , digit_segments[ hours / 10 ] );
+
+        lcd_show_f( 2 , digit_segments[ mins % 10 ] );
+        lcd_show_f( 3 , digit_segments[ mins / 10 ] );
+
+        lcd_show_f( 0 , digit_segments[ secs % 10 ] );
+        lcd_show_f( 1 , digit_segments[ secs / 10 ] );
+
+
+        // Now start ticking!
+
+        mode = TIME_SINCE_LAUNCH;
+        step = 0;           // Start at the top of the first second.
     }
 
     // Clear any pending interrupts from the RV3032 INT pin
@@ -1110,8 +1320,6 @@ int main( void )
     // We don;t have to worry about any races here because once we do see the trigger is in then we go into
     // ARMING mode which waits an additional 500ms to debounce the switch
 
-    mode = START;
-    step = LOGICAL_DIGITS_SIZE+3;           // Start the dash animation at the leftmost position
 
     // Go into LPM sleep with Voltage Supervisor disabled.
     // This code from LPM_4_5_2.c from TI resources
