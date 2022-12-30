@@ -42,15 +42,18 @@
 #define SEG_S_COM_BIT (COM3_BIT)        // S segments include the low batt, H, M, and S indicators
 
 
+typedef byte nibble;        // Keep nibbles semantically different just for clarity
+#define NIBBLE_MAX ((1<<4)-1)
+
 // Now we draw the digits using the segments as mapped in the LCD datasheet
 
 struct glyph_segment_t {
-    const uint8_t nibble_a_thru_d;     // The COM bits for the digit's A-D segments
-    const uint8_t nibble_e_thru_g;     // The COM bits for the digit's E-G segments
+    const nibble nibble_a_thru_d;     // The COM bits for the digit's A-D segments
+    const nibble nibble_e_thru_g;     // The COM bits for the digit's E-G segments
 };
 
 
-constexpr glyph_segment_t digit_segments[] = {
+constexpr glyph_segment_t digit_segments[NIBBLE_MAX+1] = {
 
     {SEG_A_COM_BIT | SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT                  }, // "0"
     {                SEG_B_COM_BIT | SEG_C_COM_BIT                 ,                                               0}, // "1" (no high pin segments lit in the number 1)
@@ -68,7 +71,6 @@ constexpr glyph_segment_t digit_segments[] = {
     {                SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT , SEG_E_COM_BIT |                 SEG_G_COM_BIT  }, // "d"
     {SEG_A_COM_BIT |                                 SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  }, // "E"
     {SEG_A_COM_BIT                                                 , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  }, // "F"
-
 
 };
 
@@ -115,6 +117,8 @@ struct logical_digit_t {
 
 };
 
+// Map logical digits on the LCD display to LPINS on the MCU. Each LPIN maps to a single nibble the LCD controller memory.
+
 constexpr uint8_t LOGICAL_DIGITS_SIZE = 12;
 
 constexpr logical_digit_t logical_digits[LOGICAL_DIGITS_SIZE] {
@@ -130,25 +134,18 @@ constexpr logical_digit_t logical_digits[LOGICAL_DIGITS_SIZE] {
     {  1 , 13 },        //  9 (LCD 03)
     {  3 ,  2 },        // 10 (LCD 02)
     {  5 ,  4 },        // 11 (LCD 01) - leftmost digit
-    // Rest TBD
 };
+
+#define SECS_ONES_LOGICAL_DIGIT ( 0)
+#define SECS_TENS_LOGICAL_DIGIT ( 1)
+#define MINS_ONES_LOGICAL_DIGIT ( 2)
+#define MINS_TENS_LOGICAL_DIGIT ( 3)
 
 // Returns the byte address for the specified L-pin
 // Assumes MSP430 LCD is in 4-Mux mode
 // This mapping comes from the MSP430FR2xx datasheet Fig 17-2
 
 enum nibble_t {LOWER,UPPER};
-
-template <uint8_t lpin>
-struct lpin_t {
-    constexpr static uint8_t lcdmem_offset() {
-        return (lpin>>1); // Intentionally looses bottom bit since consecutive L-pins share the same memory address (but different nibbles)
-    };
-
-    constexpr static nibble_t nibble() {
-        return lpin & 0x01 ? UPPER : LOWER;  // Extract which nibble
-    }
-};
 
 // Each LCD lpin has one nibble, so there are two lpins for each LCD memory address.
 // These two functions compute the memory address and the nibble inside that address for a given lpin.
@@ -163,7 +160,18 @@ constexpr static nibble_t lpin_nibble(const uint8_t lpin) {
     return lpin & 0x01 ? UPPER : LOWER;  // Extract which nibble
 }
 
+// Also in a template format to do computations at compile time for compile time known LPIN
 
+template <uint8_t lpin>
+struct lpin_t {
+    constexpr static uint8_t lcdmem_offset() {
+        return lpin_lcdmem_offset(lpin);
+    };
+
+    constexpr static nibble_t nibble() {
+        return  lpin_nibble(lpin);
+    }
+};
 
 
 // Write the specified nibble. The other nibble at address a is unchanged.
@@ -183,6 +191,131 @@ void set_nibble( uint8_t * a , const nibble_t nibble_index , const uint8_t x ) {
 
 }
 
+
+struct word_of_bytes_of_nibbles_t {
+
+   word as_word;
+
+   void set_nibble( const byte byte_index , nibble_t nibble_index , const byte x ) {
+
+       // This ugliness is only because C++ will not let us make a packed array of nibbles. :/
+
+       if ( byte_index == 0 && nibble_index == nibble_t::LOWER ) {
+
+           as_word &= 0xfff0;
+           as_word |= x;
+
+       } else if ( byte_index == 0 && nibble_index == nibble_t::UPPER ) {
+
+           as_word &= 0xff0f;
+           as_word |= x << 4;
+
+       } else if ( byte_index == 1 && nibble_index == nibble_t::LOWER ) {
+
+           as_word &= 0xf0ff;
+           as_word |= x << 8;
+
+       } else if ( byte_index == 1 && nibble_index == nibble_t::UPPER ) {
+
+           as_word &= 0x0fff;
+           as_word |= x << 12;
+       }
+
+   }
+
+};
+
+
+// Make a view of the LCD mem as words
+// Remember that that whatever index we go into this pointer will be implicitly *2 because it is words not bytes
+constexpr word * LCDMEMW = (word * ) LCDMEM;
+
+// these arrays hold the pre-computed words that we will write to word in LCD memory that
+// controls the seconds and mins digits on the LCD. We keep these in RAM intentionally for power and latency savings.
+// use fill_lcd_words() to fill these arrays.
+
+#define SECS_PER_MIN 60
+word secs_lcd_words[SECS_PER_MIN];
+
+// Make sure that the 4 nibbles that make up the 2 seconds digits are all in the same word in LCD memory
+// Note that if you move pins around and are not able to satisfy this requirement, you can not use this optimization and will instead need to manually set the various nibbles in LCDMEM individually.
+
+static_assert( lpin_t<logical_digits[SECS_ONES_LOGICAL_DIGIT].lpin_a_thru_d >::lcdmem_offset() >> 1 ==  lpin_t<logical_digits[SECS_ONES_LOGICAL_DIGIT].lpin_e_thru_g>::lcdmem_offset() >> 1  , "The seconds ones digit LPINs must be in the same LCDMEM word");
+static_assert( lpin_t<logical_digits[SECS_TENS_LOGICAL_DIGIT].lpin_a_thru_d >::lcdmem_offset() >> 1 ==  lpin_t<logical_digits[SECS_TENS_LOGICAL_DIGIT].lpin_e_thru_g>::lcdmem_offset() >> 1  , "The seconds tens digit LPINs must be in the same LCDMEM word");
+static_assert( lpin_t<logical_digits[SECS_ONES_LOGICAL_DIGIT].lpin_a_thru_d >::lcdmem_offset() >> 1 ==  lpin_t<logical_digits[SECS_TENS_LOGICAL_DIGIT].lpin_e_thru_g>::lcdmem_offset() >> 1  , "The seconds ones and tens digits LPINs must be in the same LCDMEM word");
+
+// Write a value from the array into this word to update the two digits on the LCD display
+// It does not matter if we pick ones or tens digit or upper or lower nibble because if they are all in the
+// same word. The `>>1` converts the byte pointer into a word pointer.
+
+constexpr word *secs_lcdmem_word = &LCDMEMW[ lpin_t<logical_digits[SECS_ONES_LOGICAL_DIGIT].lpin_a_thru_d>::lcdmem_offset() >> 1 ];
+
+#define MINS_PER_HOUR 60
+word mins_lcd_words[MINS_PER_HOUR];
+
+static_assert( lpin_t<logical_digits[SECS_ONES_LOGICAL_DIGIT].lpin_a_thru_d >::lcdmem_offset() >> 1 ==  lpin_t<logical_digits[SECS_ONES_LOGICAL_DIGIT].lpin_e_thru_g>::lcdmem_offset() >> 1  , "The seconds ones digit LPINs must be in the same LCDMEM word");
+static_assert( lpin_t<logical_digits[SECS_TENS_LOGICAL_DIGIT].lpin_a_thru_d >::lcdmem_offset() >> 1 ==  lpin_t<logical_digits[SECS_TENS_LOGICAL_DIGIT].lpin_e_thru_g>::lcdmem_offset() >> 1  , "The seconds tens digit LPINs must be in the same LCDMEM word");
+static_assert( lpin_t<logical_digits[SECS_ONES_LOGICAL_DIGIT].lpin_a_thru_d >::lcdmem_offset() >> 1 ==  lpin_t<logical_digits[SECS_TENS_LOGICAL_DIGIT].lpin_e_thru_g>::lcdmem_offset() >> 1  , "The seconds ones and tens digits LPINs must be in the same LCDMEM word");
+
+
+// Write a value from the array into this word to update the two digits on the LCD display
+constexpr word *mins_lcdmem_word = &LCDMEMW[ lpin_t<logical_digits[MINS_ONES_LOGICAL_DIGIT].lpin_a_thru_d>::lcdmem_offset() >> 1 ];
+
+
+// Builds a RAM-based table of words where each word is the value you would assign to a single LCD word address to display a given 2-digit number
+// Note that this only works for cases where all 4 of the LPINs for a pair of digits are on consecutive LPINs that use on 2 LCDM addresses.
+// In our case, seconds and minutes meet this constraint (not by accident!) so we can do the *vast* majority of all updates efficiently with just a single instruction word assignment.
+// Note that if the LPINs are not in the right places, then this will fail by having some unlit segments in some numbers.
+
+// Returns the address in LCDMEM that you should assign a words[] to in order to display the indexed 2 digit number
+
+
+void fill_lcd_words( word *words , const byte tens_digit_index , const byte ones_digit_index , const byte max_tens_digit , const byte max_ones_digit ) {
+
+    const logical_digit_t tens_logical_digit = logical_digits[tens_digit_index];
+
+    const logical_digit_t ones_logical_digit = logical_digits[ones_digit_index];
+
+
+    for( byte tens_digit = 0; tens_digit < max_tens_digit ; tens_digit ++ ) {
+
+        // We do not need to initialize this since (if all the nibbles a really in the same word) then each of the nibbles will get assigned below.
+        word_of_bytes_of_nibbles_t word_of_nibbles;
+
+        // The ` & 0x01` here is normalizing the address in the LCDMEM to be just the offset into the word (hi or low byte)
+
+        word_of_nibbles.set_nibble( lpin_lcdmem_offset( tens_logical_digit.lpin_a_thru_d ) & 0x01 , lpin_nibble( tens_logical_digit.lpin_a_thru_d ) , digit_segments[tens_digit].nibble_a_thru_d );
+        word_of_nibbles.set_nibble( lpin_lcdmem_offset( tens_logical_digit.lpin_e_thru_g ) & 0x01 , lpin_nibble( tens_logical_digit.lpin_e_thru_g ) , digit_segments[tens_digit].nibble_e_thru_g );
+
+        for( byte ones_digit = 0; ones_digit < max_ones_digit ; ones_digit ++ ) {
+
+            word_of_nibbles.set_nibble( lpin_lcdmem_offset( ones_logical_digit.lpin_a_thru_d ) & 0x01 , lpin_nibble(ones_logical_digit.lpin_a_thru_d) , digit_segments[ones_digit].nibble_a_thru_d );
+            word_of_nibbles.set_nibble( lpin_lcdmem_offset( ones_logical_digit.lpin_e_thru_g ) & 0x01 , lpin_nibble(ones_logical_digit.lpin_e_thru_g) , digit_segments[ones_digit].nibble_e_thru_g );
+
+            words[ (tens_digit * max_ones_digit) + ones_digit ] = word_of_nibbles.as_word;
+
+        }
+
+
+    }
+
+};
+
+// Fills the arrays
+
+void initLCDPrecomputedWordArrays() {
+
+    // Note that we need different arrays for the minutes and seconds because , while both have all four LCD pins in the same LCDMEM word,
+    // they had to be connected in different orders just due to PCB routing constraints. Of course it would have been great to get them ordered the same
+    // way and save some RAM (or even also get all 4 of the hours pin in the same LCDMEM word) but I think we are just lucky that we could get things router so that
+    // these two updates are optimized since they account for the VAST majority of all time spent in the CPU active mode.
+
+    // Fill the seconds array
+    fill_lcd_words( secs_lcd_words , SECS_TENS_LOGICAL_DIGIT , SECS_ONES_LOGICAL_DIGIT , 6 , 10 );
+    // Fill the minutes array
+    fill_lcd_words( mins_lcd_words , MINS_TENS_LOGICAL_DIGIT , MINS_ONES_LOGICAL_DIGIT , 6 , 10 );
+
+}
 
 
 // Show the digit x at position p
@@ -417,9 +550,9 @@ inline void initGPIO() {
 
     // --- Debug pins
 
-    // DEBUGA as output
-    // SBI( DEBUGA_PDIR , DEBUGA_B );
-    // SBI( DEBUGB_PDIR , DEBUGB_B );
+    // Debug pins as output
+    SBI( DEBUGA_PDIR , DEBUGA_B );
+    SBI( DEBUGB_PDIR , DEBUGB_B );
 
     // --- RV3032
 
@@ -461,7 +594,7 @@ inline void initGPIO() {
     // if they leave the trigger out, or from unnecessary ISR calls if they put the trigger in and pull it out again (or if it breaks and bounces).
 
 
-    // Configure LCD pins
+    // Disable IO on the LCD power pins
     SYSCFG2 |= LCDPCTL;
 
     // Disable the GPIO power-on default high-impedance mode
@@ -589,15 +722,6 @@ static uint8_t daysInMonth( uint8_t m , uint8_t y) {
 
     switch ( m ) {
 
-        case  1:
-        case  3:
-        case  5:
-        case  7:
-        case  8:
-        case 10:
-        case 12:    // Interestingly, we will never hit 12. See why?
-                    return 31 ;
-
         case  4:
         case  6:
         case  9:
@@ -616,6 +740,18 @@ static uint8_t daysInMonth( uint8_t m , uint8_t y) {
 
                         return 28;              // February in normal year 01, 02, 03 ... 28, 01, 02
                     }
+/*
+        case  1:
+        case  3:
+        case  5:
+        case  7:
+        case  8:
+        case 10:
+        case 12:    // Interestingly, we will never hit 12. See why?
+
+*/
+        default:
+                    return 31 ;
 
     }
 
@@ -623,15 +759,11 @@ static uint8_t daysInMonth( uint8_t m , uint8_t y) {
 
 }
 
-static const unsigned long days_per_century = ( 100UL * 365 ) + 25;       // 25 leap years in every RX8900 century
+static const unsigned long days_per_century = ( 100UL * 365 ) + 25;       // 25 leap years in every century (RV3032 never counts a leap year on century boundaries)
 
-// Convert the y/m/d values from the RX8900 to a count of the number of days since 00/1/1
-// rx8900_date_to_days( 0 , 1, 1 ) = 0
-// rx8900_date_to_days( 0 , 1, 31) = 30
-// rx8900_date_to_days( 0 , 2, 1 ) = 31
-// rx8900_date_to_days( 1 , 1, 1 ) = 366 (00 is a leap year!)
+// Convert the y/m/d values to a count of the number of days since 00/1/1
 
-static unsigned long  date_to_days( uint8_t c , uint8_t y , uint8_t m, uint8_t d ) {
+static unsigned long date_to_days( uint8_t c , uint8_t y , uint8_t m, uint8_t d ) {
 
     uint32_t dayCount=0;
 
@@ -672,6 +804,7 @@ static unsigned long  date_to_days( uint8_t c , uint8_t y , uint8_t m, uint8_t d
 
 }
 
+// RV3032 uses BCD numbers :/
 
 uint8_t bcd2c( uint8_t bcd ) {
 
@@ -702,11 +835,12 @@ uint8_t c2bcd( uint8_t c ) {
 // TODO: Make a function to set the RTC and check if they have been set.
 // TODO: Break out a function to close the RTC when we are done interacting with it.
 
+// Time Since Launch time
 
-uint8_t secs=0;        // Start a 1 seconds on first update after launch
+uint8_t secs=0;
 uint8_t mins=0;
 uint8_t hours=0;
-uint32_t days=0;       // needs to be able to hold up to 1,000,000. I wish we had a 24 bit type here.
+uint32_t days=0;       // needs to be able to hold up to 1,000,000. I wish we had a 24 bit type here. MSPX has 20 bit addresses, but not available on our chip.
 
 // Returns  0=above time variables have been set to those held in the RTC
 //         !0=either RTC has been reset or trigger never pulled.
@@ -1002,12 +1136,20 @@ __interrupt void rtc_isr(void) {
 
         if (!step) {
 
+            // 48us
+            *mins_lcdmem_word = mins_lcd_words[  secs ];
+
+            // 31us
+
             step=1;
 
             //#warning this is just to visualize the half ticks
             //lcd_show_f( 11 , left_tick_segments );
 
         } else {
+
+            // 502us
+            // 170us
 
             //#warning this is just to visualize the half ticks
             //lcd_show_f( 11 , right_tick_segments );
@@ -1073,15 +1215,13 @@ __interrupt void rtc_isr(void) {
 
             }
 
-
             lcd_show_f( 0 , digit_segments[ secs % 10 ] );
             lcd_show_f( 1 , digit_segments[ secs / 10 ] );
-
 
         }
 
 
-    } else if ( mode==READY_TO_LAUNCH ) {
+    } else if ( __builtin_expect( mode==READY_TO_LAUNCH , 1 ) ) {       // We will be in this mode for a very long time, so be most power efficient here.
 
         // We depend on the trigger ISR to move use from ready-to-launch to time-since-launch
 
@@ -1226,6 +1366,9 @@ __interrupt void rtc_isr(void) {
 
 }
 
+// TODO: Try moving ISR and vector table into RAM to save 10us on wake and some amount of power for FRAM controller
+//       FRAM controller automatically turned off when entering LMP3 and automatically turned back on at first FRAM access.
+
 // Called when trigger pin changes high to low, indicating the trigger has been pulled and we should start ticking.
 // Note that this interrupt is only enabled when we enter ready-to-launch mode, and then it is disabled and also the pin in driven low
 // when we then switch to time-since-lanuch mode, so this ISR can only get called in ready-to-lanuch mode.
@@ -1312,6 +1455,35 @@ __interrupt void trigger_isr(void) {
 
 }
 
+// The ISR we will put into the RAM-based vector table once we switch to TSL mode.
+// Once we enter TSL mode, we never leave and we never see any other interrupt besides RTC
+// so this is a no brainer. Running from RAM should be slightly lower power because (1) RAM
+// access is slightly lower power than FRAM and, (2) if we never touch FRAM after waking from LMP3
+// then the FRAM controller will stay disabled.
+
+/*
+    Save-on-entry registers. Registers R4-R10. It is the called function's responsibility to preserve the values
+    in these registers. If the called function modifies these registers, it saves them when it gains control and
+    preserves them when it returns control to the calling function.
+
+    We will use these regs to efficiently hold the timer values, knowing that we can call into a C function if we
+    need to (like to update hours and days) and it will not trash them.
+
+    The caller places the first arguments in registers R12-R15, in that order. The caller moves the remaining
+    arguments to the argument block in reverse order, placing the leftmost remaining argument at the lowest
+    address. Thus, the leftmost remaining argument is placed at the top of the stack. An argument with a type
+    larger than 16 bits that would start in a save-on-call register may be split between R15 and the stack.
+
+    Functions defined in C++ that must be called in asm must be defined extern "C", and functions defined in
+    asm that must be called in C++ must be prototyped extern "C" in the C++ file.
+
+ */
+
+__attribute__((ramfunc))
+__interrupt void tsl_isr(void) {
+
+}
+
 int main( void )
 {
     WDTCTL = WDTPW | WDTHOLD | WDTSSEL__VLO;   // Give WD password, Stop watchdog timer, set WD source to VLO
@@ -1323,7 +1495,9 @@ int main( void )
 
     initLCD();
 
-    // Power up display -just so we are not showing garbage
+    initLCDPrecomputedWordArrays();
+
+    // Power up display with a test pattern so we are not showing garbage
 
     lcd_show_f( 0, digit_segments[0] );
     lcd_show_f( 1, digit_segments[1] );
@@ -1366,10 +1540,9 @@ int main( void )
 
         CBI( TRIGGER_PIFG , TRIGGER_B );      // Clear any pending interrupt from us driving it low (it could have gone high again since we sampled it)
 
-
-
         // Show the time on the display
         // Note that the time was loaded from the RTC when we initialized it.
+        // We only do this ONCE so no need for efficiency.
 
         lcd_show_f(  6 , digit_segments[ (days / 1      ) % 10 ] );
         lcd_show_f(  7 , digit_segments[ (days / 10     ) % 10 ] );
@@ -1411,9 +1584,21 @@ int main( void )
     PMMCTL0_L &= ~(SVSHE);              // Disable high-side SVS
     // LPM4 SVS=OFF
 
+    __bis_SR_register(LPM4_bits | GIE );                 // Enter LPM4
 
-    __bis_SR_register(LPM4_bits | GIE);                 // Enter LPM4
     __no_operation();                                   // For debugger
+
+
+
+
+    int step=0;
+    while (1) {
+
+        lcd_show_f(  6 , digit_segments[ step++ % 10 ] );
+        __bis_SR_register(LPM4_bits  );                 // Enter LPM4
+
+    }
+
 
     // We should never get here
 
