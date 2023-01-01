@@ -873,7 +873,7 @@ uint8_t initRV3032() {
     // First control reg. Note that turning off backup switch-over seems to save ~0.1uA
     //uint8_t pmu_reg = 0b01000001;         // CLKOUT off, backup switchover disabled, no charge pump, 1K OHM trickle resistor, trickle charge Vbackup to Vdd.
     uint8_t pmu_reg = 0b01010001;          // CLKOUT off, Direct backup switching mode, no charge pump, 1K OHM trickle resistor, trickle charge Vbackup to Vdd. Only predicted to use 50nA more than disabled.
-    //uint8_t pmu_reg = 0b01100001;         // CLKOUT off, Level backup switching mode (2v) , no charge pump, 1K OHM trickle resistor, trickle charge Vbackup to Vdd
+    //uint8_t pmu_reg = 0b01100001;         // CLKOUT off, Level backup switching mode (2v) , no charge pump, 1K OHM trickle resistor, trickle charge Vbackup to Vdd. Predicted to use ~200nA more than disabled because of voltage monitor.
 
     //uint8_t pmu_reg = 0b01110001;         // CLKOUT off, Other disabled backup switching mode  , no charge pump, 1K OHM trickle resistor, trickle charge Vbackup to Vdd
 
@@ -1119,6 +1119,41 @@ uint8_t step;          // START             - Used to keep the position of the d
                             // TODO: Make a 24 bit type.
 
 
+// This ISR is only called when we are in Time Since Launch count up mode
+// It just keeps counting up on the screen as efficiently as possible
+// until it hits 1,000,000 days, at which time it switches to Long Now mode
+// which is permanent.
+
+// TODO: Move to RAM, Move vector table to RAM, write in ASM with autoincrtement register for lcdmem_word pointer, maybe only clean stack once every 60 cycles
+// TODO: increment hour + date probably stays in C called from ASM. Maybe pass the hours and days in the call registers so they naturally are maintained across calls?
+
+__attribute__((ramfunc))  // This does not seem to do anything?
+__interrupt void rtc_isr_time_since_launch_mode() {
+
+    SBI( DEBUGA_POUT , DEBUGA_B );      // See latency to start ISR and how long it runs
+
+    secs++;
+
+     if (secs == 60) {
+
+         secs=0;
+
+     }
+
+    *secs_lcdmem_word = secs_lcd_words[  secs ];
+
+    CBI( RV3032_INT_PIFG , RV3032_INT_B );      // Clear the pending RV3032 INT interrupt flag that got us into this ISR.
+
+    CBI( DEBUGA_POUT , DEBUGA_B );
+}
+
+// Copies interrupt vector table to RAM and then sets the RTC vector to point to the Time Since Launch mode ISR
+
+void beginTimeSinceLaunchMode() {
+
+}
+
+
 // Called when RV3032 ~INT pin is pulled low by the RV3032 periodic timer (2Hz)
 
 #pragma vector = RV3032_INT_VECTOR
@@ -1132,15 +1167,12 @@ __interrupt void rtc_isr(void) {
 
     SBI( DEBUGA_POUT , DEBUGA_B );      // See latency to start ISR and how long it runs
 
-    if (mode == TIME_SINCE_LAUNCH) {            // This is where we will spend most of out live, so optimize for this case
+    if (  __builtin_expect( mode == TIME_SINCE_LAUNCH , 1 ) ) {            // This is where we will spend most of out live, so optimize for this case
 
         if (!step) {
 
-            // 48us
-            *mins_lcdmem_word = mins_lcd_words[  secs ];
 
             // 31us
-
             step=1;
 
             //#warning this is just to visualize the half ticks
@@ -1215,13 +1247,12 @@ __interrupt void rtc_isr(void) {
 
             }
 
-            lcd_show_f( 0 , digit_segments[ secs % 10 ] );
-            lcd_show_f( 1 , digit_segments[ secs / 10 ] );
+            *secs_lcdmem_word = secs_lcd_words[  secs ];
 
         }
 
 
-    } else if ( __builtin_expect( mode==READY_TO_LAUNCH , 1 ) ) {       // We will be in this mode for a very long time, so be most power efficient here.
+    } else if ( mode==READY_TO_LAUNCH  ) {       // We will be in this mode potentially for a very long time, so also be power efficient here.
 
         // We depend on the trigger ISR to move use from ready-to-launch to time-since-launch
 
