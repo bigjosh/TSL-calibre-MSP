@@ -872,12 +872,21 @@ uint8_t initRV3032() {
 
     // First control reg. Note that turning off backup switch-over seems to save ~0.1uA
     //uint8_t pmu_reg = 0b01000001;         // CLKOUT off, backup switchover disabled, no charge pump, 1K OHM trickle resistor, trickle charge Vbackup to Vdd.
-    uint8_t pmu_reg = 0b01010001;          // CLKOUT off, Direct backup switching mode, no charge pump, 1K OHM trickle resistor, trickle charge Vbackup to Vdd. Only predicted to use 50nA more than disabled.
+
+#warning
+//    uint8_t pmu_reg = 0b01010000;          // CLKOUT off, Direct backup switching mode, no charge pump, 0.6K OHM trickle resistor, trickle charge Vbackup to Vdd. Only predicted to use 50nA more than disabled.
+    uint8_t pmu_reg = 0b00010000;          // CLKOUT ON, Direct backup switching mode, no charge pump, 0.6K OHM trickle resistor, trickle charge Vbackup to Vdd. Only predicted to use 50nA more than disabled.
+
     //uint8_t pmu_reg = 0b01100001;         // CLKOUT off, Level backup switching mode (2v) , no charge pump, 1K OHM trickle resistor, trickle charge Vbackup to Vdd. Predicted to use ~200nA more than disabled because of voltage monitor.
 
-    //uint8_t pmu_reg = 0b01110001;         // CLKOUT off, Other disabled backup switching mode  , no charge pump, 1K OHM trickle resistor, trickle charge Vbackup to Vdd
+    //uint8_t pmu_reg = 0b01000000;         // CLKOUT off, Other disabled backup switching mode, no charge pump, trickle resistor off, trickle charge Vbackup to Vdd
 
+#warning
     i2c_write( RV_3032_I2C_ADDR , 0xc0 , &pmu_reg , 1 );
+
+#warning
+    uint8_t clkout2_reg = 0b01100000;        // XTAL low freq mode, freq=1Hz
+    i2c_write( RV_3032_I2C_ADDR , 0xc3 , &clkout2_reg , 1 );
 
 
     // Now that CLKOUT is disabled on the RV3032, it is supposed to be driven low by that chip, but seems to float sometimes
@@ -906,8 +915,14 @@ uint8_t initRV3032() {
     uint8_t control2_reg = 0b00010000;
     i2c_write( RV_3032_I2C_ADDR , 0x11 , &control2_reg , 1 );
 
-    // set TD to 00 for 4068Hz timer, TE=1 to enable periodic countdown timer, EERD=1 to disable automatic EEPROM refresh (why would you want that?). Bit 5 not used but must be set to 1.
-    uint8_t control1_reg = 0b00011100;
+
+#warning
+    //uint8_t control1_reg = 0b00011100;    // set TD to 00 for 4068Hz timer, TE=1 to enable periodic count-down timer, EERD=1 to disable automatic EEPROM refresh (why would you want that?).
+    //uint8_t control1_reg = 0b00011101;    // set TD to 01 for 64Hz timer, TE=1 to enable periodic count-down timer, EERD=1 to disable automatic EEPROM refresh (why would you want that?).
+    //uint8_t control1_reg = 0b00011110;    // set TD to 01 for 1Hz timer, TE=1 to enable periodic count-down timer, EERD=1 to disable automatic EEPROM refresh (why would you want that?).
+
+    uint8_t control1_reg = 0b00000100;      // TE=0 so no periodic timer interrupt, EERD=1 to disable automatic EEPROM refresh (why would you want that?).
+
     i2c_write( RV_3032_I2C_ADDR , 0x10 , &control1_reg , 1 );
 
     // OK, we will now get a 122uS low pulse on INT every 500ms.
@@ -1166,6 +1181,23 @@ __interrupt void rtc_isr(void) {
     // TODO: Disable pull-up while in ISR?
 
     SBI( DEBUGA_POUT , DEBUGA_B );      // See latency to start ISR and how long it runs
+
+#warning
+    if (1) {
+
+        if (secs==0) {
+            secs=1;
+        } else {
+            secs=0;
+        }
+
+        *secs_lcdmem_word = secs_lcd_words[  secs ];
+
+        CBI( RV3032_INT_PIFG , RV3032_INT_B );      // Clear the pending RV3032 INT interrupt flag that got us into this ISR.
+        SBI( DEBUGA_POUT , DEBUGA_B );      // See latency to start ISR and how long it runs
+        return;
+    }
+
 
     if (  __builtin_expect( mode == TIME_SINCE_LAUNCH , 1 ) ) {            // This is where we will spend most of out live, so optimize for this case
 
