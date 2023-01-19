@@ -17,3 +17,12 @@ Use the solder reflow profile for RTC clock part U2, included in this directory.
 5.
 Parts U1, U2, L1, & L2 are orienation sensitive. See photos in this directory for proper
 rotation.
+
+6.
+PCB Parameters
+Layer:2 Layers
+Material:FR-4
+Thickness:1.6 mm
+Solder Mask:Matt black
+Silkscreen:White
+Surface Finish:Immersion gold(ENIG) (1U")

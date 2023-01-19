@@ -95,22 +95,22 @@
 
 // Debug out A on pin P1.7 which is pin number 21 on MSP430
 
-#define DEBUGA_PREN P1REN
-#define DEBUGA_PDIR P1DIR
-#define DEBUGA_POUT P1OUT
-#define DEBUGA_PIN  P1IN
+#define DEBUGA_PREN P8REN
+#define DEBUGA_PDIR P8DIR
+#define DEBUGA_POUT P8OUT
+#define DEBUGA_PIN  P8IN
 
-#define DEBUGA_B (7)
+#define DEBUGA_B (2)
 
 
 // Debug out B on pin P8.3 which is pin number 19 on MSP430
 
-#define DEBUGB_PREN P11REN
-#define DEBUGB_PDIR P1DIR
-#define DEBUGB_POUT P1OUT
-#define DEBUGB_PIN  P1IN
+#define DEBUGB_PREN P8REN
+#define DEBUGB_PDIR P8DIR
+#define DEBUGB_POUT P8OUT
+#define DEBUGB_PIN  P8IN
 
-#define DEBUGB_B (6)
+#define DEBUGB_B (3)
 
 
 // Q1 Top flash LED
