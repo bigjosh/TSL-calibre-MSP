@@ -556,7 +556,7 @@ inline void initGPIO() {
 
     // --- RV3032
 
-    CBI( RV3032_CLKOUT_PDIR,RV3032_CLKOUT_B);      // Make the pin connected to RV3032 CLKOUT be input since the RV3032 will power up with CLKOUT running. We will pull it low after RV3032 initialized to disable CLKOUT.
+    CBI( RV3032_CLKOUT_PDIR , RV3032_CLKOUT_B);      // Make the pin connected to RV3032 CLKOUT be input since the RV3032 will power up with CLKOUT running. We will pull it low after RV3032 initialized to disable CLKOUT.
 
     // ~INT in from RV3032 as INPUT with PULLUP
 
@@ -565,6 +565,7 @@ inline void initGPIO() {
     SBI( RV3032_INT_PREN , RV3032_INT_B ); // Pull resistor enable
 
     // Note that we can leave the RV3032 EVI pin as is - tied LOW on the PCB so it does not float (we do not use it)
+    // It is hard tied low so that it does not float during battery changes when the MCU will not be running
 
     // Power to RV3032
 
@@ -574,10 +575,11 @@ inline void initGPIO() {
     SBI( RV3032_VCC_PDIR , RV3032_VCC_B);
     SBI( RV3032_VCC_POUT , RV3032_VCC_B);
 
-    // Now we need to setup interrupt on INT pin to wake us when it goes low
+    // Now we need to setup interrupt on RTC CLKOUT pin to wake us on each rising edge (1Hz)
 
-    SBI( RV3032_INT_PIES , RV3032_INT_B );          // Interrupt on high-to-low edge (the pin is pulled up by MSP430 and then RV3032 driven low with open collector by RV3032)
-    SBI( RV3032_INT_PIE  , RV3032_INT_B );          // Enable interrupt on the INT pin high to low edge. Calls rtc_isr()
+    CBI( RV3032_CLKOUT_PDIR , RV3032_CLKOUT_B );      // Set input
+    SBI( RV3032_CLKOUT_PIE  , RV3032_CLKOUT_B );      // Interrupt on high-to-low edge (Driven by RV3032 CLKOUT pin which we program to run at 1Hz)
+    CBI( RV3032_CLKOUT_PIES , RV3032_CLKOUT_B );      // Enable interrupt on the CLKOUT pin. Calls rtc_isr()
 
     // --- Trigger
 
@@ -889,12 +891,6 @@ uint8_t initRV3032() {
     i2c_write( RV_3032_I2C_ADDR , 0xc3 , &clkout2_reg , 1 );
 
 
-    // Now that CLKOUT is disabled on the RV3032, it is supposed to be driven low by that chip, but seems to float sometimes
-    // so lets pull it low on the MSP430 to prevent float leakage.
-    CBI( RV3032_CLKOUT_POUT , RV3032_CLKOUT_B );
-    SBI( RV3032_CLKOUT_PREN , RV3032_CLKOUT_B );
-
-
     // Periodic Timer value = 2048 for 500ms
     // It would be nice if we could set it to 1s, but then the pulse is like 7ms wide and that would waste too much
     // power against the pull-up that whole time. We could disable the pull-up on each INT, but then we'd need to wake again
@@ -1102,6 +1098,7 @@ void zeroRV3032() {
 // "The Periodic Countdown Timer starts from the preset Timer Value in the registers 0Bh and 0Ch when
 //  writing 1 to the TE bit. The countdown is based on the Timer Clock Frequency selected in the TD field."
 
+#warning switch this to restart clkout
 void restart_rv3032_periodic_timer() {
 
     // Initialize our i2c pins as pull-up
@@ -1157,7 +1154,7 @@ __interrupt void rtc_isr_time_since_launch_mode() {
 
     *secs_lcdmem_word = secs_lcd_words[  secs ];
 
-    CBI( RV3032_INT_PIFG , RV3032_INT_B );      // Clear the pending RV3032 INT interrupt flag that got us into this ISR.
+    CBI( RV3032_CLKOUT_PIFG , RV3032_CLKOUT_B );      // Clear the pending RV3032 INT interrupt flag that got us into this ISR.
 
     CBI( DEBUGA_POUT , DEBUGA_B );
 }
@@ -1169,10 +1166,9 @@ void beginTimeSinceLaunchMode() {
 }
 
 
-// Called when RV3032 ~INT pin is pulled low by the RV3032 periodic timer (2Hz)
+// Called on RV3032 CLKOUT pin rising edge (1Hz)
 
-#pragma vector = RV3032_INT_VECTOR
-
+#pragma vector = RV3032_CLKOUT_VECTOR
 __interrupt void rtc_isr(void) {
 
     // Wake time measured at 48us
@@ -1193,13 +1189,13 @@ __interrupt void rtc_isr(void) {
 
         *secs_lcdmem_word = secs_lcd_words[  secs ];
 
-        CBI( RV3032_INT_PIFG , RV3032_INT_B );      // Clear the pending RV3032 INT interrupt flag that got us into this ISR.
-        SBI( DEBUGA_POUT , DEBUGA_B );      // See latency to start ISR and how long it runs
+        CBI( RV3032_CLKOUT_PIFG , RV3032_CLKOUT_B );      // Clear the pending RV3032 INT interrupt flag that got us into this ISR.
+        CBI( DEBUGA_POUT , DEBUGA_B );      // See latency to start ISR and how long it runs
         return;
     }
 
 
-    if (  __builtin_expect( mode == TIME_SINCE_LAUNCH , 1 ) ) {            // This is where we will spend most of out live, so optimize for this case
+    if (  __builtin_expect( mode == TIME_SINCE_LAUNCH , 1 ) ) {            // This is where we will spend most of out life, so optimize for this case
 
         if (!step) {
 
@@ -1423,7 +1419,7 @@ __interrupt void rtc_isr(void) {
     }
 
 
-    CBI( RV3032_INT_PIFG , RV3032_INT_B );      // Clear the pending RV3032 INT interrupt flag that got us into this ISR.
+    CBI( RV3032_CLKOUT_PIFG , RV3032_CLKOUT_B );      // Clear the pending RV3032 INT interrupt flag that got us into this ISR.
 
     CBI( DEBUGA_POUT , DEBUGA_B );
 
@@ -1633,7 +1629,7 @@ int main( void )
     // Clear any pending interrupts from the RV3032 INT pin
     // We just started the timer so we should not get a real one for 500ms
 
-    CBI( RV3032_INT_PIFG     , RV3032_INT_B    );
+    CBI( RV3032_CLKOUT_PIFG     , RV3032_CLKOUT_B    );
 
 
     // Go into start mode which will wait for the trigger to be inserted.

@@ -10,7 +10,7 @@
 #ifndef PINS_H_
 #define PINS_H_
 
-// Clock in comes from the RV3203 INT pin which is open collector on RV3032 side
+// Connected to the RV3203 INT pin which is open collector on RV3032 side
 
 #define RV3032_INT_PREN   P1REN
 #define RV3032_INT_PDIR   P1DIR
@@ -20,10 +20,23 @@
 #define RV3032_INT_PIV    P1IV          // Interrupt vector (read this to get which pin caused interrupt, reading clears highest pending)
 #define RV3032_INT_PIFG   P1IFG         // Interrupt flag (bit 1 for each pin that interrupted)
 #define RV3032_INT_PIES   P1IES         // Interrupt Edge Select (0=low-to-high 1=high-to-low)
-#define RV3032_INT_VECTOR PORT1_VECTOR  // ISR vector
-
 
 #define RV3032_INT_B (4)       // Bit
+
+
+// Connected to the RV3203 CLKOUT pin
+
+#define RV3032_CLKOUT_PREN   P1REN
+#define RV3032_CLKOUT_PDIR   P1DIR
+#define RV3032_CLKOUT_POUT   P1OUT
+#define RV3032_CLKOUT_PIN    P1IN
+#define RV3032_CLKOUT_PIE    P1IE          // Interrupt enable
+#define RV3032_CLKOUT_PIV    P1IV          // Interrupt vector (read this to get which pin caused interrupt, reading clears highest pending)
+#define RV3032_CLKOUT_PIFG   P1IFG         // Interrupt flag (bit 1 for each pin that interrupted)
+#define RV3032_CLKOUT_PIES   P1IES         // Interrupt Edge Select (0=low-to-high 1=high-to-low)
+#define RV3032_CLKOUT_VECTOR PORT1_VECTOR  // ISR vector
+
+#define RV3032_CLKOUT_B (1)       // Bit
 
 // I2C data connection to RV3032 on pin P1.5 which is pin number 23 on MSP430
 
