@@ -1178,8 +1178,7 @@ __interrupt void rtc_isr(void) {
 
     SBI( DEBUGA_POUT , DEBUGA_B );      // See latency to start ISR and how long it runs
 
-#warning
-    if (1) {
+    if (0) {
 
         if (secs==0) {
             secs=1;
@@ -1286,26 +1285,20 @@ __interrupt void rtc_isr(void) {
 
         uint8_t current_squiggle_step = step;
 
+        static_assert( SQUIGGLE_SEGMENTS_SIZE == 8 , "SQUIGGLE_SEGMENTS_SIZE should be exactly 8 so we can use a logical AND to keep it in bounds for efficiency");            // So we can use fast AND 0x07
+
         for( uint8_t i=0 ; i<LOGICAL_DIGITS_SIZE; i++ ) {
 
-            lcd_show_f( i , squiggle_segments[ current_squiggle_step ]);
-
-            if ( current_squiggle_step == 0 ) {
-                current_squiggle_step = SQUIGGLE_SEGMENTS_SIZE-1;
+            if ( i & 0x01 ) {
+                lcd_show_f( i , squiggle_segments[ (SQUIGGLE_SEGMENTS_SIZE -  current_squiggle_step) & 0x07 ]);
             } else {
-                current_squiggle_step--;
+                lcd_show_f( i , squiggle_segments[ current_squiggle_step ]);
             }
 
         }
 
-
-        if ( step  == 0 ) {
-
-            step = SQUIGGLE_SEGMENTS_SIZE-1;
-
-        } else {
-            step--;
-        }
+        step++;
+        step &=0x07;
 
 
     } else if ( mode==ARMING ) {
