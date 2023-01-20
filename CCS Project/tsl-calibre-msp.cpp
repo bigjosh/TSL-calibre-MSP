@@ -228,7 +228,8 @@ struct word_of_bytes_of_nibbles_t {
 
 // Make a view of the LCD mem as words
 // Remember that that whatever index we go into this pointer will be implicitly *2 because it is words not bytes
-constexpr word * LCDMEMW = (word * ) LCDMEM;
+constexpr word * LCDMEMW = (word *) (LCDMEM);
+constexpr byte LCDMEM_WORD_COUNT=16;             // Total number of words in LCD mem. Note that we do not actually use them all, but our display is spread across it.
 
 // these arrays hold the pre-computed words that we will write to word in LCD memory that
 // controls the seconds and mins digits on the LCD. We keep these in RAM intentionally for power and latency savings.
@@ -261,14 +262,12 @@ static_assert( lpin_t<logical_digits[SECS_ONES_LOGICAL_DIGIT].lpin_a_thru_d >::l
 // Write a value from the array into this word to update the two digits on the LCD display
 constexpr word *mins_lcdmem_word = &LCDMEMW[ lpin_t<logical_digits[MINS_ONES_LOGICAL_DIGIT].lpin_a_thru_d>::lcdmem_offset() >> 1 ];
 
-
 // Builds a RAM-based table of words where each word is the value you would assign to a single LCD word address to display a given 2-digit number
 // Note that this only works for cases where all 4 of the LPINs for a pair of digits are on consecutive LPINs that use on 2 LCDM addresses.
 // In our case, seconds and minutes meet this constraint (not by accident!) so we can do the *vast* majority of all updates efficiently with just a single instruction word assignment.
 // Note that if the LPINs are not in the right places, then this will fail by having some unlit segments in some numbers.
 
 // Returns the address in LCDMEM that you should assign a words[] to in order to display the indexed 2 digit number
-
 
 void fill_lcd_words( word *words , const byte tens_digit_index , const byte ones_digit_index , const byte max_tens_digit , const byte max_ones_digit ) {
 
@@ -301,6 +300,59 @@ void fill_lcd_words( word *words , const byte tens_digit_index , const byte ones
 
 };
 
+// Define a full LCD frame so we can put it into LCD memory in one shot.
+// Note that a frame includes all of LCD memory even though only some of the nibbles are actually displayed
+// It is faster to copy a sequence of words than try to only set the nibbles that have changed.
+
+union lcd_frame_t {
+    word as_words[LCDMEM_WORD_COUNT];
+    byte as_bytes[LCDMEM_WORD_COUNT*2];
+};
+
+const byte READY_TO_LAUNCH_LCD_FRAME_COUNT = 8;                             // How many frames in the ready-to-launch mode animation
+lcd_frame_t ready_to_launch_lcd_frames[READY_TO_LAUNCH_LCD_FRAME_COUNT];     // Precomputed ready-to-launch animation frames ready to copy directly to LCD memory
+
+void fill_ready_to_lanch_lcd_frames() {
+
+    // Generate each frame in the animation
+
+    for( byte frame =0; frame < READY_TO_LAUNCH_LCD_FRAME_COUNT ; frame++ ) {
+
+        lcd_frame_t * const lcd_frame = &ready_to_launch_lcd_frames[frame];
+
+        // Alternating digits on the display go in alternating directions
+        const glyph_segment_t even_digit_segments = squiggle_segments[ frame ];
+        const glyph_segment_t odd_digit_segments = squiggle_segments[ (SQUIGGLE_SEGMENTS_SIZE - frame) % (SQUIGGLE_SEGMENTS_SIZE-1) ];
+
+        // Assign the lit up segments for each digit place in the current frame
+
+        for( byte digit = 0; digit <  LOGICAL_DIGITS_SIZE ; digit++ ) {
+
+            // Tells us the lpins for this digitplace
+            const logical_digit_t logical_digit = logical_digits[digit];
+
+            const glyph_segment_t digit_segments = (digit & 0x01) ? odd_digit_segments : even_digit_segments;
+
+            // Since we are filling the whole frame in batch, we don't care where the nibbles end up since we know we will eventually assign them all.
+
+            // Set the a_thru_d nibble
+            set_nibble( &(lcd_frame->as_bytes[ lpin_lcdmem_offset( logical_digit.lpin_a_thru_d) ]) , lpin_nibble( logical_digit.lpin_a_thru_d ) , digit_segments.nibble_a_thru_d  );
+
+            // Set the e_thru_g nibble
+            set_nibble( &(lcd_frame->as_bytes[ lpin_lcdmem_offset( logical_digit.lpin_e_thru_g) ]) , lpin_nibble( logical_digit.lpin_e_thru_g ) , digit_segments.nibble_e_thru_g  );
+
+
+        }
+/*
+        ready_to_launch_lcd_frames[frame].as_words[frame]=0xffff;
+        ready_to_launch_lcd_frames[frame].as_words[frame+8]=0xffff;
+*/
+    }
+
+
+
+}
+
 // Fills the arrays
 
 void initLCDPrecomputedWordArrays() {
@@ -314,7 +366,8 @@ void initLCDPrecomputedWordArrays() {
     fill_lcd_words( secs_lcd_words , SECS_TENS_LOGICAL_DIGIT , SECS_ONES_LOGICAL_DIGIT , 6 , 10 );
     // Fill the minutes array
     fill_lcd_words( mins_lcd_words , MINS_TENS_LOGICAL_DIGIT , MINS_ONES_LOGICAL_DIGIT , 6 , 10 );
-
+    // Fill the array of frames for ready-to-launch-mode animation
+    fill_ready_to_lanch_lcd_frames();
 }
 
 
@@ -578,7 +631,7 @@ inline void initGPIO() {
     // Now we need to setup interrupt on RTC CLKOUT pin to wake us on each rising edge (1Hz)
 
     CBI( RV3032_CLKOUT_PDIR , RV3032_CLKOUT_B );      // Set input
-    SBI( RV3032_CLKOUT_PIE  , RV3032_CLKOUT_B );      // Interrupt on high-to-low edge (Driven by RV3032 CLKOUT pin which we program to run at 1Hz)
+    SBI( RV3032_CLKOUT_PIE  , RV3032_CLKOUT_B );      // Interrupt on high-to-low edge (Driven by RV3032 CLKOUT pin which we program to run at 1Hz). Falling edge so we wait a full second until first tick (signal starts LOW).
     CBI( RV3032_CLKOUT_PIES , RV3032_CLKOUT_B );      // Enable interrupt on the CLKOUT pin. Calls rtc_isr()
 
     // --- Trigger
@@ -1075,7 +1128,7 @@ void zeroRV3032() {
     uint8_t zero_byte =0x00;
     uint8_t one_byte =0x01;      // We need this because month and day start at 0
 
-    i2c_write( RV_3032_I2C_ADDR , RV3032_HUNDS_REG , &zero_byte , 1 );
+    // No need to write to hundreths reg, it is cleared automatically when we write to seconds
     i2c_write( RV_3032_I2C_ADDR , RV3032_SECS_REG  , &zero_byte , 1 );
     i2c_write( RV_3032_I2C_ADDR , RV3032_MINS_REG  , &zero_byte , 1 );
     i2c_write( RV_3032_I2C_ADDR , RV3032_HOURS_REG , &zero_byte , 1 );
@@ -1094,21 +1147,20 @@ void zeroRV3032() {
 }
 
 
-// Sets the TE bit in the control1 register which...
-// "The Periodic Countdown Timer starts from the preset Timer Value in the registers 0Bh and 0Ch when
-//  writing 1 to the TE bit. The countdown is based on the Timer Clock Frequency selected in the TD field."
+// called when trigger is pulled
+// 1. Reads current time from RTC
+// 2. Records current time to local FRAM memory
+// 3. Resets RTC to zero starting state.
 
-#warning switch this to restart clkout
-void restart_rv3032_periodic_timer() {
+void launch() {
 
     // Initialize our i2c pins as pull-up
     i2c_init();
 
-    // set TD to 00 for 4068Hz timer, TE=1 to enable periodic countdown timer, EERD=1 to disable automatic EEPROM refresh (why would you want that?). Bit 5 not used but must be set to 1.
-    uint8_t control1_reg = 0b00011100;
-    i2c_write( RV_3032_I2C_ADDR , 0x10 , &control1_reg , 1 );
+    uint8_t zero_byte =0x00;
 
-    // OK, we will now get a 122uS low pulse on INT after 500m, and every 500ms thereafter
+    // No need to write to hundreths reg, it is cleared automatically when we write to seconds
+    i2c_write( RV_3032_I2C_ADDR , RV3032_SECS_REG  , &zero_byte , 1 );
 
     i2c_shutdown();
 
@@ -1196,92 +1248,78 @@ __interrupt void rtc_isr(void) {
 
     if (  __builtin_expect( mode == TIME_SINCE_LAUNCH , 1 ) ) {            // This is where we will spend most of out life, so optimize for this case
 
-        if (!step) {
+        // 502us
+        // 170us
 
+        //#warning this is just to visualize the half ticks
+        //lcd_show_f( 11 , right_tick_segments );
 
-            // 31us
-            step=1;
+        // Show current time
 
-            //#warning this is just to visualize the half ticks
-            //lcd_show_f( 11 , left_tick_segments );
+        step = 0;
 
-        } else {
+        secs++;
 
-            // 502us
-            // 170us
+        if (secs == 60) {
 
-            //#warning this is just to visualize the half ticks
-            //lcd_show_f( 11 , right_tick_segments );
+            secs=0;
 
-            // Show current time
+            mins++;
 
-            step = 0;
+            if (mins==60) {
 
-            secs++;
+                mins = 0;
 
-            if (secs == 60) {
+                hours++;
 
-                secs=0;
+                if (hours==24) {
 
-                mins++;
+                    hours = 0;
 
-                if (mins==60) {
+                    if (days==999999) {
 
-                    mins = 0;
+                        for( uint8_t i=0 ; i<LOGICAL_DIGITS_SIZE; i++ ) {
 
-                    hours++;
+                            // The long now
 
-                    if (hours==24) {
-
-                        hours = 0;
-
-                        if (days==999999) {
-
-                            for( uint8_t i=0 ; i<LOGICAL_DIGITS_SIZE; i++ ) {
-
-                                // The long now
-
-                                lcd_show_f( i , x_segments );           // TODO: Think of something better to show here.
-                                                                        // TODO: Add a "long now" indicator on the LCD
-
-                            }
-
-
-
-                        } else {
-
-                            days++;
-
-                            lcd_show_f(  6 , digit_segments[ (days / 1      ) % 10 ] );
-                            lcd_show_f(  7 , digit_segments[ (days / 10     ) % 10 ] );
-                            lcd_show_f(  8 , digit_segments[ (days / 100    ) % 10 ] );
-                            lcd_show_f(  9 , digit_segments[ (days / 1000   ) % 10 ] );
-                            lcd_show_f( 10 , digit_segments[ (days / 10000  ) % 10 ] );
-                            lcd_show_f( 11 , digit_segments[ (days / 100000 ) % 10 ] );
+                            lcd_show_f( i , x_segments );           // TODO: Think of something better to show here.
+                                                                    // TODO: Add a "long now" indicator on the LCD
 
                         }
 
 
+
+                    } else {
+
+                        days++;
+
+                        lcd_show_f(  6 , digit_segments[ (days / 1      ) % 10 ] );
+                        lcd_show_f(  7 , digit_segments[ (days / 10     ) % 10 ] );
+                        lcd_show_f(  8 , digit_segments[ (days / 100    ) % 10 ] );
+                        lcd_show_f(  9 , digit_segments[ (days / 1000   ) % 10 ] );
+                        lcd_show_f( 10 , digit_segments[ (days / 10000  ) % 10 ] );
+                        lcd_show_f( 11 , digit_segments[ (days / 100000 ) % 10 ] );
+
                     }
 
-                    lcd_show_f( 4 , digit_segments[ hours % 10 ] );
-                    lcd_show_f( 5 , digit_segments[ hours / 10 ] );
 
                 }
 
-                lcd_show_f( 2 , digit_segments[ mins % 10 ] );
-                lcd_show_f( 3 , digit_segments[ mins / 10 ] );
+                lcd_show_f( 4 , digit_segments[ hours % 10 ] );
+                lcd_show_f( 5 , digit_segments[ hours / 10 ] );
 
             }
 
-            *secs_lcdmem_word = secs_lcd_words[  secs ];
+            lcd_show_f( 2 , digit_segments[ mins % 10 ] );
+            lcd_show_f( 3 , digit_segments[ mins / 10 ] );
 
         }
 
+        *secs_lcdmem_word = secs_lcd_words[  secs ];
 
     } else if ( mode==READY_TO_LAUNCH  ) {       // We will be in this mode potentially for a very long time, so also be power efficient here.
 
-        // We depend on the trigger ISR to move use from ready-to-launch to time-since-launch
+        // We depend on the trigger ISR to move us from ready-to-launch to time-since-launch
 
         uint8_t current_squiggle_step = step;
 
@@ -1290,7 +1328,7 @@ __interrupt void rtc_isr(void) {
         for( uint8_t i=0 ; i<LOGICAL_DIGITS_SIZE; i++ ) {
 
             if ( i & 0x01 ) {
-                lcd_show_f( i , squiggle_segments[ (SQUIGGLE_SEGMENTS_SIZE -  current_squiggle_step) & 0x07 ]);
+                lcd_show_f( i , squiggle_segments[ ((SQUIGGLE_SEGMENTS_SIZE + 4 )-  current_squiggle_step) & 0x07 ]);
             } else {
                 lcd_show_f( i , squiggle_segments[ current_squiggle_step ]);
             }
@@ -1457,6 +1495,8 @@ __interrupt void trigger_isr(void) {
 
         // Disable the trigger pin and drive low to save power and prevent any more interrupts from it
         // (if it stayed pulled up then it would draw power though the pull-up resistor whenever the pin was inserted)
+        // TODO: Maybe make a secret handshake where if you put in and then pull out the pin at a day turnover then we print out some stats or an easter egg?
+        // c23 JOSH_COM
 
         CBI( TRIGGER_POUT , TRIGGER_B );      // low
         SBI( TRIGGER_PDIR , TRIGGER_B );      // drive
@@ -1474,31 +1514,27 @@ __interrupt void trigger_isr(void) {
 
         }
 
-        // Reset the RV3032's internal timer
+        // Record launch time and reset the RV3032's internal timer to all zeros
         // Start counting the current second over again from right..... now
 
-        restart_rv3032_periodic_timer();
+        launch();
 
-        // We will get the next tick in 500ms. Make sure we return from this ISR within 500ms from now. (we really could wait up to 999ms since that would just delay the half tick and not miss the following real tick).
+        // We will get the next tick in 1000ms. Make sure we return from this ISR within 500ms from now. (we really could wait up to 999ms since that would just delay the half tick and not miss the following real tick).
 
-        // Clear any pending RTC interrupt so we will not tick until the next pulse comes from RTC in 500ms
+        // Clear any pending RTC interrupt so we will not tick until the next pulse comes from RTC in 1000ms
         // There could be a race where an RTC interrupt comes in just after the trigger was pulled, in which case we would
         // have a pending interrupt that would get serviced immediately after we return from here, which would look ugly.
+        // We could also see an interrupt if the CLKOUT signal was low when trigger pulled (50% likelihood) since it will go high on reset.
 
-        CBI( TRIGGER_PIFG , TRIGGER_B );      // Clear any pending interrupt from us driving it low (it could have gone high again since we sampled it)
+        CBI( RV3032_CLKOUT_PIFG , RV3032_CLKOUT_B );      // Clear any pending interrupt from CLKOUT
 
         // Flash lights
 
         flash();
 
-        // Record timestamp
-
-        zeroRV3032();
-
         // Start ticking!
 
         mode = TIME_SINCE_LAUNCH;
-        step = 0;           // Start at the top of the first second.
 
     }
 
