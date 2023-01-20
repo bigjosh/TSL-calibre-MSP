@@ -105,6 +105,25 @@ constexpr glyph_segment_t left_tick_segments = {  SEG_C_COM_BIT , SEG_F_COM_BIT 
 constexpr glyph_segment_t right_tick_segments = { SEG_B_COM_BIT , SEG_E_COM_BIT | SEG_G_COM_BIT };
 
 
+constexpr glyph_segment_t testingonly_message[] = {
+
+    {                                                SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  },
+    {SEG_A_COM_BIT |                                 SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  },
+    {SEG_A_COM_BIT |                 SEG_C_COM_BIT | SEG_D_COM_BIT ,                 SEG_F_COM_BIT | SEG_G_COM_BIT  },
+    {                                                SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  },
+    {                                SEG_C_COM_BIT                 ,                                             0  },
+    {                                SEG_C_COM_BIT                 , SEG_E_COM_BIT |                 SEG_G_COM_BIT  },
+    {SEG_A_COM_BIT | SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT ,                 SEG_F_COM_BIT | SEG_G_COM_BIT  },
+    {                                                            0 ,                                             0  },
+    {SEG_A_COM_BIT | SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT                  },
+    {                                SEG_C_COM_BIT                 , SEG_E_COM_BIT |                 SEG_G_COM_BIT  },
+    {                                                SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT                  },
+    {                SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT ,                 SEG_F_COM_BIT | SEG_G_COM_BIT  },
+
+};
+
+
+
 // This represents a logical digit that we will use to actually display numbers on the screen
 // Digit 0 is the rightmost and digit 11 is the leftmost
 // LPIN is the name of the pin on the MSP430 that the LCD pin for that digit is connected to.
@@ -552,6 +571,14 @@ static inline void lcd_show_f( const uint8_t pos, const glyph_segment_t segs ) {
         }
 
 
+    }
+
+}
+
+void show_testing_only_message() {
+
+    for( byte i=0; i<LOGICAL_DIGITS_SIZE; i++ ) {
+        lcd_show_f(  i , testingonly_message[ LOGICAL_DIGITS_SIZE - 1- i] );        // digit place 12 is rightmost, so reverse order for text
     }
 
 }
@@ -1151,6 +1178,7 @@ void zeroRV3032() {
 // 1. Reads current time from RTC
 // 2. Records current time to local FRAM memory
 // 3. Resets RTC to zero starting state.
+// tEStIng OnLY
 
 void launch() {
 
@@ -1159,7 +1187,7 @@ void launch() {
 
     uint8_t zero_byte =0x00;
 
-    // No need to write to hundreths reg, it is cleared automatically when we write to seconds
+    // No need to write to hundreths reg, it is cleared automatically anytime we write to seconds
     i2c_write( RV_3032_I2C_ADDR , RV3032_SECS_REG  , &zero_byte , 1 );
 
     i2c_shutdown();
@@ -1216,6 +1244,9 @@ __interrupt void rtc_isr_time_since_launch_mode() {
 void beginTimeSinceLaunchMode() {
 
 }
+
+#warning
+constexpr bool testing_only_mode = true;
 
 
 // Called on RV3032 CLKOUT pin rising edge (1Hz)
@@ -1290,6 +1321,11 @@ __interrupt void rtc_isr(void) {
 
 
                     } else {
+
+                        if (testing_only_mode) {
+                            show_testing_only_message();
+                            __bis_SR_register(LPM4_bits  );                 // Enter LPM4 and sleep forever and ever and ever
+                        }
 
                         days++;
 
@@ -1599,7 +1635,6 @@ int main( void )
     lcd_show_f( 9, digit_segments[9] );
     lcd_show_f(10, digit_segments[0x0a] );
     lcd_show_f(11, digit_segments[0x0b] );
-
 
     // Setup the RV3032
     uint8_t rtcLowVoltageFlag = initRV3032();
