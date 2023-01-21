@@ -690,3 +690,34 @@ void lcd_show_errorcode( byte code  ) {
 }
 
 
+// This is a shadow representation of the block of LCD memory in the MSP430
+// We can operate on it and then exact out the optimal set of instructions
+// to generate the updates on the block.
+// You'd hope the compiler could do this for us, but it is not good at this
+// so we have to effectively write our own to get the best possible
+
+struct lcdmem_block_t {
+
+    static const byte LCDMEM_SIZE=32;             // Total number of bytes in LCD mem. Note that we do not actually use them all, but our display is spread across it.
+
+    int lcdmem[ LCDMEM_SIZE ];      // We cheat and and use an int here so we can keep track of which slots are actually changed by presetting all to -1
+
+    void clear() {
+        for( auto i : lcdmem ) {
+            i = -1;
+        }
+    }
+
+};
+
+
+
+// Uncomment this to main() and copy/paste this whole file into a C++ system than can printf() and it will emit the
+// file "lcd_auto_emitted.asm" which you can then paste back into CCS.
+
+void main_x() {
+
+
+}
+
+

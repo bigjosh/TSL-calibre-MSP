@@ -6,6 +6,8 @@
 #include "error_codes.h"
 #include "lcd_display.h"
 
+#include "tsl_asm.h"
+
 #define RV_3032_I2C_ADDR (0b01010001)           // Datasheet 6.6
 
 // RV3032 Registers
@@ -1134,6 +1136,9 @@ int main( void )
     __bis_SR_register(LPM4_bits | GIE );                 // Enter LPM4
 
     __no_operation();                                   // For debugger
+
+    asm("   dadd r14,r14");
+    tslmode_asm(1);
 
     error_mode( ERROR_MAIN_RETURN );
 

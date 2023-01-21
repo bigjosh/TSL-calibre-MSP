@@ -5,12 +5,12 @@
  *      Author: passp
  */
 
-#ifndef MODAL_ISRS_H_
-#define MODAL_ISRS_H_
+#ifndef TSL_ASM_H_
+#define TSL_ASM_H_
 
 extern "C" {
-    extern int asmfunc(int a); /* declare external asm function */
+    extern int tslmode_asm(int a); /* declare external asm function */
     int gvar = 0; /* define global variable */
 }
 
-#endif /* MODAL_ISRS_H_ */
+#endif /* TSL_ASM_H_ */
