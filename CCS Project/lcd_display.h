@@ -38,7 +38,7 @@ inline void lcd_show();
 // where p=0 is the rightmost digit
 
 
-inline void lcd_show_fast_secs( uint8_t secs );
+void lcd_show_fast_secs( uint8_t secs );
 
 void lcd_show_digit_f( const uint8_t pos, const byte d );
 
@@ -75,5 +75,15 @@ void lcd_show_lance( byte step );
 
 void lcd_show_errorcode( byte code  );
 
+
+
+// these arrays hold the pre-computed words that we will write to word in LCD memory that
+// controls the seconds and mins digits on the LCD. We keep these in RAM intentionally for power and latency savings.
+// use fill_lcd_words() to fill these arrays.
+
+extern word secs_lcd_words[SECS_PER_MIN];
+
+// Write a value from this array into this word to update the two digits on the LCD display
+extern word *secs_lcdmem_word;
 
 #endif /* LCD_DISPLAY_H_ */

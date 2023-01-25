@@ -164,11 +164,17 @@ void initLCD() {
     // Divide by 1 (so CLK will be 10Khz), Very Low Osc, Turn on LCD, 4-mux selected (LCD4MUX also includes LCDSON)
     //LCDCTL0 = LCDDIV_1 | LCDSSEL__VLOCLK | LCD4MUX | LCDSON | LCDON  ;
 
-    // Divide by 1 (so CLK will be 10Khz), Very Low Osc, Turn on LCD, 4-mux selected (LCD4MUX also includes LCDSON), Low power saveform
+    // Divide by 1 (so CLK will be 10Khz), Very Low Osc, Turn on LCD, 4-mux selected (LCD4MUX also includes LCDSON), Low power waveform
     //LCDCTL0 = LCDDIV_1 | LCDSSEL__VLOCLK | LCD4MUX | LCDSON | LCDON | LCDLP ;
 
-    // LCD using VLO clock, divide by 4 (on 10KHz from VLO) , 4-mux (LCD4MUX also includes LCDSON), low power waveform
+    // LCD using VLO clock, divide by 4 (on 10KHz from VLO) , 4-mux (LCD4MUX also includes LCDSON), low power waveform. No flicker. Squiggle=1.45uA. Count=2.00uA. I guess not worth the flicker for 0.2uA?
     LCDCTL0 =  LCDSSEL__VLOCLK | LCDDIV__4 | LCD4MUX | LCDLP ;
+
+    // LCD using VLO clock, divide by 5 (on 10KHz from VLO) , 4-mux (LCD4MUX also includes LCDSON), low power waveform. Visible flicker at large view angles. Squiggle=1.35uA. Count=1.83uA
+    //LCDCTL0 =  LCDSSEL__VLOCLK | LCDDIV__5 | LCD4MUX | LCDLP ;
+
+    // LCD using VLO clock, divide by 6 (on 10KHz from VLO) , 4-mux (LCD4MUX also includes LCDSON), low power waveform. VISIBLE FLICKER at 3.5V
+    //LCDCTL0 =  LCDSSEL__VLOCLK | LCDDIV__6 | LCD4MUX | LCDLP ;
 
 
 /*
@@ -688,13 +694,121 @@ constexpr bool testing_only_mode = false;
 
 // Called on RV3032 CLKOUT pin rising edge (1Hz)
 
-#pragma vector = RV3032_CLKOUT_VECTOR
-__interrupt void rtc_isr(void) {
+
+
+// Note that we do not make this an "interrupt" function even though it is an ISR.
+// We can do this because we know that there is nothing being interrupted since we just
+// sleep between interrupts, so no need to save any registers. We do need to do our own
+// RETI (return from interrupt) at the end since the function itself will only have a
+// normal return.
+
+//#pragma vector = RV3032_CLKOUT_VECTOR
+__attribute__((ramfunc))
+__attribute__((retain))
+void tsl_isr(void) {
+
+    SBI( DEBUGA_POUT , DEBUGA_B );      // See latency to start ISR and how long it runs
+
+    secs++;
+
+    if (secs == 60) {
+
+        secs=0;
+
+        mins++;
+
+        if (mins==60) {
+
+            mins = 0;
+
+            hours++;
+
+            if (hours==24) {
+
+                hours = 0;
+
+                if (days==999999) {
+
+                    for( uint8_t i=0 ; i<DIGITPLACE_COUNT; i++ ) {
+
+                        // The long now
+
+                        lcd_show_long_now();
+                        blinkforeverandever();
+
+                    }
+
+                } else {
+
+                    if (testing_only_mode) {
+                        lcd_show_testing_only_message();
+                        blinkforeverandever();
+                    }
+
+                    days++;
+
+                    // TODO: Optimize
+                    lcd_show_digit_f(  6 , (days / 1      ) % 10  );
+                    lcd_show_digit_f(  7 , (days / 10     ) % 10  );
+                    lcd_show_digit_f(  8 , (days / 100    ) % 10  );
+                    lcd_show_digit_f(  9 , (days / 1000   ) % 10  );
+                    lcd_show_digit_f( 10 , (days / 10000  ) % 10  );
+                    lcd_show_digit_f( 11 , (days / 100000 ) % 10  );
+
+                }
+
+
+            }
+
+            lcd_show_digit_f( 4 , hours % 10  );
+            lcd_show_digit_f( 5 , hours / 10  );
+
+        }
+
+        lcd_show_digit_f( 2 ,  mins % 10  );
+        lcd_show_digit_f( 3 ,  mins / 10  );
+
+    }
+
+    // Wow, this compiler is not good. Below we can remove a whole instruction with 3 cycles that is completely unessisary.
+
+    //asm("        DADD R1, R1");
+
+    *secs_lcdmem_word = secs_lcd_words[ secs ];
+
+    /*
+        asm("        MOV.B     &secs+0,r15           ; [] |../tsl-calibre-msp.cpp:1390| ");
+        asm("        RLAM.W    #1,r15                ; [] |../tsl-calibre-msp.cpp:1390| ");
+        asm("        MOV.W     #16,r14               ; [] |../tsl-calibre-msp.cpp:1390| ");
+        asm("        MOV.W     secs_lcd_words+0(r15),LCDM0W_L+0(r14) ; [] |../tsl-calibre-msp.cpp:1390|");
+    */
+
+/*
+    asm("        MOV.B     &secs+0,r15           ; [] |../tsl-calibre-msp.cpp:1390| ");
+    asm("        RLAM.W    #1,r15                ; [] |../tsl-calibre-msp.cpp:1390| ");
+    //asm("        MOV.W     #16,r14               ; [] |../tsl-calibre-msp.cpp:1390| ");
+    asm("        MOV.W     secs_lcd_words+0(r15),(LCDM0W_L+16) ; [] |../tsl-calibre-msp.cpp:1390|");
+*/
+
+    //asm("        DADD R2, R2");
+
+
+
+
+    CBI( RV3032_CLKOUT_PIFG , RV3032_CLKOUT_B );      // Clear the pending RV3032 INT interrupt flag that got us into this ISR.
+
+    CBI( DEBUGA_POUT , DEBUGA_B );
+    asm("          RETI");                            // We did not markt this as an "interrupt" function, so we are responsible for the return. Note that this will just put us back in LPM sleep.
+}
+
+#warning
+//#pragma vector = RV3032_CLKOUT_VECTOR
+__attribute__((ramfunc))
+__attribute__((retain))
+void rtc_isr(void) {
 
     // Wake time measured at 48us
     // TODO: Make sure there are no avoidable push/pops happening at ISR entry (seems too long)
-
-    // TODO: Disable pull-up while in ISR?
 
     SBI( DEBUGA_POUT , DEBUGA_B );      // See latency to start ISR and how long it runs
 
@@ -714,37 +828,12 @@ __interrupt void rtc_isr(void) {
     }
 
 
-    /*
-
-        // Essentially add an extra bit onto the LCD charge pump pre-scaler by turning it off half the time.
-        // Saves about 0.1uA
-        // Note worth it for loss in contrast ratio.
-        // TODO: Test if a *faster* CP frequency would save power?
-
-        static byte charge_pump_duty = 0 ;
-
-        if (charge_pump_duty == 1 ) {
-            LCDVCTL = LCDCPEN |   (LCDCPFSEL0 | LCDCPFSEL1 | LCDCPFSEL2 | LCDCPFSEL3);
-            charge_pump_duty=0;
-        } else {
-            LCDVCTL = 0x00;     // Disable LCD charge pump for 50% of the time for power savings?
-            charge_pump_duty=0;
-        }
-
-    */
-
-
     if (  __builtin_expect( mode == TIME_SINCE_LAUNCH , 1 ) ) {            // This is where we will spend most of out life, so optimize for this case
 
         // 502us
         // 170us
 
-        //#warning this is just to visualize the half ticks
-        //lcd_show_f( 11 , right_tick_segments );
-
         // Show current time
-
-        step = 0;
 
         secs++;
 
@@ -1032,13 +1121,19 @@ __interrupt void trigger_isr(void) {
 
  */
 
+/*
 __attribute__((ramfunc))
 __interrupt void tsl_isr(void) {
 
 }
+*/
+
+
+
 
 int main( void )
 {
+
     WDTCTL = WDTPW | WDTHOLD | WDTSSEL__VLO;   // Give WD password, Stop watchdog timer, set WD source to VLO
                                                // The thinking is that maybe the watchdog will request the SMCLK even though it is stopped (this is implied by the datasheet flowchart)
                                                // Since we have to have VLO on for LCD anyway, mind as well point the WDT to it.
@@ -1133,12 +1228,14 @@ int main( void )
     PMMCTL0_L &= ~(SVSHE);              // Disable high-side SVS
     // LPM4 SVS=OFF
 
+#warning
+    enter_tslmode_asm( 25 );
+
+
     __bis_SR_register(LPM4_bits | GIE );                 // Enter LPM4
 
     __no_operation();                                   // For debugger
 
-    asm("   dadd r14,r14");
-    tslmode_asm(1);
 
     error_mode( ERROR_MAIN_RETURN );
 
@@ -1148,3 +1245,22 @@ int main( void )
 
 
 }
+
+/*
+
+// Will need for saving timestamps
+
+void FRAMWrite (void)
+{
+    unsigned int i=0;
+
+    SYSCFG0 &= ~DFWP;
+    for (i = 0; i < 128; i++)
+    {
+        *FRAM_write_ptr++ = data;
+    }
+    SYSCFG0 |= DFWP;
+}
+
+*/
+

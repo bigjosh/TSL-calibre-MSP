@@ -11,7 +11,9 @@
 
 
 #include "lcd_display.h"
+#include "lcd_display_exp.h"
 
+/* ======================= CUT HERE START ====================================== */
 
 // *** LCD layout
 
@@ -239,16 +241,15 @@ struct word_of_bytes_of_nibbles_t {
 };
 
 
-// Make a view of the LCD mem as words
-// Remember that that whatever index we go into this pointer will be implicitly *2 because it is words not bytes
-constexpr word * LCDMEMW = (word *) (LCDMEM);
+constexpr word * LCDMEMW = (word *) LCDMEM;
+
 constexpr byte LCDMEM_WORD_COUNT=16;             // Total number of words in LCD mem. Note that we do not actually use them all, but our display is spread across it.
 
 // these arrays hold the pre-computed words that we will write to word in LCD memory that
 // controls the seconds and mins digits on the LCD. We keep these in RAM intentionally for power and latency savings.
 // use fill_lcd_words() to fill these arrays.
 
-#define SECS_PER_MIN 60
+#pragma RETAIN
 word secs_lcd_words[SECS_PER_MIN];
 
 // Make sure that the 4 nibbles that make up the 2 seconds digits are all in the same word in LCD memory
@@ -262,7 +263,8 @@ static_assert( lpin_t<digitplace_lpins_table[SECS_ONES_DIGITPLACE_INDEX].lpin_a_
 // It does not matter if we pick ones or tens digit or upper or lower nibble because if they are all in the
 // same word. The `>>1` converts the byte pointer into a word pointer.
 
-constexpr word *secs_lcdmem_word = &LCDMEMW[ lpin_t<digitplace_lpins_table[SECS_ONES_DIGITPLACE_INDEX].lpin_a_thru_d>::lcdmem_offset() >> 1 ];
+#pragma RETAIN
+word *secs_lcdmem_word = (word *) (&LCDMEMW[ lpin_t<digitplace_lpins_table[SECS_ONES_DIGITPLACE_INDEX].lpin_a_thru_d>::lcdmem_offset() >> 1 ]);
 
 #define MINS_PER_HOUR 60
 word mins_lcd_words[MINS_PER_HOUR];
@@ -712,12 +714,8 @@ struct lcdmem_block_t {
 
 
 
-// Uncomment this to main() and copy/paste this whole file into a C++ system than can printf() and it will emit the
-// file "lcd_auto_emitted.asm" which you can then paste back into CCS.
-
-void main_x() {
 
 
-}
+
 
 
