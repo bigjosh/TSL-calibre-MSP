@@ -432,33 +432,9 @@ uint8_t initRV3032() {
     uint8_t clkout2_reg = 0b01100000;        // CLKOUT XTAL low freq mode, freq=1Hz
     i2c_write( RV_3032_I2C_ADDR , 0xc3 , &clkout2_reg , 1 );
 
-
-    // Periodic Timer value = 2048 for 500ms
-    // It would be nice if we could set it to 1s, but then the pulse is like 7ms wide and that would waste too much
-    // power against the pull-up that whole time. We could disable the pull-up on each INT, but then we'd need to wake again
-    // to reset it back so mind as well just wake on the 500ms timer.
-    // We could also pick a period of 4095/4096ths of a second, but then we'd need to sneak in the extra second every 4095 seconds
-    // and that would just look ugly having it jump.
-    // We could also maybe use the TI counter and only wake every 2 INTs but that means keeping the MSP430 timer hardware powered up which
-    // probably uses more power than just servicing the extra INT every second.
-
-    const unsigned timerValue = 2048;
-
-    uint8_t timerValueH = timerValue / 0x100;
-    uint8_t timerValueL = timerValue % 0x100;
-    i2c_write( RV_3032_I2C_ADDR , 0x0b , &timerValueL  , 1 );
-    i2c_write( RV_3032_I2C_ADDR , 0x0c , &timerValueH  , 1 );
-
-    // Set TIE in Control 2 to 1 t enable interrupt pin for periodic countdown
-    uint8_t control2_reg = 0b00010000;
-    i2c_write( RV_3032_I2C_ADDR , 0x11 , &control2_reg , 1 );
-
     uint8_t control1_reg = 0b00000100;      // TE=0 so no periodic timer interrupt, EERD=1 to disable automatic EEPROM refresh (why would you want that?).
 
     i2c_write( RV_3032_I2C_ADDR , 0x10 , &control1_reg , 1 );
-
-    // OK, we will now get a 122uS low pulse on INT every 500ms.
-
 
     // Next check if the RV3032 just powered up, or if it was already running and show a 1 in digit 10 if it was running (0 if not)
     uint8_t status_reg=0xff;
@@ -502,7 +478,6 @@ uint8_t initRV3032() {
         days = date_to_days(c, y, m, d);
 
     }
-
 
     // We are done setting stuff up with the i2c connection, so drive the pins low
     // This will hopefully reduce leakage and also keep them from floating into the
@@ -622,12 +597,14 @@ void zeroRV3032() {
 // 1. Reads current time from RTC
 // 2. Records current time to local FRAM memory
 // 3. Resets RTC to zero starting state.
-// tEStIng OnLY
+// Returns with RTC reset so about 1000ms until next clkout interrupt.
 
 void launch() {
 
     // Initialize our i2c pins as pull-up
     i2c_init();
+
+    // TODO: unlock FRAM, write current time to FRAM, lock FRAM, clear current time in memory, clear current time in RTC
 
     uint8_t zero_byte =0x00;
 
@@ -692,9 +669,42 @@ void beginTimeSinceLaunchMode() {
 // Terminate after one day
 constexpr bool testing_only_mode = false;
 
+// Registers R4-R10 are preserved across function calls, so we can even make calls out of the ISRs and stuff will
+// not get messed up.
+
+/*
+
+
+enter_tslmode_asm
+
+            ; We get secs in R12 for free by the C passing conventions
+
+            mov         &secs_lcdmem_word,R_S_LCD_MEM       ;; Address in LCD memory to write seconds digits
+
+            mov         #secs_lcd_words,R_S_TBL
+            mov         R_S_TBL , R_S_PTR
+            mov         #SECS_PER_MIN,R_S_CNT
+*/
+
+/*
+
+void enter_tsl_mode() {
+    asm("R_S_LCD_MEM    .set      R4                                  ;; word address in LCDMEM that holds the segments for the 2 seconds digits");
+    asm("R_S_TBL        .set      R6                                  ;; base address of the table of data words to write to the seconds word in LCD memory");
+    asm("R_S_PTR        .set      R7                                  ;; ptr into next word to use in the table of data words to write to the seconds word in LCD memory");
+    asm("R_S_CNT        .set      R8                                  ;; Seconds counter, starts at 60 down to 0.");
+    asm("");
+    asm("               mov.w     &secs_lcdmem_word, R_S_LCD_MEM     ");
+    asm("               mov.w     #secs_lcd_words,R_S_TBL            ");
+    asm("               mov.w     R_S_TBL , R_S_PTR                  ");
+    //asm("               mov.w     #SECS_PER_MIN,R_S_CNT              ");
+
+    __bis_SR_register(LPM4_bits | GIE );                // Enter LPM4
+    __no_operation();                                   // For debugger
+
+}
+*/
 // Called on RV3032 CLKOUT pin rising edge (1Hz)
-
-
 
 // Note that we do not make this an "interrupt" function even though it is an ISR.
 // We can do this because we know that there is nothing being interrupted since we just
@@ -709,102 +719,28 @@ void tsl_isr(void) {
 
     SBI( DEBUGA_POUT , DEBUGA_B );      // See latency to start ISR and how long it runs
 
-    secs++;
-
-    if (secs == 60) {
-
-        secs=0;
-
-        mins++;
-
-        if (mins==60) {
-
-            mins = 0;
-
-            hours++;
-
-            if (hours==24) {
-
-                hours = 0;
-
-                if (days==999999) {
-
-                    for( uint8_t i=0 ; i<DIGITPLACE_COUNT; i++ ) {
-
-                        // The long now
-
-                        lcd_show_long_now();
-                        blinkforeverandever();
-
-                    }
-
-                } else {
-
-                    if (testing_only_mode) {
-                        lcd_show_testing_only_message();
-                        blinkforeverandever();
-                    }
-
-                    days++;
-
-                    // TODO: Optimize
-                    lcd_show_digit_f(  6 , (days / 1      ) % 10  );
-                    lcd_show_digit_f(  7 , (days / 10     ) % 10  );
-                    lcd_show_digit_f(  8 , (days / 100    ) % 10  );
-                    lcd_show_digit_f(  9 , (days / 1000   ) % 10  );
-                    lcd_show_digit_f( 10 , (days / 10000  ) % 10  );
-                    lcd_show_digit_f( 11 , (days / 100000 ) % 10  );
-
-                }
-
-
-            }
-
-            lcd_show_digit_f( 4 , hours % 10  );
-            lcd_show_digit_f( 5 , hours / 10  );
-
-        }
-
-        lcd_show_digit_f( 2 ,  mins % 10  );
-        lcd_show_digit_f( 3 ,  mins / 10  );
-
-    }
-
-    // Wow, this compiler is not good. Below we can remove a whole instruction with 3 cycles that is completely unessisary.
-
-    //asm("        DADD R1, R1");
-
-    *secs_lcdmem_word = secs_lcd_words[ secs ];
-
-    /*
-        asm("        MOV.B     &secs+0,r15           ; [] |../tsl-calibre-msp.cpp:1390| ");
-        asm("        RLAM.W    #1,r15                ; [] |../tsl-calibre-msp.cpp:1390| ");
-        asm("        MOV.W     #16,r14               ; [] |../tsl-calibre-msp.cpp:1390| ");
-        asm("        MOV.W     secs_lcd_words+0(r15),LCDM0W_L+0(r14) ; [] |../tsl-calibre-msp.cpp:1390|");
-    */
-
-/*
-    asm("        MOV.B     &secs+0,r15           ; [] |../tsl-calibre-msp.cpp:1390| ");
-    asm("        RLAM.W    #1,r15                ; [] |../tsl-calibre-msp.cpp:1390| ");
-    //asm("        MOV.W     #16,r14               ; [] |../tsl-calibre-msp.cpp:1390| ");
-    asm("        MOV.W     secs_lcd_words+0(r15),(LCDM0W_L+16) ; [] |../tsl-calibre-msp.cpp:1390|");
-*/
-
-    //asm("        DADD R2, R2");
-
-
-
+    asm("               mov.w       &(secs_lcd_words+6),&(LCDM0W_L+16)");
+//    asm("               dec         R_S_CNT");
+    asm("               JNE         ISR_DONE1");
+//    asm("               mov         R_S_TBL,R_S_PTR");
+//    asm("               mov         #SECS_PER_MIN,R_S_CNT");
+    asm("ISR_DONE1:");
+    asm("               BIC.B     #2,&PAIFG_L+0         ; Clear the interrupt flag that got us here");
+    asm("    mov.w  #ISR_DONE1,r8");
+    //asm(" mov.w #%dh,r7" , 0x1234);
 
     CBI( RV3032_CLKOUT_PIFG , RV3032_CLKOUT_B );      // Clear the pending RV3032 INT interrupt flag that got us into this ISR.
 
     CBI( DEBUGA_POUT , DEBUGA_B );
-    asm("          RETI");                            // We did not markt this as an "interrupt" function, so we are responsible for the return. Note that this will just put us back in LPM sleep.
+    asm("          RETI");                            // We did not mark this as an "interrupt" function, so we are responsible for the return. Note that this will just put us back in LPM sleep.
+
 }
 
 #warning
-//#pragma vector = RV3032_CLKOUT_VECTOR
+#pragma vector = RV3032_CLKOUT_VECTOR
 __attribute__((ramfunc))
 __attribute__((retain))
+__attribute__((naked))
 void rtc_isr(void) {
 
     // Wake time measured at 48us
@@ -812,23 +748,7 @@ void rtc_isr(void) {
 
     SBI( DEBUGA_POUT , DEBUGA_B );      // See latency to start ISR and how long it runs
 
-    if (0) {
-
-        if (secs==0) {
-            secs=1;
-        } else {
-            secs=0;
-        }
-
-        lcd_show_fast_secs(secs);
-
-        CBI( RV3032_CLKOUT_PIFG , RV3032_CLKOUT_B );      // Clear the pending RV3032 INT interrupt flag that got us into this ISR.
-        CBI( DEBUGA_POUT , DEBUGA_B );      // See latency to start ISR and how long it runs
-        return;
-    }
-
-
-    if (  __builtin_expect( mode == TIME_SINCE_LAUNCH , 1 ) ) {            // This is where we will spend most of out life, so optimize for this case
+    if (  __builtin_expect( mode == TIME_SINCE_LAUNCH , 1 ) ) {            // This is where we will spend most of our life, so optimize for this case
 
         // 502us
         // 170us
@@ -898,26 +818,16 @@ void rtc_isr(void) {
 
         }
 
-        // Wow, this compiler is not good. Below we can remove a whole instruction with 3 cycles that is completely unessisary.
+        // Show current seconds on LCD using fast lookup table. This is a 16 bit MCU and we were careful to put the 4 nibbles that control the segments of the two seconds digits all in the same memory word,
+        // so we can set all the segments of the seconds digits with a single word write.
 
-        //asm("        DADD R1, R1");
+        // Wow, this compiler is not good. Below we can remove a whole instruction with 3 cycles that is completely unnecessary.
 
-        //*secs_lcdmem_word = secs_lcd_words[  secs ];
-
-        /*
-            asm("        MOV.B     &secs+0,r15           ; [] |../tsl-calibre-msp.cpp:1390| ");
-            asm("        RLAM.W    #1,r15                ; [] |../tsl-calibre-msp.cpp:1390| ");
-            asm("        MOV.W     #16,r14               ; [] |../tsl-calibre-msp.cpp:1390| ");
-            asm("        MOV.W     secs_lcd_words+0(r15),LCDM0W_L+0(r14) ; [] |../tsl-calibre-msp.cpp:1390|");
-        */
+        // *secs_lcdmem_word = secs_lcd_words[secs];
 
         asm("        MOV.B     &secs+0,r15           ; [] |../tsl-calibre-msp.cpp:1390| ");
         asm("        RLAM.W    #1,r15                ; [] |../tsl-calibre-msp.cpp:1390| ");
-        //asm("        MOV.W     #16,r14               ; [] |../tsl-calibre-msp.cpp:1390| ");
         asm("        MOV.W     secs_lcd_words+0(r15),(LCDM0W_L+16) ; [] |../tsl-calibre-msp.cpp:1390|");
-
-
-        //asm("        DADD R2, R2");
 
 
     } else if ( mode==READY_TO_LAUNCH  ) {       // We will be in this mode potentially for a very long time, so also be power efficient here.
@@ -931,7 +841,6 @@ void rtc_isr(void) {
         lcd_show_squiggle_frame(step );
 
         static_assert( SQUIGGLE_ANIMATION_FRAME_COUNT == 8 , "SQUIGGLE_ANIMATION_FRAME_COUNT should be exactly 8 so we can use a logical AND to keep it in bounds for efficiency");            // So we can use fast AND 0x07
-
 
 
     } else if ( mode==ARMING ) {
@@ -980,14 +889,13 @@ void rtc_isr(void) {
 
             lcd_show_dashes();
 
-              //Start showing the ready to launch squiggles on next tick
+            //Start showing the ready to launch squiggles on next tick
 
-              mode = ARMING;
+            mode = ARMING;
 
-              // note that here we wait a full tick before checking that the pin is out again. This will debounce the switch for 0.5s when the pin is inserted.
+            // note that here we wait a full tick before checking that the pin is out again. This will debounce the switch for 0.5s when the pin is inserted.
 
         } else {
-
 
             // trigger still out
 
@@ -1007,6 +915,8 @@ void rtc_isr(void) {
     CBI( RV3032_CLKOUT_PIFG , RV3032_CLKOUT_B );      // Clear the pending RV3032 INT interrupt flag that got us into this ISR.
 
     CBI( DEBUGA_POUT , DEBUGA_B );
+
+    asm("     reti");            // Since this is not flagged as an `interrupt`, we have to do the `reti` ourselves.
 
 }
 
@@ -1128,9 +1038,6 @@ __interrupt void tsl_isr(void) {
 }
 */
 
-
-
-
 int main( void )
 {
 
@@ -1166,9 +1073,6 @@ int main( void )
     if (rtcLowVoltageFlag) {
 
         // We are starting fresh
-
-
-        // TODO: Only enable the pull-up once per second when we check it
 
         mode = START;
         step = DIGITPLACE_COUNT+3;           // Start the dash animation at the leftmost position
@@ -1213,7 +1117,7 @@ int main( void )
     }
 
     // Clear any pending interrupts from the RV3032 INT pin
-    // We just started the timer so we should not get a real one for 500ms
+    // We just started the timer so we should not get a real one for ~1000ms
 
     CBI( RV3032_CLKOUT_PIFG     , RV3032_CLKOUT_B    );
 
@@ -1228,16 +1132,14 @@ int main( void )
     PMMCTL0_L &= ~(SVSHE);              // Disable high-side SVS
     // LPM4 SVS=OFF
 
-#warning
-    enter_tslmode_asm( 25 );
-
+    //enter_tslmode_asm( 25 );
 
     __bis_SR_register(LPM4_bits | GIE );                 // Enter LPM4
+    // BIS.W    #248,SR
 
     __no_operation();                                   // For debugger
 
-
-    error_mode( ERROR_MAIN_RETURN );
+    error_mode( ERROR_MAIN_RETURN );                    // This would be very weird if we ever saw it.
 
     // We should never get here
 

@@ -7,7 +7,10 @@
 
             ;---- Get these pointers from the C side
 
-            .text                           ; Assemble to Flash memory
+            ;.text                           ; Assemble to Flash memory
+            ;.data							;; Put functions into RAM?
+
+            .sect ".TI.ramfunc"				; Put these functions into RAM so they run with less power and if vector table is also in RAM then we can avoid turning on the FRAM controller altogether
             .retain                         ; Ensure current section gets linked
             .retainrefs
 
@@ -18,10 +21,10 @@
 
 			; R12 = Seconds
 
-R_S_LCD_MEM	.set		R5						;; Address of the word the holds the seconds digits in LCD memory
-R_S_TBL		.set		R6						;; base address of the table of data words to write to the seconds word in LCD memory
-R_S_PTR		.set		R7						;; ptr into next word to use in the table of data words to write to the seconds word in LCD memory
-R_S_CNT		.set		R8						;; Seconds counter, starts at 60 down to 0.
+R_S_LCD_MEM	.set		R4						;; Address of the word the holds the seconds digits in LCD memory. We should not have to waste a reg on this.
+R_S_TBL		.set		R5						;; base address of the table of data words to write to the seconds word in LCD memory
+R_S_PTR		.set		R6						;; ptr into next word to use in the table of data words to write to the seconds word in LCD memory
+R_S_CNT		.set		R7						;; Seconds counter, starts at 60 down to 0.
 
 enter_tslmode_asm
 
@@ -35,8 +38,28 @@ enter_tslmode_asm
 
 			mov 		#SECS_PER_MIN,R_S_CNT
 
+			; 1168 | PMMCTL0_H = PMMPW_H;                // Open PMM Registers for write
+    		;----------------------------------------------------------------------
+    		MOV.B     #165,&PMMCTL0_H+0     ;
+			;----------------------------------------------------------------------
+			; 1169 | PMMCTL0_L &= ~(SVSHE);              // Disable high-side SVS
+			; 1170 | // LPM4 SVS=OFF
+    		; 1172 | //enter_tslmode_asm( 25 );
+		    ;----------------------------------------------------------------------
+    		AND.B     #191,&PMMCTL0_L+0     ; [] |../tsl-calibre-msp.cpp:1169|
+			;* 1174 -----------------------    __bis_SR_register(248u);
+			;----------------------------------------------------------------------
+    		; 1174 | __bis_SR_register(LPM4_bits | GIE );                 // Enter LPM4
+    		;----------------------------------------------------------------------
+			NOP
+		    BIS.W    #248,SR
+			NOP      ; [] |../tsl-calibre-msp.cpp:1174|
+
+
+
 			nop
-            bis.w   #LPM3+GIE,SR            ; Enter LPM3
+            bis.w   	#(SCG1+SCG0+OSCOFF+CPUOFF)+GIE,SR            ; Enter LPM4
+            ;  D032 00F8           BIS.W   #0x00f8,SR
 			nop
 			; never get here
 
@@ -49,12 +72,11 @@ TSL_MODE_ISR
 			;mov.w		@r5,r6
 
 
-			mov.w 		@R_S_PTR+,&(LCDM0W_L+16)	;; Copy the segments for the seconds digits
+			;mov.w 		@R_S_PTR+,&(LCDM0W_L+16)	;; Copy the segments for the seconds digits
 			;mov.w 		&secs_lcd_words+4,&(LCDM0W_L+16)	;; Copy the segments for the seconds digits
 
 
-;			;mov.w 		@R_S_PTR+,0(R_S_LCD_MEM)
-			;mov.w 		#0xffff,(LCDM0W_L+16)
+			mov.w 		@R_S_PTR+,0(R_S_LCD_MEM)
 
 			dec			R_S_CNT
 
@@ -79,7 +101,7 @@ ISR_DONE
 ;           Interrupt Vectors
 ;------------------------------------------------------------------------------
 
-            .sect   PORT1_VECTOR              ; Vector
+            ;.sect   PORT1_VECTOR              ; Vector
             .short  TSL_MODE_ISR              ;
             .end
 
