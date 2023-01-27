@@ -425,7 +425,7 @@ uint8_t initRV3032() {
     //uint8_t pmu_reg = 0b01100001;         // CLKOUT off, Level backup switching mode (2v) , no charge pump, 1K OHM trickle resistor, trickle charge Vbackup to Vdd. Predicted to use ~200nA more than disabled because of voltage monitor.
     //uint8_t pmu_reg = 0b01000000;         // CLKOUT off, Other disabled backup switching mode, no charge pump, trickle resistor off, trickle charge Vbackup to Vdd
 
-    uint8_t pmu_reg = 0b00010000;          // CLKOUT ON, Direct backup switching mode, no charge pump, 0.6K OHM trickle resistor, trickle charge Vbackup to Vdd. Only predicted to use 50nA more than disabled.
+    uint8_t pmu_reg = 0b00011101;          // CLKOUT ON, Direct backup switching mode, no charge pump, 12K OHM trickle resistor, trickle charge Vbackup to Vdd. Only predicted to use 50nA more than disabled.
 
     i2c_write( RV_3032_I2C_ADDR , 0xc0 , &pmu_reg , 1 );
 
@@ -912,11 +912,12 @@ void rtc_isr(void) {
     }
 
 
+
     CBI( RV3032_CLKOUT_PIFG , RV3032_CLKOUT_B );      // Clear the pending RV3032 INT interrupt flag that got us into this ISR.
 
     CBI( DEBUGA_POUT , DEBUGA_B );
 
-    asm("     reti");            // Since this is not flagged as an `interrupt`, we have to do the `reti` ourselves.
+    asm("     reti");            // Since this function is not flagged as an `interrupt`, we have to do the `reti` ourselves.
 
 }
 
@@ -1073,6 +1074,8 @@ int main( void )
     if (rtcLowVoltageFlag) {
 
         // We are starting fresh
+
+        zeroRV3032();
 
         mode = START;
         step = DIGITPLACE_COUNT+3;           // Start the dash animation at the leftmost position
