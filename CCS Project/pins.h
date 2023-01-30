@@ -56,15 +56,6 @@
 #define I2C_CLK_B (0)
 
 
-// RV3032 clock out on pin P1.1 which is pin number 27 on MSP430
-
-#define RV3032_CLKOUT_PREN P1REN
-#define RV3032_CLKOUT_PDIR P1DIR
-#define RV3032_CLKOUT_POUT P1OUT
-#define RV3032_CLKOUT_PIN  P1IN
-#define RV3032_CLKOUT_B (1)
-
-
 // RV3032 Event input pin is hardwired to ground to avoid having it float during battery changes (uses lots of power)
 
 

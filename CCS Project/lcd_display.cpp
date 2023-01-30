@@ -50,25 +50,63 @@ struct glyph_segment_t {
     const nibble nibble_e_thru_g;     // The COM bits for the digit's E-G segments
 };
 
+constexpr glyph_segment_t glyph_0      = {SEG_A_COM_BIT | SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT                  }; // "0"
+constexpr glyph_segment_t glyph_1      = {                SEG_B_COM_BIT | SEG_C_COM_BIT                 ,                                               0}; // "1" (no high pin segments lit in the number 1)
+constexpr glyph_segment_t glyph_2      = {SEG_A_COM_BIT | SEG_B_COM_BIT |                 SEG_D_COM_BIT , SEG_E_COM_BIT |                 SEG_G_COM_BIT  }; // "2"
+constexpr glyph_segment_t glyph_3      = {SEG_A_COM_BIT | SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT ,                                 SEG_G_COM_BIT  }; // "3"
+constexpr glyph_segment_t glyph_4      = {                SEG_B_COM_BIT | SEG_C_COM_BIT                 ,                 SEG_F_COM_BIT | SEG_G_COM_BIT  }; // "4"
+constexpr glyph_segment_t glyph_5      = {SEG_A_COM_BIT |                 SEG_C_COM_BIT | SEG_D_COM_BIT ,                 SEG_F_COM_BIT | SEG_G_COM_BIT  }; // "5"
+constexpr glyph_segment_t glyph_6      = {SEG_A_COM_BIT |                 SEG_C_COM_BIT | SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  }; // "6"
+constexpr glyph_segment_t glyph_7      = {SEG_A_COM_BIT | SEG_B_COM_BIT | SEG_C_COM_BIT                 ,                                               0}; // "7"(no high pin segments lit in the number 7)
+constexpr glyph_segment_t glyph_8      = {SEG_A_COM_BIT | SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  }; // "8"
+constexpr glyph_segment_t glyph_9      = {SEG_A_COM_BIT | SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT ,                 SEG_F_COM_BIT | SEG_G_COM_BIT  }; // "9"
+constexpr glyph_segment_t glyph_A      = {SEG_A_COM_BIT | SEG_B_COM_BIT | SEG_C_COM_BIT                 , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  }; // "A"
+constexpr glyph_segment_t glyph_b      = {                                SEG_C_COM_BIT | SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  }; // "b"
+constexpr glyph_segment_t glyph_C      = {SEG_A_COM_BIT |                                 SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT                  }; // "C"
+constexpr glyph_segment_t glyph_d      = {                SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT , SEG_E_COM_BIT |                 SEG_G_COM_BIT  }; // "d"
+constexpr glyph_segment_t glyph_E      = {SEG_A_COM_BIT |                                 SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  }; // "E"
+constexpr glyph_segment_t glyph_F      = {SEG_A_COM_BIT                                                 , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  }; // "F"
+constexpr glyph_segment_t glyph_g      = {SEG_A_COM_BIT | SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT ,                 SEG_F_COM_BIT | SEG_G_COM_BIT  };  // g
+constexpr glyph_segment_t glyph_I      = {                SEG_B_COM_BIT | SEG_C_COM_BIT                 ,                                               0};  // I
+constexpr glyph_segment_t glyph_i      = {                                SEG_C_COM_BIT                 ,                                               0};  // i
+constexpr glyph_segment_t glyph_L      = {                                                SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT                  };  // L
+constexpr glyph_segment_t glyph_m1     = {                                SEG_C_COM_BIT                 , SEG_E_COM_BIT |                 SEG_G_COM_BIT  }; // left half of "m"
+constexpr glyph_segment_t glyph_m2     = {                                SEG_C_COM_BIT                 ,                                 SEG_G_COM_BIT  }; // right half of "m"
+constexpr glyph_segment_t glyph_n      = {                                SEG_C_COM_BIT                 , SEG_E_COM_BIT |                 SEG_G_COM_BIT  };  // n
+constexpr glyph_segment_t glyph_O      = {SEG_A_COM_BIT | SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT                  };  // O
+constexpr glyph_segment_t glyph_P      = {SEG_A_COM_BIT | SEG_B_COM_BIT                                 , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  }; // "P"
+constexpr glyph_segment_t glyph_r      = {                                                            0 , SEG_E_COM_BIT |                 SEG_G_COM_BIT  }; // "r"
+constexpr glyph_segment_t glyph_S      = {SEG_A_COM_BIT |                 SEG_C_COM_BIT | SEG_D_COM_BIT ,                 SEG_F_COM_BIT | SEG_G_COM_BIT  };  // S
+constexpr glyph_segment_t glyph_t      = {                                                SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  };  // t
+constexpr glyph_segment_t glyph_X      = {SEG_A_COM_BIT | SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  }; // "X"
+constexpr glyph_segment_t glyph_y      = {                SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT ,                 SEG_F_COM_BIT | SEG_G_COM_BIT  };  // y
 
-constexpr glyph_segment_t digit_segments[NIBBLE_MAX+1] = {
+constexpr glyph_segment_t glyph_SPACE  = {                                                            0 ,                                               0}; // " "
 
-    {SEG_A_COM_BIT | SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT                  }, // "0"
-    {                SEG_B_COM_BIT | SEG_C_COM_BIT                 ,                                               0}, // "1" (no high pin segments lit in the number 1)
-    {SEG_A_COM_BIT | SEG_B_COM_BIT |                 SEG_D_COM_BIT , SEG_E_COM_BIT |                 SEG_G_COM_BIT  }, // "2"
-    {SEG_A_COM_BIT | SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT ,                                 SEG_G_COM_BIT  }, // "3"
-    {                SEG_B_COM_BIT | SEG_C_COM_BIT                 ,                 SEG_F_COM_BIT | SEG_G_COM_BIT  }, // "4"
-    {SEG_A_COM_BIT |                 SEG_C_COM_BIT | SEG_D_COM_BIT ,                 SEG_F_COM_BIT | SEG_G_COM_BIT  }, // "5"
-    {SEG_A_COM_BIT |                 SEG_C_COM_BIT | SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  }, // "6"
-    {SEG_A_COM_BIT | SEG_B_COM_BIT | SEG_C_COM_BIT                 ,                                               0}, // "7"(no high pin segments lit in the number 7)
-    {SEG_A_COM_BIT | SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  }, // "8"
-    {SEG_A_COM_BIT | SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT ,                 SEG_F_COM_BIT | SEG_G_COM_BIT  }, // "9"
-    {SEG_A_COM_BIT | SEG_B_COM_BIT | SEG_C_COM_BIT                 , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  }, // "A"
-    {                                SEG_C_COM_BIT | SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  }, // "b"
-    {SEG_A_COM_BIT |                                 SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT                  }, // "C"
-    {                SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT , SEG_E_COM_BIT |                 SEG_G_COM_BIT  }, // "d"
-    {SEG_A_COM_BIT |                                 SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  }, // "E"
-    {SEG_A_COM_BIT                                                 , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  }, // "F"
+constexpr glyph_segment_t glyph_dash   = { 0x00 , SEG_G_COM_BIT };                                                                                          // "-"
+constexpr glyph_segment_t glyph_rbrac  = {SEG_A_COM_BIT | SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT ,                                 SEG_G_COM_BIT  }; // "["
+
+
+// All the single digit numbers (up to 0x0f hex) in an array for easy access
+
+constexpr glyph_segment_t digit_segments[0x10] = {
+
+    glyph_0, // "0"
+    glyph_1, // "1" (no high pin segments lit in the number 1)
+    glyph_2, // "2"
+    glyph_3, // "3"
+    glyph_4, // "4"
+    glyph_5, // "5"
+    glyph_6, // "6"
+    glyph_7, // "7"(no high pin segments lit in the number 7)
+    glyph_8, // "8"
+    glyph_9, // "9"
+    glyph_A, // "A"
+    glyph_b, // "b"
+    glyph_C, // "C"
+    glyph_d, // "d"
+    glyph_E, // "E"
+    glyph_F, // "F"
 
 };
 
@@ -89,36 +127,9 @@ constexpr glyph_segment_t squiggle_segments[SQUIGGLE_SEGMENTS_SIZE] = {
 };
 
 
-constexpr glyph_segment_t dash_segments = { 0x00 , SEG_G_COM_BIT };
-
-constexpr glyph_segment_t blank_segments = {  0x00 , 0x00 };
-
-constexpr glyph_segment_t x_segments = {  SEG_B_COM_BIT | SEG_C_COM_BIT   , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT };
-
-constexpr glyph_segment_t all_segments = { SEG_A_COM_BIT | SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT };      // Note this is a just an '8' but good starting point for copy/paste!
-
-
 // These are little jaggy lines going one way and the other way
 constexpr glyph_segment_t left_tick_segments = {  SEG_C_COM_BIT , SEG_F_COM_BIT | SEG_G_COM_BIT };
 constexpr glyph_segment_t right_tick_segments = { SEG_B_COM_BIT , SEG_E_COM_BIT | SEG_G_COM_BIT };
-
-
-constexpr glyph_segment_t testingonly_message[] = {
-
-    {                                                SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  },  // t
-    {SEG_A_COM_BIT |                                 SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  },  // E
-    {SEG_A_COM_BIT |                 SEG_C_COM_BIT | SEG_D_COM_BIT ,                 SEG_F_COM_BIT | SEG_G_COM_BIT  },  // S
-    {                                                SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  },  // t
-    {                                SEG_C_COM_BIT                 ,                                             0  },  // i
-    {                                SEG_C_COM_BIT                 , SEG_E_COM_BIT |                 SEG_G_COM_BIT  },  // n
-    {SEG_A_COM_BIT | SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT ,                 SEG_F_COM_BIT | SEG_G_COM_BIT  },  // g
-    {                                                            0 ,                                             0  },  // (space)
-    {SEG_A_COM_BIT | SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT                  },  // O
-    {                                SEG_C_COM_BIT                 , SEG_E_COM_BIT |                 SEG_G_COM_BIT  },  // n
-    {                                                SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT                  },  // L
-    {                SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT ,                 SEG_F_COM_BIT | SEG_G_COM_BIT  },  // y
-
-};
 
 
 // This represents a logical digit that we will use to actually display numbers on the screen
@@ -582,13 +593,7 @@ void lcd_show_digit_f( const uint8_t pos, const byte d ) {
 
 
 
-void lcd_show_testing_only_message() {
 
-    for( byte i=0; i<DIGITPLACE_COUNT; i++ ) {
-        lcd_show_f(  i , testingonly_message[ DIGITPLACE_COUNT - 1- i] );        // digit place 12 is rightmost, so reverse order for text
-    }
-
-}
 
 // For now, show all 9's.
 // TODO: Figure out something better here
@@ -627,35 +632,91 @@ void lcd_show_squiggle_frame( byte step ) {
 // Fill the screen with horizontal dashes
 
 void lcd_show_dashes() {
+
     for( uint8_t i=0 ; i<DIGITPLACE_COUNT; i++ ) {
 
-        lcd_show_f( i , dash_segments );
+        lcd_show_f( i , glyph_dash );
 
     }
 }
 
-// show a little dash sliding towards the trigger
 
-// In position`step` we draw a trailing space that will erase the tail of the moving dash
-// Remember that position 11 is the leftmost position and we want the dash to animate to the right to point to the physical trigger switch.
+// Fill the screen with 0's
 
-void lcd_show_lance( byte step ) {
+void lcd_show_zeros() {
 
-    int blank_slot_pos       = step-1;      // Blank out the trail behind the lance as it moves
-    int lance_left_slot_pos  = step;
-    int lance_right_slot_pos = step+1;
+    for( uint8_t i=0 ; i<DIGITPLACE_COUNT; i++ ) {
 
-    if ( blank_slot_pos >=0 && blank_slot_pos < DIGITPLACE_COUNT ) {
-        lcd_show_f( blank_slot_pos , blank_segments );
+        lcd_show_f( i , glyph_0 );
+
+    }
+}
+
+// Fill the screen with X's
+
+void lcd_show_XXX() {
+
+    for( uint8_t i=0 ; i<DIGITPLACE_COUNT; i++ ) {
+
+        lcd_show_f( i , glyph_X );
+
+    }
+}
+
+
+
+constexpr glyph_segment_t testingonly_message[] = {
+                                                   glyph_t,
+                                                   glyph_E,
+                                                   glyph_S,
+                                                   glyph_t,
+                                                   glyph_I,
+                                                   glyph_n,
+                                                   glyph_g,
+                                                   glyph_SPACE,
+                                                   glyph_O,
+                                                   glyph_n,
+                                                   glyph_L,
+                                                   glyph_y,
+};
+
+
+void lcd_show_testing_only_message() {
+
+    for( byte i=0; i<DIGITPLACE_COUNT; i++ ) {
+        lcd_show_f(  i , testingonly_message[ DIGITPLACE_COUNT - 1- i] );        // digit place 12 is rightmost, so reverse order for text
     }
 
-    if ( lance_left_slot_pos >=0 && lance_left_slot_pos< DIGITPLACE_COUNT ) {
-        lcd_show_f( lance_left_slot_pos , dash_segments );
+}
+
+
+// "bAtt Error X"
+
+constexpr glyph_segment_t batt_errorcode_message[] = {
+     {                                SEG_C_COM_BIT | SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  }, // "b"
+     {SEG_A_COM_BIT | SEG_B_COM_BIT | SEG_C_COM_BIT                 , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  }, // "A"
+     {                                                SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  },  // t
+     {                                                SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  },  // t
+     {                                                            0 ,                                             0  }, // " "
+     {SEG_A_COM_BIT |                                 SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  }, // "E"
+     {                                                            0 , SEG_E_COM_BIT |                 SEG_G_COM_BIT  }, // "r"
+     {                                                            0 , SEG_E_COM_BIT |                 SEG_G_COM_BIT  }, // "r"
+     {                                SEG_C_COM_BIT | SEG_D_COM_BIT , SEG_E_COM_BIT |                 SEG_G_COM_BIT  }, // "o"
+     {                                                            0 , SEG_E_COM_BIT |                 SEG_G_COM_BIT  }, // "r"
+     {                                                            0 ,                                             0  }, // " "
+     {SEG_A_COM_BIT | SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  }, // "X"
+
+};
+
+// Show the message "bAtt Error X" on the lcd.
+
+void lcd_show_batt_errorcode( byte code  ) {
+
+    for( byte i=0; i<DIGITPLACE_COUNT; i++ ) {
+        lcd_show_f(  i , batt_errorcode_message[ DIGITPLACE_COUNT - 1- i] );        // digit place 12 is rightmost, so reverse order for text
     }
 
-    if ( lance_right_slot_pos >=0 && lance_right_slot_pos< DIGITPLACE_COUNT ) {
-        lcd_show_f( lance_right_slot_pos , dash_segments );
-    }
+    lcd_show_digit_f( 0 , code );
 
 }
 
@@ -689,6 +750,115 @@ void lcd_show_errorcode( byte code  ) {
 
     lcd_show_digit_f( 0 , code );
 
+}
+
+// LoAd PIn --=
+
+constexpr glyph_segment_t load_pin_message[] = {
+                                                 glyph_L,
+                                                 glyph_O,
+                                                 glyph_A,
+                                                 glyph_d,
+                                                 glyph_SPACE,
+                                                 glyph_P,
+                                                 glyph_i,
+                                                 glyph_n,
+                                                 glyph_SPACE,
+                                                 glyph_SPACE,
+                                                 glyph_SPACE,
+                                                 glyph_SPACE,
+};
+
+
+void lcd_show_load_pin_message() {
+
+    for( byte i=0; i<DIGITPLACE_COUNT; i++ ) {
+        lcd_show_f(  i , load_pin_message[ DIGITPLACE_COUNT - 1- i] );        // digit place 0 is rightmost, so reverse order for text
+    }
+
+}
+
+void lcd_show_load_pin_animation(unsigned int step) {
+
+    switch( step ) {
+
+        case 0:
+            lcd_show_f(  3 , glyph_dash );
+            break;
+
+        case 1:
+            lcd_show_f(  3 , glyph_SPACE );
+            lcd_show_f(  2 , glyph_dash );
+            break;
+
+        case 2:
+            lcd_show_f(  2 , glyph_SPACE );
+            lcd_show_f(  1 , glyph_dash );
+            break;
+
+        case 3:
+            lcd_show_f(  1 , glyph_SPACE );
+            lcd_show_f(  0 , glyph_dash );
+            break;
+
+        case 4:
+            lcd_show_f(  0 , glyph_SPACE );
+            break;
+
+        default:
+            __never_executed();
+
+    }
+
+}
+
+
+constexpr glyph_segment_t first_start_message[] = {
+                                                   glyph_F,
+                                                   glyph_i,
+                                                   glyph_r,
+                                                   glyph_S,
+                                                   glyph_t,
+                                                   glyph_SPACE,
+                                                   glyph_S,
+                                                   glyph_t,
+                                                   glyph_A,
+                                                   glyph_r,
+                                                   glyph_t,
+                                                   glyph_SPACE,
+};
+
+// Show "First Start"
+void lcd_show_first_start_message() {
+
+    for( byte i=0; i<DIGITPLACE_COUNT; i++ ) {
+        lcd_show_f(  i , first_start_message[ DIGITPLACE_COUNT - 1- i] );        // digit place 12 is rightmost, so reverse order for text
+    }
+}
+
+// " -Armning-  "
+
+constexpr glyph_segment_t arming_message[] = {
+                                                   glyph_SPACE,
+                                                   glyph_SPACE,
+                                                   glyph_A,
+                                                   glyph_r,
+                                                   glyph_m1,
+                                                   glyph_m2,
+                                                   glyph_i,
+                                                   glyph_n,
+                                                   glyph_g,
+                                                   glyph_SPACE,
+                                                   glyph_SPACE,
+                                                   glyph_SPACE,
+};
+
+// Show "Arming"
+void lcd_show_arming_message() {
+
+    for( byte i=0; i<DIGITPLACE_COUNT; i++ ) {
+        lcd_show_f(  i , arming_message[ DIGITPLACE_COUNT - 1- i] );        // digit place 12 is rightmost, so reverse order for text
+    }
 }
 
 

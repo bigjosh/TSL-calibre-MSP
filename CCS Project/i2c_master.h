@@ -15,9 +15,9 @@ void              i2c_init( void );
 unsigned char USI_TWI_Start_Transceiver_With_Data(unsigned char, unsigned char * , unsigned char );
 unsigned char USI_TWI_Get_State_Info( void );
 
-unsigned char i2c_read(unsigned char slave,unsigned char addr, unsigned char *msg, unsigned char msgSize);
+unsigned char i2c_read(unsigned char slave,unsigned char addr, void *msg, unsigned char msgSize);
 
-unsigned char i2c_write(unsigned char slave, unsigned char addr, const uint8_t *data , uint8_t size);
+unsigned char i2c_write(unsigned char slave, unsigned char addr, const void *data , uint8_t size);
 
 
 /// float pins and disable input buffers

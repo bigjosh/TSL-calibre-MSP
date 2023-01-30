@@ -28,12 +28,30 @@ void lcd_blinking_mode() {
     LCDBLKCTL = LCDBLKPRE__64 | LCDBLKMOD_2;       // Clock prescaler for blink rate, "10b = Blinking of all segments"
 }
 
+
+// TODO: Make this LPM4.5
+// TODO: Clearing GIE does not prevent wakeup form LPM4.5
+// In LPMx.0 draws 1.38uA with the "First STart" message.
+// In LPMx.5 draws 1.13uA with the "First STart" message.
+
+#pragma FUNC_NEVER_RETURNS
+void sleepforeverandever(){
+
+    // Mind as well go into deep LPMx.5 sleep since we will never wake up, but in these modes there is no general way to disable
+    // Interrupts and any interrupt powers up the CPU. We could carefully disable any possible interrupt sources here, but too much
+    // work for saving 0.2uA considering that if we get here then we really don't care about battery life anyway.
+
+    __bis_SR_register(LPM4_bits);                 // Enter LPM4 and sleep forever and ever and ever (no interrupts enabled so we will never get woken up)
+}
+
+// TODO: Make this LPM4.5
 #pragma FUNC_NEVER_RETURNS
 void blinkforeverandever(){
     lcd_blinking_mode();
-    __bis_SR_register(LPM4_bits  );                 // Enter LPM4 and sleep forever and ever and ever
+    sleepforeverandever();
 }
 
+// TODO: Make this LPM4.5
 #pragma FUNC_NEVER_RETURNS
 void error_mode( byte code ) {
     lcd_show_errorcode(code);
@@ -80,26 +98,26 @@ inline void initGPIO() {
     SBI( Q2_BOT_LED_PDIR , Q2_BOT_LED_B );
 
 
-    // --- TSP LCD voltage regulator
+    // --- TSP7A LCD voltage regulator
 
     SBI( TSP_IN_POUT , TSP_IN_B );          // Power up
     SBI( TSP_ENABLE_POUT , TSP_ENABLE_B );  // Enable
 
     // --- Debug pins
 
-    // Debug pins as output
-    SBI( DEBUGA_PDIR , DEBUGA_B );
-    SBI( DEBUGB_PDIR , DEBUGB_B );
+    // Debug pins
+    SBI( DEBUGA_PDIR , DEBUGA_B );          // Currently used to time how long the ISR takes
+
+    CBI( DEBUGB_PDIR , DEBUGB_B );          // Input
+    SBI( DEBUGB_POUT , DEBUGB_B );          // Pull up
+    SBI( DEBUGB_PREN , DEBUGB_B );          // Currently checked at power up, if low then we go into testonly mode.
 
     // --- RV3032
 
-    CBI( RV3032_CLKOUT_PDIR , RV3032_CLKOUT_B);      // Make the pin connected to RV3032 CLKOUT be input since the RV3032 will power up with CLKOUT running. We will pull it low after RV3032 initialized to disable CLKOUT.
-
     // ~INT in from RV3032 as INPUT with PULLUP
+    // We don't use this for now, so set to drive low.
 
-    CBI( RV3032_INT_PDIR , RV3032_INT_B ); // INPUT
-    SBI( RV3032_INT_POUT , RV3032_INT_B ); // Pull-up
-    SBI( RV3032_INT_PREN , RV3032_INT_B ); // Pull resistor enable
+    SBI( RV3032_INT_PDIR , RV3032_INT_B ); // INPUT
 
     // Note that we can leave the RV3032 EVI pin as is - tied LOW on the PCB so it does not float (we do not use it)
     // It is hard tied low so that it does not float during battery changes when the MCU will not be running
@@ -120,11 +138,11 @@ inline void initGPIO() {
 
     // --- Trigger
 
-    // Trigger pin as in input with pull-up. This will keep it from floating and will let us detect when the trigger is inserted.
+    // By default we set the trigger to drive low so it will not use power regardless if the pin is in or out.
+    // We will switch it to pull-up later if we need to (because we have not launched yet).
 
-    CBI( TRIGGER_PDIR , TRIGGER_B );      // Set input
-    SBI( TRIGGER_PREN , TRIGGER_B );      // Enable pull resistor
-    SBI( TRIGGER_POUT , TRIGGER_B );      // Pull up
+    CBI( TRIGGER_POUT , TRIGGER_B );      // low
+    SBI( TRIGGER_PDIR , TRIGGER_B );      // drive
 
     // Note that we do not enable the trigger pin interrupt here. It will get enabled when we
     // switch to ready-to-lanch mode when the trigger is inserted at the factory. The interrupt will then get
@@ -258,11 +276,63 @@ void initLCD() {
     LCDM4 =  0b01001000;  // L09=MSP_COM2  L08=MSP_COM3
     LCDM5 =  0b00010010;  // L10=MSP_COM0  L11=MSP_COM1
 
-    LCDBLKCTL = 0x00;       // Disable blinking. We do this becuase this bit is not cleared on reset so f we are resetting out of at blinking mode then it would otherwise persist.
+    LCDBLKCTL = 0x00;       // Disable blinking. We do this because this bit is not cleared on reset so if we are resetting out of at blinking mode then it would otherwise persist.
 
     LCDCTL0 |= LCDON;                                           // Turn on LCD
 
 }
+
+// The of time registers we read from the RTC in a single block using one i2c transaction.
+
+struct __attribute__((__packed__)) rv3032_time_block_t {
+    byte sec_bcd;
+    byte min_bcd;
+    byte hour_bcd;
+    byte weekday_bcd;
+    byte date_bcd;
+    byte month_bcd;
+    byte year_bcd;
+};
+
+
+
+// Read the time regs in one transaction
+
+void readRV3032time( rv3032_time_block_t *b ) {
+
+    i2c_init();
+
+    i2c_read( RV_3032_I2C_ADDR , RV3032_SECS_REG  , b , sizeof( rv3032_time_block_t ) );
+
+    i2c_shutdown();
+
+}
+
+
+// Write the time regs in one transacton. Clears the hundreths to zero.
+
+void writeRV3032time( const rv3032_time_block_t *b ) {
+
+    i2c_init();
+
+    i2c_write( RV_3032_I2C_ADDR , RV3032_SECS_REG  , b , sizeof( rv3032_time_block_t ) );
+
+    i2c_shutdown();
+
+}
+
+
+rv3032_time_block_t rv_3032_time_block_init = {
+  0,        // Sec
+  0,        // Min
+  0,        // Hour
+  1,        // Weekday
+  1,        // Date
+  1,        // Month
+  0         // Year
+};
+
+
 
 
 // This table of days per month came from the RX8900 datasheet page 9
@@ -372,46 +442,42 @@ uint8_t c2bcd( uint8_t c ) {
 
 }
 
-// Returns with the RV3032...
-// 1. Generating a short low pulse on ~INT at 2Hz
-// 2. CLKOUT output disabled on RV3032.
-// 3. CLKOUT input on RV3032 pulled low.
-// 2. i2c pins idle (driven low)
-//
-// Returns 0=RV3032 has been running no problems, 1=Low power condition detected since last call.
+// Here is the persistent data that we store in "information memory" FRAM that survives power cycles
 
-// TODO: Make this set our time variables to clock time
-// TODO: Make a function to set the RTC and check if they have been set.
-// TODO: Break out a function to close the RTC when we are done interacting with it.
+struct __attribute__((__packed__)) persistent_data_t {
 
-// Time Since Launch time
+    rv3032_time_block_t commisioned;            // Calendar time when this unit was commissioned.
+    rv3032_time_block_t launched;               // Time when this unit was launched relative to commissioned.
+    byte once_flag;                             // Set to 1 on initial programming.
+    byte launch_flag;                           // Set to 0 on initial programming.
 
-uint8_t secs=0;
-uint8_t mins=0;
-uint8_t hours=0;
-uint32_t days=0;       // needs to be able to hold up to 1,000,000. I wish we had a 24 bit type here. MSPX has 20 bit addresses, but not available on our chip.
+};
 
-/*
-    uint8_t secs=0;
-    uint8_t mins=59;
-    uint8_t hours=23;
-    uint32_t days=0;       // needs to be able to hold up to 1,000,000. TODO: MSPX has 20 bit addresses we could use here to save a couple of cycles.
-*/
+// Tell compiler/linker to put this in "info memory" at 0x1800
+// This area of memory never gets overwritten, not by power cycle and not by downloading a new binary image into program FRAM.
+// We have to mark `volatile` so that the compiler will really go to the FRAM every time rather than optimizing out some accesses.
+volatile persistent_data_t __attribute__(( __section__(".infoA") )) persistent_data;
 
-// Returns  0=above time variables have been set to those held in the RTC
-//         !0=either RTC has been reset or trigger never pulled.
 
-uint8_t initRV3032() {
-    // We will be using the internal diode to charge the backup capacitors connected to Vbackup with these settings...
-    // TCM=01 - Connects Vdd to the charging circuit
-    // DSM=01 - Direct switchover mode, switches whenever Vbackup>Vcc
-    // TCR=00 - Selects a 1K ohm trickle charge resistor
+void unlock_persistant_data() {
+    SYSCFG0 = PFWP;                     // Write protect only program FRAM. Interestingly it appears that the password is not needed here?
+}
 
-    uint8_t retValue=0;
+void lock_persistant_data() {
+    SYSCFG0 = PFWP | DFWP;              // Write protect both program and data FRAM.
+}
+
+// Low voltage flag indicates that the RTC has been re-powered and potentially lost its data.
+
+// Initialize RV3032 for the first time
+// Clears the low voltage flag
+// sets clkout to 1Hz
+// Enables backup capacitor
+
+void rv3032_init() {
 
     // Initialize our i2c pins as pull-up
     i2c_init();
-
 
     // Give the RV3230 a chance to wake up before we start pounding it.
     // POR refresh time(1) At power up ~66ms
@@ -419,24 +485,83 @@ uint8_t initRV3032() {
 
     // Set all the registers
 
+    uint8_t clkout2_reg = 0b01100000;        // CLKOUT XTAL low freq mode, freq=1Hz
+    i2c_write( RV_3032_I2C_ADDR , 0xc3 , &clkout2_reg , 1 );
+
     // First control reg. Note that turning off backup switch-over seems to save ~0.1uA
     //uint8_t pmu_reg = 0b01000001;         // CLKOUT off, backup switchover disabled, no charge pump, 1K OHM trickle resistor, trickle charge Vbackup to Vdd.
     //uint8_t pmu_reg = 0b01010000;          // CLKOUT off, Direct backup switching mode, no charge pump, 0.6K OHM trickle resistor, trickle charge Vbackup to Vdd. Only predicted to use 50nA more than disabled.
     //uint8_t pmu_reg = 0b01100001;         // CLKOUT off, Level backup switching mode (2v) , no charge pump, 1K OHM trickle resistor, trickle charge Vbackup to Vdd. Predicted to use ~200nA more than disabled because of voltage monitor.
     //uint8_t pmu_reg = 0b01000000;         // CLKOUT off, Other disabled backup switching mode, no charge pump, trickle resistor off, trickle charge Vbackup to Vdd
 
-    uint8_t pmu_reg = 0b00011101;          // CLKOUT ON, Direct backup switching mode, no charge pump, 12K OHM trickle resistor, trickle charge Vbackup to Vdd. Only predicted to use 50nA more than disabled.
-
+    uint8_t pmu_reg = 0b00011101;          // CLKOUT ON, Direct backup switching mode, no charge pump, 12K OHM trickle resistor, trickle charge Vbackup to Vdd.
     i2c_write( RV_3032_I2C_ADDR , 0xc0 , &pmu_reg , 1 );
 
-    uint8_t clkout2_reg = 0b01100000;        // CLKOUT XTAL low freq mode, freq=1Hz
-    i2c_write( RV_3032_I2C_ADDR , 0xc3 , &clkout2_reg , 1 );
-
     uint8_t control1_reg = 0b00000100;      // TE=0 so no periodic timer interrupt, EERD=1 to disable automatic EEPROM refresh (why would you want that?).
-
     i2c_write( RV_3032_I2C_ADDR , 0x10 , &control1_reg , 1 );
 
-    // Next check if the RV3032 just powered up, or if it was already running and show a 1 in digit 10 if it was running (0 if not)
+    uint8_t status_reg=0x00;        // Set all flags to 0. Clears out the low voltage flag so if it is later set then we know that the chip lost power.
+    i2c_write( RV_3032_I2C_ADDR , 0x0d , &status_reg , 1 );
+
+    i2c_shutdown();
+
+}
+
+// Clear the low voltage flags. These flags remember if the chip has seen a voltage low enough to make it loose time.
+
+void rv3032_clear_LV_flags() {
+
+    // Initialize our i2c pins as pull-up
+    i2c_init();
+
+    uint8_t status_reg=0x00;        // Set all flags to 0. Clears out the low voltage flag so if it is later set then we know that the chip lost power.
+    i2c_write( RV_3032_I2C_ADDR , 0x0d , &status_reg , 1 );
+
+    i2c_shutdown();
+
+}
+
+
+// Turn off the RTC to save some power. Only use this if you will NEVER need the RTC again (like if you are going into error mode).
+
+void rv3032_shutdown() {
+
+    i2c_init();
+
+    uint8_t pmu_reg = 0b01000000;         // CLKOUT off, backup switchover disabled, no charge pump
+    i2c_write( RV_3032_I2C_ADDR , 0xc0 , &pmu_reg , 1 );
+
+    i2c_shutdown();
+
+}
+
+
+// Returns 0=RV3032 has been running no problems, 1=Low power condition detected since last call.
+
+// TODO: Make this set our time variables to clock time
+// TODO: Make a function to set the RTC and check if they have been set.
+// TODO: Break out a function to close the RTC when we are done interacting with it.
+
+// Time from RTC - these should always match the time in the RTC registers (but we do decoding from d/m/y to elapsed days)
+// Durring ready-to-launch mode, this is the time since initial power up at the factory
+// Durring time-since-launch mode, this is how long we have been counting.
+
+uint8_t secs=0;
+uint8_t mins=0;
+uint8_t hours=0;
+uint32_t days=0;       // needs to be able to hold up to 1,000,000. I wish we had a 24 bit type here. MSPX has 20 bit addresses, but not available on our chip.
+
+// Returns  0=above time variables have been set to those held in the RTC
+//         !0=RTC has lost power so valid time not available.
+
+uint8_t RV3032_read_state() {
+
+    uint8_t retValue=0;
+
+    // Initialize our i2c pins as pull-up
+    i2c_init();
+
+    // First check if the RV3032 just powered up, or if it was already running. Start with 0xff so if the i2c read fails then we assume not running.
     uint8_t status_reg=0xff;
     i2c_read( RV_3032_I2C_ADDR , 0x0d , &status_reg , 1 );
 
@@ -449,30 +574,23 @@ uint8_t initRV3032() {
 
         // Read time
 
-        uint8_t t;
+        rv3032_time_block_t t;
 
-        i2c_read( RV_3032_I2C_ADDR , RV3032_SECS_REG  , &t , 1 );
-        secs = bcd2c(t);
+        readRV3032time(&t);
 
-        i2c_read( RV_3032_I2C_ADDR , RV3032_MINS_REG  , &t , 1 );
-        mins = bcd2c(t);
-
-        i2c_read( RV_3032_I2C_ADDR , RV3032_HOURS_REG , &t , 1 );
-        hours = bcd2c(t);
+        secs  = bcd2c(t.sec_bcd);
+        mins  = bcd2c(t.min_bcd);
+        hours = bcd2c(t.hour_bcd);
 
         uint8_t c;
         uint8_t y;
         uint8_t m;
         uint8_t d;
 
-        i2c_read( RV_3032_I2C_ADDR , RV3032_DAYS_REG  , &t , 1 );
-        d = bcd2c(t);
+        d = bcd2c(t.date_bcd);
+        m = bcd2c(t.month_bcd);
+        y = bcd2c(t.year_bcd);
 
-        i2c_read( RV_3032_I2C_ADDR , RV3032_MONS_REG  , &t , 1 );
-        m = bcd2c(t);
-
-        i2c_read( RV_3032_I2C_ADDR , RV3032_YEARS_REG , &t , 1 );
-        y = bcd2c(t);
         c=0; // TODO: How to get this from RV_3032?
 
         days = date_to_days(c, y, m, d);
@@ -560,63 +678,13 @@ void testLeapYear() {
 
 }
 
+
 */
 
-// Write zeros to all time regs in RV3032
 
-void zeroRV3032() {
-
-
-    // Initialize our i2c pins as pull-up
-    i2c_init();
-
-    // Zero out all of the timekeep regs
-    uint8_t zero_byte =0x00;
-    uint8_t one_byte =0x01;      // We need this because month and day start at 0
-
-    // No need to write to hundreths reg, it is cleared automatically when we write to seconds
-    i2c_write( RV_3032_I2C_ADDR , RV3032_SECS_REG  , &zero_byte , 1 );
-    i2c_write( RV_3032_I2C_ADDR , RV3032_MINS_REG  , &zero_byte , 1 );
-    i2c_write( RV_3032_I2C_ADDR , RV3032_HOURS_REG , &zero_byte , 1 );
-    i2c_write( RV_3032_I2C_ADDR , RV3032_DAYS_REG  , &one_byte , 1 );
-    i2c_write( RV_3032_I2C_ADDR , RV3032_MONS_REG  , &one_byte , 1 );
-    i2c_write( RV_3032_I2C_ADDR , RV3032_YEARS_REG , &zero_byte , 1 );
-
-
-    // Clear the status regs so we know trigger was pulled.
-
-    uint8_t status_reg =0x00;   // Clear all flags for next time we check. This will clear the low voltage and power up flags that we tested above.
-    i2c_write( RV_3032_I2C_ADDR , 0x0d , &status_reg , 1 );
-
-    i2c_shutdown();
-
-}
-
-
-// called when trigger is pulled
-// 1. Reads current time from RTC
-// 2. Records current time to local FRAM memory
-// 3. Resets RTC to zero starting state.
-// Returns with RTC reset so about 1000ms until next clkout interrupt.
-
-void launch() {
-
-    // Initialize our i2c pins as pull-up
-    i2c_init();
-
-    // TODO: unlock FRAM, write current time to FRAM, lock FRAM, clear current time in memory, clear current time in RTC
-
-    uint8_t zero_byte =0x00;
-
-    // No need to write to hundreths reg, it is cleared automatically anytime we write to seconds
-    i2c_write( RV_3032_I2C_ADDR , RV3032_SECS_REG  , &zero_byte , 1 );
-
-    i2c_shutdown();
-
-}
 
 enum mode_t {
-    START,                  // Waiting for pin to be inserted (shows dashes)
+    LOAD_TRIGGER,                  // Waiting for pin to be inserted (shows dashes)
     ARMING,                 // Hold-off after pin is inserted to make sure we don't inadvertently trigger on a switch bounce (lasts 0.5s)
     READY_TO_LAUNCH,        // Pin inserted, waiting for it to be removed (shows squiggles)
     TIME_SINCE_LAUNCH       // Pin pulled, currently counting (shows count)
@@ -624,12 +692,8 @@ enum mode_t {
 
 mode_t mode;
 
-uint8_t step;          // START             - Used to keep the position of the dash moving across the display (0=leftmost position, only one dash showing)
-                    // READY_TO_LAUNCH   - Which step of the squigle animation
-                    // TIME_SINCE_LAUNCH - Count the half-seconds (0=1st 500ms, 1=2nd 500ms)
-
-
-                            // TODO: Make a 24 bit type.
+unsigned int step;          // LOAD_TRIGGER      - Used to keep the position of the dash moving across the display (0=leftmost position, only one dash showing)
+                            // READY_TO_LAUNCH   - Which step of the squigle animation
 
 
 // This ISR is only called when we are in Time Since Launch count up mode
@@ -667,7 +731,7 @@ void beginTimeSinceLaunchMode() {
 }
 
 // Terminate after one day
-constexpr bool testing_only_mode = false;
+bool testing_only_mode = false;
 
 // Registers R4-R10 are preserved across function calls, so we can even make calls out of the ISRs and stuff will
 // not get messed up.
@@ -845,14 +909,14 @@ void rtc_isr(void) {
 
     } else if ( mode==ARMING ) {
 
-        // This phase is just to add a 500ms debounce to when the trigger is initially inserted at the factory to make sure we do
+        // This phase is just to add a 1000ms debounce to when the trigger is initially inserted at the factory to make sure we do
         // not accidentally fire then.
 
-        // We are currently showing dashes, and we will switch to squiggles on next tick if the trigger is still in
+        // We are currently showing "Arming" message, and we will switch to squiggles on next tick if the trigger is still in
 
-        // If trigger is still inserted (switch open, pin high), then go into READY_TO_LAUNCH were we wait for it to be pulled
+        // If trigger is still inserted 1 second later  (since we enetered arming mode) , then go into READY_TO_LAUNCH were we wait for it to be pulled
 
-        if ( TBI( TRIGGER_PIN , TRIGGER_B )  ) {
+        if ( TBI( TRIGGER_PIN , TRIGGER_B )  ) {        // Trigger still pin inserted? (switch open, pin high)
 
             // Now we need to setup interrupt on trigger pull to wake us when pin  goes low
             // This way we can react instantly when they pull the pin.
@@ -870,47 +934,53 @@ void rtc_isr(void) {
             // In the unlikely case where the pin was inserted for less than 500ms, then go back to the beginning and show dash scroll and wait for it to be inserted again.
             // This has the net effect of making an safety interlock that the pin has to be inserted for a full 1 second before we will arm.
 
-            mode = START;
-            step = 0;       // start at leftmost position
+            mode = LOAD_TRIGGER;
+            step = 0;
 
         }
 
 
-    } else { // if mode==START
+    } else { // if mode==LOAD_TRIGGER
 
-        // Check if pin was inserted (pin high)
+        // Check if trigger is inserted (pin high)
 
         if ( TBI( TRIGGER_PIN , TRIGGER_B ) ) {       // Check if trigger has been inserted yet
 
             // Trigger is in, we can arm now.
 
-            // Show a little full dash screen to indicate that we know you put the pin in
+            // Show an XXX screen to give user feedback indicate that we know you put the pin in
             // TODO: make this constexpr
 
-            lcd_show_dashes();
+            lcd_show_arming_message();
 
             //Start showing the ready to launch squiggles on next tick
 
             mode = ARMING;
 
-            // note that here we wait a full tick before checking that the pin is out again. This will debounce the switch for 0.5s when the pin is inserted.
+            // note that here we wait a full tick before checking that the pin is out again. This will debounce the switch for 1s when the pin is inserted.
 
         } else {
 
-            // trigger still out
 
-            lcd_show_lance(step);
+            SBI( DEBUGB_POUT , DEBUGB_B );
+
+            // trigger still out
+            // SHow message so person knows why we are waiting (yes, this is redundant, but heck the pin is out so we are burning fuel against the trigger pull-up anyway
+            lcd_show_load_pin_message();
+
 
             step++;
 
-            if (step==LANCE_ANIMATION_FRAME_COUNT) {
+            if (step==LOAD_PIN_ANIMATION_FRAME_COUNT) {
                 step=0;
             }
 
+            lcd_show_load_pin_animation(step);
+
+            CBI( DEBUGB_POUT , DEBUGB_B );
+
         }
-
     }
-
 
 
     CBI( RV3032_CLKOUT_PIFG , RV3032_CLKOUT_B );      // Clear the pending RV3032 INT interrupt flag that got us into this ISR.
@@ -936,7 +1006,7 @@ __interrupt void trigger_isr(void) {
     SBI( DEBUGA_POUT , DEBUGA_B );
 
     // First we delay for about 1000 / 1.1Mhz  = ~1ms
-    // This will filter glitches since the pin will not still be low when we sample it after this delay
+    // This will filter glitches since the pin will not still be low when we sample it after this delay. We want to be really sure!
     __delay_cycles( 1000 );
 
     // Grab the current trigger pin level
@@ -971,18 +1041,26 @@ __interrupt void trigger_isr(void) {
 
         // Show all 0's on the LCD to instantly let the user know that we saw the pull
 
-        #pragma UNROLL( DIGITPLACE_COUNT )
+        lcd_show_zeros();
 
-        for( uint8_t i=0 ; i<DIGITPLACE_COUNT; i++ ) {
+        // Do the actual launch, which will...
+        // 1. Read the current RTC time and save it to FRAM
+        // 2. Set the launchflag in FRAM so we will forevermore know that we did launch already.
+        // 3. Reset the current RTC time to midnight 1/1/00.
 
-            lcd_show_digit_f( i , 0 );
+        // Initialize our i2c pins as pull-up
+        i2c_init();
 
-        }
+        // First get current time and save it to FRAM for archival storage.
+        unlock_persistant_data();
+        i2c_read( RV_3032_I2C_ADDR , RV3032_SECS_REG  , (void *)  &persistent_data.launched , sizeof( rv3032_time_block_t ) );
+        persistent_data.launch_flag=1;
+        lock_persistant_data();
 
-        // Record launch time and reset the RV3032's internal timer to all zeros
-        // Start counting the current second over again from right..... now
+        // Then zero out the RTC to start counting over again now.
+        i2c_write( RV_3032_I2C_ADDR , RV3032_SECS_REG  , &rv_3032_time_block_init , sizeof( rv3032_time_block_t ) );
 
-        launch();
+        i2c_shutdown();
 
         // We will get the next tick in 1000ms. Make sure we return from this ISR within 500ms from now. (we really could wait up to 999ms since that would just delay the half tick and not miss the following real tick).
 
@@ -997,7 +1075,12 @@ __interrupt void trigger_isr(void) {
 
         flash();
 
-        // Start ticking!
+        // Start ticking from... now!
+
+        secs=0;
+        mins=0;
+        hours=0;
+        days=0;
 
         mode = TIME_SINCE_LAUNCH;
 
@@ -1042,57 +1125,125 @@ __interrupt void tsl_isr(void) {
 int main( void )
 {
 
+
     WDTCTL = WDTPW | WDTHOLD | WDTSSEL__VLO;   // Give WD password, Stop watchdog timer, set WD source to VLO
                                                // The thinking is that maybe the watchdog will request the SMCLK even though it is stopped (this is implied by the datasheet flowchart)
                                                // Since we have to have VLO on for LCD anyway, mind as well point the WDT to it.
                                                // TODO: Test to see if it matters, although no reason to change it.
 
+    // Disable the Voltage Supervisor (SVS=OFF) to save power since we don't care if the MSP430 goes low voltage
+    // This code from LPM_4_5_2.c from TI resources
+    PMMCTL0_H = PMMPW_H;                // Open PMM Registers for write
+    PMMCTL0_L &= ~(SVSHE);              // Disable high-side SVS
+
+
+    // Disable the FRAM controller automatically turning on when we wake.
+    // "GCCTL0.FRLPMPWR 0b = FRAM startup is delayed to the first FRAM access after LPM exit"
+    // Since we are moving the ISR vector table to RAM and our ISRs are in RAM, this will prevent the
+    // FRAM controller from ever starting up, which saves power.
+
+#warning
+    //CBI( GCCTL0 , FRLPMPWR );
+
     initGPIO();
 
     initLCD();
 
+    // Power up display with a nice dash pattern
+    lcd_show_dashes();
+
+    rv3032_init();        // Initialize the RV3032 with proper clkout & backup settings. Note that we must do this every time we power up since these settings are lost when we drop to backup mode when the battery is pulled.
+
     initLCDPrecomputedWordArrays();
 
-    // Power up display with a test pattern so we are not showing garbage
+#warning
+    if ( TBI( DEBUGB_PIN , DEBUGB_B ) == 0 ) {       // If debug B pin is tied low at power up...
 
-    lcd_show_digit_f( 0, 0 );
-    lcd_show_digit_f( 1, 1 );
-    lcd_show_digit_f( 2, 2 );
-    lcd_show_digit_f( 3, 3 );
-    lcd_show_digit_f( 4, 4 );
-    lcd_show_digit_f( 5, 5 );
-    lcd_show_digit_f( 6, 6 );
-    lcd_show_digit_f( 7, 7 );
-    lcd_show_digit_f( 8, 8 );
-    lcd_show_digit_f( 9, 9 );
-    lcd_show_digit_f(10, 0x0a );
-    lcd_show_digit_f(11, 0x0b );
+        unlock_persistant_data();
+        persistent_data.once_flag=1;            // Trigger a first time power up
+        lock_persistant_data();
 
-    // Setup the RV3032
-    uint8_t rtcLowVoltageFlag = initRV3032();
+        lcd_show_testing_only_message();
+        blinkforeverandever();
+
+    }
+
+
+
+    // Check if this is the first time we've ever been powered up.
+    if (persistent_data.once_flag==1) {
+
+        // First clear the low voltage flag on the RV3032 so from now on we will care if it looses time.
+        // We check if these flags have been set on each power up to know if the RTC still knows what time it is, or if the battery was out for too long.
+
+        rv3032_clear_LV_flags();
+
+        // Now remember that we did our start up. From now on, the RTC will run on its own forever.
+
+        unlock_persistant_data();
+        persistent_data.once_flag=0;             // Remember that we already started up once and never do it again.
+        persistent_data.launch_flag=0;           // Clear the launch flag even though we should never have to
+        lock_persistant_data();
+
+        lcd_show_first_start_message();
+        sleepforeverandever();
+
+        // After first start up, unit must be re-powered to enter normal operation.
+
+    }
+
+
+    // Wait for any clkout transition so we know we have at least 500ms to read out time and activate interrupt before time changes so we dont miss any seconds.
+    unsigned start_val = TBI( RV3032_CLKOUT_PIN, RV3032_CLKOUT_B );
+    while (TBI( RV3032_CLKOUT_PIN, RV3032_CLKOUT_B )==start_val); // wait for any transition
+
+    // a new second just ticked.
+
+    // Clear any pending interrupts from the RV3032 clkout pin
+    // We just started the timer so we should not get a real one for ~1000ms
+
+    CBI( RV3032_CLKOUT_PIFG     , RV3032_CLKOUT_B    );
+
+
+    // Read the time out of the RV3032. Returns an error if the chip has lost power since it was set (so the time is invalid)
+    uint8_t rtcLowVoltageFlag = RV3032_read_state();
 
     if (rtcLowVoltageFlag) {
 
-        // We are starting fresh
+        // RTC lost power at some point so nothing we can do except show an error message forever.
 
-        zeroRV3032();
+        if (persistent_data.launch_flag) {
+            lcd_show_batt_errorcode( BATT_ERROR_PRELAUNCH );
+        } else {
+            lcd_show_batt_errorcode( BATT_ERROR_POSTLAUNCH );
+        }
 
-        mode = START;
-        step = DIGITPLACE_COUNT+3;           // Start the dash animation at the leftmost position
+        rv3032_shutdown();          // We can't use the RTC, so shut it down to save some power while we show error message, otherwise it would be in it's default powerup 32768 mode that uses like 3uA. NOte that we do not charge the backup cap in this mode becuase there is no point.
+        blinkforeverandever();
+
+    }
+
+    if ( persistent_data.launch_flag == 0 ) {
+
+        // We have never launched!
+
+        // First we need to make sure that the pin is inserted because
+        // we would not want to just launch because the pin was out when batteries were inserted.
+        // This also lets us test both trigger positions during commissioning at the factory.
+
+        CBI( TRIGGER_PDIR , TRIGGER_B );      // Input
+        SBI( TRIGGER_PREN , TRIGGER_B );      // Enable pull resistor
+        SBI( TRIGGER_POUT , TRIGGER_B );      // Pull up
+
+
+        mode = LOAD_TRIGGER;                  // Go though state machine to wait for trigger to be loaded
+        step =0;                              // Used to blink the arrow on the loading display
+
+        // We will go into "load pin" mode when next second ticks. This gives the pull-up a chance to take effect and also avoids any bounce aliasing right at power up.
 
     } else {
 
-        // We have already been triggered and time is already loaded into variables
-
-        // Disable the pull-up
-
-        // Disable the trigger pin and drive low to save power and prevent any more interrupts from it
-        // (if it stayed pulled up then it would draw power though the pull-up resistor whenever the pin was inserted)
-
-        CBI( TRIGGER_POUT , TRIGGER_B );      // low
-        SBI( TRIGGER_PDIR , TRIGGER_B );      // drive
-
-        CBI( TRIGGER_PIFG , TRIGGER_B );      // Clear any pending interrupt from us driving it low (it could have gone high again since we sampled it)
+        // We have already been triggered and time is already loaded into variables by the RV3032_read_state() function.
 
         // Show the time on the display
         // Note that the time was loaded from the RTC when we initialized it.
@@ -1116,26 +1267,10 @@ int main( void )
         // Now start ticking!
 
         mode = TIME_SINCE_LAUNCH;
-        step = 0;           // Start at the top of the first second.
     }
 
-    // Clear any pending interrupts from the RV3032 INT pin
-    // We just started the timer so we should not get a real one for ~1000ms
 
-    CBI( RV3032_CLKOUT_PIFG     , RV3032_CLKOUT_B    );
-
-    // Go into start mode which will wait for the trigger to be inserted.
-    // We don;t have to worry about any races here because once we do see the trigger is in then we go into
-    // ARMING mode which waits an additional 500ms to debounce the switch
-
-
-    // Go into LPM sleep with Voltage Supervisor disabled.
-    // This code from LPM_4_5_2.c from TI resources
-    PMMCTL0_H = PMMPW_H;                // Open PMM Registers for write
-    PMMCTL0_L &= ~(SVSHE);              // Disable high-side SVS
-    // LPM4 SVS=OFF
-
-    //enter_tslmode_asm( 25 );
+    // Wait for interrupt to fire at next clkout change (in about 1 second) to drive us into the state machine (in either "pin loading" or "time since lanuch" mode)
 
     __bis_SR_register(LPM4_bits | GIE );                 // Enter LPM4
     // BIS.W    #248,SR
@@ -1151,21 +1286,6 @@ int main( void )
 
 }
 
-/*
 
-// Will need for saving timestamps
 
-void FRAMWrite (void)
-{
-    unsigned int i=0;
-
-    SYSCFG0 &= ~DFWP;
-    for (i = 0; i < 128; i++)
-    {
-        *FRAM_write_ptr++ = data;
-    }
-    SYSCFG0 |= DFWP;
-}
-
-*/
 

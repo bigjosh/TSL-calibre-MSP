@@ -62,19 +62,33 @@ void lcd_show_squiggle_frame( byte step );
 // Fill the screen with horizontal dashes
 void lcd_show_dashes();
 
+// Fill the screen with X's
+void lcd_show_XXX();
 
+
+void lcd_show_load_pin_message();
+
+constexpr unsigned LOAD_PIN_ANIMATION_FRAME_COUNT = 5;      // Dash sliding to the right to point ot the trigger pin
+void lcd_show_load_pin_animation(unsigned int step);
 
 // The lance is 2 digitplaces wide so we need extra frames to show it coming onto and off of the screen
 constexpr unsigned LANCE_ANIMATION_FRAME_COUNT = DIGITPLACE_COUNT+3;          // There really should be a better way to do this.
 
-// show a little dash sliding towards the trigger
-void lcd_show_lance( byte step );
+// Show "First Start"
+void lcd_show_first_start_message();
 
-
-// Show the message "Error X" on the lcd.
+// Show the message "Error cOde X" on the lcd.
 
 void lcd_show_errorcode( byte code  );
 
+// Show the message "bAtt Error X" on the lcd.
+void lcd_show_batt_errorcode( byte code  );
+
+// Show "-Arming-"
+void lcd_show_arming_message();
+
+// Fill the screen with 0's
+void lcd_show_zeros();
 
 
 // these arrays hold the pre-computed words that we will write to word in LCD memory that

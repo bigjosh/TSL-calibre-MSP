@@ -278,8 +278,9 @@ unsigned char USI_TWI_Write_Data_No_stop(unsigned char slave, unsigned char addr
 // assumes bus is idle on entry, Exists with bus idle
 // Returns 0 on success
 
-unsigned char i2c_write(unsigned char slave, unsigned char addr , const uint8_t *buffer , uint8_t count)
+unsigned char i2c_write(unsigned char slave, unsigned char addr , const void *in_buffer , uint8_t count)
 {
+    unsigned char *buffer = (unsigned char *)in_buffer;
 
     i2c_start( slave , 0 );      // TODO: check for error
 
@@ -312,8 +313,10 @@ unsigned char i2c_write(unsigned char slave, unsigned char addr , const uint8_t 
 // assumes bus is idle on entry, Exists with bus idle
 // Returns 0 on success
 
-unsigned char i2c_read(unsigned char slave, unsigned char addr  , uint8_t *buffer , uint8_t count)
+unsigned char i2c_read(unsigned char slave, unsigned char addr  , void *in_buffer , uint8_t count)
 {
+
+    unsigned char *buffer = (unsigned char *)in_buffer;
 
     i2c_start( slave , 0 );      // "CPU transmits the RX8900's slave address with the R/W bit set to write mode."
 
