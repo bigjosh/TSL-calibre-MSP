@@ -65,7 +65,6 @@ void lcd_show_dashes();
 // Fill the screen with X's
 void lcd_show_XXX();
 
-
 void lcd_show_load_pin_message();
 
 constexpr unsigned LOAD_PIN_ANIMATION_FRAME_COUNT = 5;      // Dash sliding to the right to point ot the trigger pin
@@ -78,7 +77,6 @@ constexpr unsigned LANCE_ANIMATION_FRAME_COUNT = DIGITPLACE_COUNT+3;          //
 void lcd_show_first_start_message();
 
 // Show the message "Error cOde X" on the lcd.
-
 void lcd_show_errorcode( byte code  );
 
 // Show the message "bAtt Error X" on the lcd.
@@ -86,6 +84,15 @@ void lcd_show_batt_errorcode( byte code  );
 
 // Show "-Arming-"
 void lcd_show_arming_message();
+
+// Show "CLOCK GOOd"
+void lcd_show_clock_good_message();
+
+// Show "CLOCK LOSt"
+void lcd_show_clock_lost_message();
+
+// Show copyright message
+void lcd_show_copyright_message();
 
 // Fill the screen with 0's
 void lcd_show_zeros();

@@ -160,6 +160,14 @@ inline void initGPIO() {
 
 }
 
+// Turn off power to RV3032
+void depower_rv3032() {
+
+    // Make Vcc pin to RV3032 ground.
+    CBI( RV3032_VCC_POUT , RV3032_VCC_B);
+
+}
+
 void initLCD() {
 
     // Configure LCD pins
@@ -293,7 +301,6 @@ struct __attribute__((__packed__)) rv3032_time_block_t {
     byte month_bcd;
     byte year_bcd;
 };
-
 
 
 // Read the time regs in one transaction
@@ -450,7 +457,8 @@ struct __attribute__((__packed__)) persistent_data_t {
     rv3032_time_block_t launched;               // Time when this unit was launched relative to commissioned.
     byte once_flag;                             // Set to 1 on initial programming.
     byte launch_flag;                           // Set to 0 on initial programming.
-
+    unsigned days_since_last_century;
+    unsigned century_count;
 };
 
 // Tell compiler/linker to put this in "info memory" at 0x1800
@@ -476,15 +484,16 @@ void lock_persistant_data() {
 
 void rv3032_init() {
 
+    // Give the RV3230 a chance to wake up before we start pounding it.
+    // POR refresh time(1) At power up ~66ms
+    // Also there is Tdeb which is the time it takes to recover from a backup switch over back to Vcc. It is unclear if this is 1ms or 1000ms so lets be safe.
+    __delay_cycles(1100000);    // 1 sec +/-10% (we are running at 1Mhz)
+
     // Initialize our i2c pins as pull-up
     i2c_init();
 
-    // Give the RV3230 a chance to wake up before we start pounding it.
-    // POR refresh time(1) At power up ~66ms
-    __delay_cycles(100000);
 
-    // Set all the registers
-
+    // Set all the registers we care about that can get reset by either power-on-reset or recover from backup
     uint8_t clkout2_reg = 0b01100000;        // CLKOUT XTAL low freq mode, freq=1Hz
     i2c_write( RV_3032_I2C_ADDR , 0xc3 , &clkout2_reg , 1 );
 
@@ -499,9 +508,6 @@ void rv3032_init() {
 
     uint8_t control1_reg = 0b00000100;      // TE=0 so no periodic timer interrupt, EERD=1 to disable automatic EEPROM refresh (why would you want that?).
     i2c_write( RV_3032_I2C_ADDR , 0x10 , &control1_reg , 1 );
-
-    uint8_t status_reg=0x00;        // Set all flags to 0. Clears out the low voltage flag so if it is later set then we know that the chip lost power.
-    i2c_write( RV_3032_I2C_ADDR , 0x0d , &status_reg , 1 );
 
     i2c_shutdown();
 
@@ -536,27 +542,11 @@ void rv3032_shutdown() {
 }
 
 
-// Returns 0=RV3032 has been running no problems, 1=Low power condition detected since last call.
-
-// TODO: Make this set our time variables to clock time
-// TODO: Make a function to set the RTC and check if they have been set.
-// TODO: Break out a function to close the RTC when we are done interacting with it.
-
-// Time from RTC - these should always match the time in the RTC registers (but we do decoding from d/m/y to elapsed days)
-// Durring ready-to-launch mode, this is the time since initial power up at the factory
-// Durring time-since-launch mode, this is how long we have been counting.
-
-uint8_t secs=0;
-uint8_t mins=0;
-uint8_t hours=0;
-uint32_t days=0;       // needs to be able to hold up to 1,000,000. I wish we had a 24 bit type here. MSPX has 20 bit addresses, but not available on our chip.
-
 // Returns  0=above time variables have been set to those held in the RTC
-//         !0=RTC has lost power so valid time not available.
+//          1=RTC has lost power so valid time not available.
+//          2=Bad data from RTC
 
 uint8_t RV3032_read_state() {
-
-    uint8_t retValue=0;
 
     // Initialize our i2c pins as pull-up
     i2c_init();
@@ -565,45 +555,69 @@ uint8_t RV3032_read_state() {
     uint8_t status_reg=0xff;
     i2c_read( RV_3032_I2C_ADDR , 0x0d , &status_reg , 1 );
 
-    if ( (status_reg & 0x03) != 0x00 ) {               //If power on reset or low voltage drop detected then we have not been running continuously
+    i2c_shutdown();
 
-        // Signal to caller that we have had a low power event.
-        retValue = 1;
+    if ( (status_reg ) == 0xff ) {               //
 
-    } else {
-
-        // Read time
-
-        rv3032_time_block_t t;
-
-        readRV3032time(&t);
-
-        secs  = bcd2c(t.sec_bcd);
-        mins  = bcd2c(t.min_bcd);
-        hours = bcd2c(t.hour_bcd);
-
-        uint8_t c;
-        uint8_t y;
-        uint8_t m;
-        uint8_t d;
-
-        d = bcd2c(t.date_bcd);
-        m = bcd2c(t.month_bcd);
-        y = bcd2c(t.year_bcd);
-
-        c=0; // TODO: How to get this from RV_3032?
-
-        days = date_to_days(c, y, m, d);
+            // Signal to caller that we did not get an expected value from RTC.
+            return 2;
 
     }
 
-    // We are done setting stuff up with the i2c connection, so drive the pins low
-    // This will hopefully reduce leakage and also keep them from floating into the
-    // RV3032 when the MSP430 looses power during a battery change.
+
+    if ( (status_reg & 0x03) != 0x00 ) {               //If power on reset or low voltage drop detected then we have not been running continuously
+
+        // Signal to caller that we have had a low power event.
+        return 1;
+
+    }
+
+    return 0;
+
+}
+
+// Time from RTC - these should always match the time in the RTC registers (but we do decoding from d/m/y to elapsed days)
+// During ready-to-launch mode, this is the time since initial power up at the factory
+// During time-since-launch mode, this is how long we have been counting.
+
+uint8_t secs=0;
+uint8_t mins=0;
+uint8_t hours=0;
+uint32_t days=0;       // needs to be able to hold up to 1,000,000. I wish we had a 24 bit type here. MSPX has 20 bit addresses, but not available on our chip.
+
+
+// Read time from RTC into our global time variables
+
+void RV_3032_read_time() {
+
+    // Initialize our i2c pins as pull-up
+    i2c_init();
+
+
+    // Read time
+
+    rv3032_time_block_t t;
+
+    readRV3032time(&t);
+
+    secs  = bcd2c(t.sec_bcd);
+    mins  = bcd2c(t.min_bcd);
+    hours = bcd2c(t.hour_bcd);
+
+    uint8_t c;
+    uint8_t y;
+    uint8_t m;
+    uint8_t d;
+
+    d = bcd2c(t.date_bcd);
+    m = bcd2c(t.month_bcd);
+    y = bcd2c(t.year_bcd);
+
+    c=0; // TODO: How to get this from RV_3032?
+
+    days = date_to_days(c, y, m, d);
 
     i2c_shutdown();
-
-    return retValue;
 
 }
 
@@ -948,12 +962,9 @@ void rtc_isr(void) {
 
             // Trigger is in, we can arm now.
 
-            // Show an XXX screen to give user feedback indicate that we know you put the pin in
-            // TODO: make this constexpr
-
             lcd_show_arming_message();
 
-            //Start showing the ready to launch squiggles on next tick
+            //Start showing the ready to launch squiggles on next tick after that
 
             mode = ARMING;
 
@@ -965,9 +976,9 @@ void rtc_isr(void) {
             SBI( DEBUGB_POUT , DEBUGB_B );
 
             // trigger still out
-            // SHow message so person knows why we are waiting (yes, this is redundant, but heck the pin is out so we are burning fuel against the trigger pull-up anyway
+            // Show message so person knows why we are waiting (yes, this is redundant, but heck the pin is out so we are burning fuel against the trigger pull-up anyway
+            // We do not display this message in the case where the pin is already in at startup since it would be confusing then.
             lcd_show_load_pin_message();
-
 
             step++;
 
@@ -1009,38 +1020,35 @@ __interrupt void trigger_isr(void) {
     // This will filter glitches since the pin will not still be low when we sample it after this delay. We want to be really sure!
     __delay_cycles( 1000 );
 
-    // Grab the current trigger pin level
-
-    unsigned triggerpin_level = TBI( TRIGGER_PIN , TRIGGER_B );
 
     // Then clear any interrupt flag that got us here.
-    // Timing here is critical, we must clear the flag *after* we capture the pin state or we might mess a change
-
+    // Timing here is critical, we must clear the flag *before* we capture the pin state or we might miss a change
     CBI( TRIGGER_PIFG , TRIGGER_B );      // Clear any pending trigger pin interrupt flag
 
-    // Now we can check to see if the trigger pin was set
-    // Note there is a bit of a glitch filter here since the pin must stay low long enough after it sets the interrupt flag for
-    // us to also see it low above after the ISR latency - otherwise it will be ignored. In practice I have seen glitches on this pin that are this short.
 
-    if ( !triggerpin_level ) {      // was pin low when we sampled it?
+    // Grab the current trigger pin level
+    unsigned triggerpin_level = TBI( TRIGGER_PIN , TRIGGER_B );
+
+    // Now we can check to see if the trigger pin was still low
+    // If it is not still low then we will return and this ISR will get called again if it goes low again or
+    // if it went low between when we cleared the flag and when we sampled it (VERY small race window of only 1/8th of a microsecond, but hey we need to be perfect, it could be a once in a lifetime moment and we dont want to miss it!)
+
+    if ( !triggerpin_level ) {      // trigger pulled?
 
         // WE HAVE LIFTOFF!
 
-        // We need to get everything below done within 0.5 seconds so we do not miss the first tick.
+        // We need to get everything below done within 0.5 seconds so we do not miss the first tick (not hard)
 
         // Disable the trigger pin and drive low to save power and prevent any more interrupts from it
-        // (if it stayed pulled up then it would draw power though the pull-up resistor whenever the pin was inserted)
-        // TODO: Maybe make a secret handshake where if you put in and then pull out the pin at a day turnover then we print out some stats or an easter egg?
-        // c23 JOSH_COM
+        // (if it stayed pulled up then it would draw power though the pull-up resistor whenever the pin was out)
 
         CBI( TRIGGER_POUT , TRIGGER_B );      // low
         SBI( TRIGGER_PDIR , TRIGGER_B );      // drive
 
-        CBI( TRIGGER_PIFG , TRIGGER_B );      // Clear any pending interrupt from us driving it low (it could have gone high again since we sampled it)
+        CBI( TRIGGER_PIFG , TRIGGER_B );      // Clear any pending interrupt (it could have gone high again since we sampled it). We already triggered so we don't care anymore.
 
 
-        // Show all 0's on the LCD to instantly let the user know that we saw the pull
-
+        // Show all 0's on the LCD to quickly let the user know that we saw the pull
         lcd_show_zeros();
 
         // Do the actual launch, which will...
@@ -1057,12 +1065,12 @@ __interrupt void trigger_isr(void) {
         persistent_data.launch_flag=1;
         lock_persistant_data();
 
-        // Then zero out the RTC to start counting over again now.
+        // Then zero out the RTC to start counting over again, starting now. Note that writing any value to the seconds register resets the sub-second counters to the beginning of the second.
         i2c_write( RV_3032_I2C_ADDR , RV3032_SECS_REG  , &rv_3032_time_block_init , sizeof( rv3032_time_block_t ) );
 
         i2c_shutdown();
 
-        // We will get the next tick in 1000ms. Make sure we return from this ISR within 500ms from now. (we really could wait up to 999ms since that would just delay the half tick and not miss the following real tick).
+        // We will get the next tick in 1000ms. Make sure we return from this ISR before then.
 
         // Clear any pending RTC interrupt so we will not tick until the next pulse comes from RTC in 1000ms
         // There could be a race where an RTC interrupt comes in just after the trigger was pulled, in which case we would
@@ -1125,7 +1133,6 @@ __interrupt void tsl_isr(void) {
 int main( void )
 {
 
-
     WDTCTL = WDTPW | WDTHOLD | WDTSSEL__VLO;   // Give WD password, Stop watchdog timer, set WD source to VLO
                                                // The thinking is that maybe the watchdog will request the SMCLK even though it is stopped (this is implied by the datasheet flowchart)
                                                // Since we have to have VLO on for LCD anyway, mind as well point the WDT to it.
@@ -1154,6 +1161,7 @@ int main( void )
 
     rv3032_init();        // Initialize the RV3032 with proper clkout & backup settings. Note that we must do this every time we power up since these settings are lost when we drop to backup mode when the battery is pulled.
 
+
     initLCDPrecomputedWordArrays();
 
 #warning
@@ -1167,7 +1175,6 @@ int main( void )
         blinkforeverandever();
 
     }
-
 
 
     // Check if this is the first time we've ever been powered up.
@@ -1192,23 +1199,20 @@ int main( void )
 
     }
 
+    // Read the state of the RV3032. Returns an error if the chip has lost power since it was set (so the time is invalid) or if bad data from the RTC
+    uint8_t rtcState = RV3032_read_state();
 
-    // Wait for any clkout transition so we know we have at least 500ms to read out time and activate interrupt before time changes so we dont miss any seconds.
-    unsigned start_val = TBI( RV3032_CLKOUT_PIN, RV3032_CLKOUT_B );
-    while (TBI( RV3032_CLKOUT_PIN, RV3032_CLKOUT_B )==start_val); // wait for any transition
+    if (rtcState==2) {
 
-    // a new second just ticked.
+        // We got bad data from the RTC. Either defective chip or PCB connection?
 
-    // Clear any pending interrupts from the RV3032 clkout pin
-    // We just started the timer so we should not get a real one for ~1000ms
+        // Mind as well turn it off since we have no idea what it is doing.
+        depower_rv3032();
+        error_mode( ERROR_BAD_CLOCK );
 
-    CBI( RV3032_CLKOUT_PIFG     , RV3032_CLKOUT_B    );
+    }
 
-
-    // Read the time out of the RV3032. Returns an error if the chip has lost power since it was set (so the time is invalid)
-    uint8_t rtcLowVoltageFlag = RV3032_read_state();
-
-    if (rtcLowVoltageFlag) {
+    if (rtcState==1) {
 
         // RTC lost power at some point so nothing we can do except show an error message forever.
 
@@ -1223,11 +1227,27 @@ int main( void )
 
     }
 
+    // Wait for any clkout transition so we know we have at least 500ms to read out time and activate interrupt before time changes so we dont miss any seconds.
+    // This should always take <500ms
+    // This also proves the RV3032 is running and we are connected on clkout
+    unsigned start_val = TBI( RV3032_CLKOUT_PIN, RV3032_CLKOUT_B );
+    while (TBI( RV3032_CLKOUT_PIN, RV3032_CLKOUT_B )==start_val); // wait for any transition
+
+    // Clear any pending interrupts from the RV3032 clkout pin
+    // We we should not get a real one for 500ms so we have time to do our stuff
+
+    CBI( RV3032_CLKOUT_PIFG     , RV3032_CLKOUT_B    );
+
+    // If we get here then we know the RTC is good and that it has good clock data (ie it has been continuously powered since it was commissioned at the factory)
+
+    // Read the time from the RTC into our global time variables. This will be either (1) the time since we were commissioned if not launched, or (2) the time since launch if we were launched.
+    RV_3032_read_time();
+
     if ( persistent_data.launch_flag == 0 ) {
 
         // We have never launched!
 
-        // First we need to make sure that the pin is inserted because
+        // First we need to make sure that the trigger pin is inserted because
         // we would not want to just launch because the pin was out when batteries were inserted.
         // This also lets us test both trigger positions during commissioning at the factory.
 
@@ -1236,18 +1256,18 @@ int main( void )
         SBI( TRIGGER_POUT , TRIGGER_B );      // Pull up
 
 
-        mode = LOAD_TRIGGER;                  // Go though state machine to wait for trigger to be loaded
-        step =0;                              // Used to blink the arrow on the loading display
+        mode = LOAD_TRIGGER;                  // Go though the state machine to wait for trigger to be loaded
+        step =0;                              // Used to slide a dash indicator pointing to the pin location
 
         // We will go into "load pin" mode when next second ticks. This gives the pull-up a chance to take effect and also avoids any bounce aliasing right at power up.
 
     } else {
 
-        // We have already been triggered and time is already loaded into variables by the RV3032_read_state() function.
+        // We have already been triggered and time is already loaded into variables by the RV3032_read_time() function.
 
         // Show the time on the display
         // Note that the time was loaded from the RTC when we initialized it.
-        // We only do this ONCE so no need for efficiency.
+        // We only do this ONCE per set of batteries so no need for efficiency.
 
         lcd_show_digit_f(  6 , (days / 1      ) % 10  );
         lcd_show_digit_f(  7 , (days / 10     ) % 10  );
@@ -1263,25 +1283,21 @@ int main( void )
         lcd_show_digit_f( 0 , secs % 10  );
         lcd_show_digit_f( 1 , secs / 10  );
 
-
-        // Now start ticking!
-
+        // Now start ticking at next second tick interrupt
         mode = TIME_SINCE_LAUNCH;
     }
 
 
-    // Wait for interrupt to fire at next clkout change (in about 1 second) to drive us into the state machine (in either "pin loading" or "time since lanuch" mode)
+    // Wait for interrupt to fire at next clkout low-to-high change to drive us into the state machine (in either "pin loading" or "time since lanuch" mode)
 
     __bis_SR_register(LPM4_bits | GIE );                 // Enter LPM4
     // BIS.W    #248,SR
 
     __no_operation();                                   // For debugger
 
-    error_mode( ERROR_MAIN_RETURN );                    // This would be very weird if we ever saw it.
-
     // We should never get here
 
-    // TODO: Show an error message
+    error_mode( ERROR_MAIN_RETURN );                    // This would be very weird if we ever saw it.
 
 
 }
