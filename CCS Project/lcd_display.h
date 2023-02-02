@@ -91,8 +91,8 @@ void lcd_show_clock_good_message();
 // Show "CLOCK LOSt"
 void lcd_show_clock_lost_message();
 
-// Show copyright message
-void lcd_show_copyright_message();
+// Show centiday message
+void lcd_show_centiday_message();
 
 // Fill the screen with 0's
 void lcd_show_zeros();

@@ -6,6 +6,8 @@
 #include "error_codes.h"
 #include "lcd_display.h"
 
+#include "ram_isrs.h"
+
 #include "tsl_asm.h"
 
 #define RV_3032_I2C_ADDR (0b01010001)           // Datasheet 6.6
@@ -19,7 +21,6 @@
 #define RV3032_DAYS_REG  0x05
 #define RV3032_MONS_REG  0x06
 #define RV3032_YEARS_REG 0x07
-
 
 
 // Put the LCD into blinking mode
@@ -106,9 +107,9 @@ inline void initGPIO() {
     // --- Debug pins
 
     // Debug pins
-    SBI( DEBUGA_PDIR , DEBUGA_B );          // Currently used to time how long the ISR takes
+    SBI( DEBUGA_PDIR , DEBUGA_B );          // DEBUGA=Output. Currently used to time how long the ISR takes
 
-    CBI( DEBUGB_PDIR , DEBUGB_B );          // Input
+    CBI( DEBUGB_PDIR , DEBUGB_B );          // DEBUGB=Input
     SBI( DEBUGB_POUT , DEBUGB_B );          // Pull up
     SBI( DEBUGB_PREN , DEBUGB_B );          // Currently checked at power up, if low then we go into testonly mode.
 
@@ -139,6 +140,7 @@ inline void initGPIO() {
     // --- Trigger
 
     // By default we set the trigger to drive low so it will not use power regardless if the pin is in or out.
+    // When the trigger is out, the pin is shorted to ground.
     // We will switch it to pull-up later if we need to (because we have not launched yet).
 
     CBI( TRIGGER_POUT , TRIGGER_B );      // low
@@ -149,7 +151,6 @@ inline void initGPIO() {
     // disabled again and the pull up will get disabled after the trigger is pulled since once that happens we
     // dont care about the trigger state anymore and we don't want to waste power with either the pull-up getting shorted to ground
     // if they leave the trigger out, or from unnecessary ISR calls if they put the trigger in and pull it out again (or if it breaks and bounces).
-
 
     // Disable IO on the LCD power pins
     SYSCFG2 |= LCDPCTL;
@@ -280,6 +281,7 @@ void initLCD() {
 
     // Once we have selected the COM lines above, we have to connect them in the LCD memory. See Figure 17-2 in MSP430FR4x family guide.
     // Each nibble in the LCDMx regs holds 4 bits connecting the L pin to one of the 4 COM lines (two L pins per reg)
+    // Note if you change these then you also have to adjust lcd_show_squigle_animation()
 
     LCDM4 =  0b01001000;  // L09=MSP_COM2  L08=MSP_COM3
     LCDM5 =  0b00010010;  // L10=MSP_COM0  L11=MSP_COM1
@@ -695,7 +697,25 @@ void testLeapYear() {
 
 */
 
+struct ram_vect_table_t {
+    void (*vect_LCD_E)();
+    void (*vect_PORT2)();
+    void (*vect_PORT1)();
+    void (*vect_ADC)();
+    void (*vect_USCI_B0)();
+    void (*vect_USCI_A0)();
+    void (*vect_WDT)();
+    void (*vect_RTC)();
+    void (*vect_TIMER1_A1)();
+    void (*vect_TIMER1_A0)();
+    void (*vect_TIMER0_A1)();
+    void (*vect_TIMER0_A0)();
+    void (*vect_UNMI)();
+    void (*vect_SYSNMI)();
+    void (*vect_reset)();
+};
 
+volatile ram_vect_table_t __attribute__(( __section__(".ramvects") )) ram_vector_table;
 
 enum mode_t {
     LOAD_TRIGGER,                  // Waiting for pin to be inserted (shows dashes)
@@ -715,7 +735,7 @@ unsigned int step;          // LOAD_TRIGGER      - Used to keep the position of 
 // until it hits 1,000,000 days, at which time it switches to Long Now mode
 // which is permanent.
 
-// TODO: Move to RAM, Move vector table to RAM, write in ASM with autoincrtement register for lcdmem_word pointer, maybe only clean stack once every 60 cycles
+// TODO: Move to RAM, Move vector table to RAM, write in ASM with auto-increment register for lcdmem_word pointer, maybe only clean stack once every 60 cycles
 // TODO: increment hour + date probably stays in C called from ASM. Maybe pass the hours and days in the call registers so they naturally are maintained across calls?
 
 __attribute__((ramfunc))  // This does not seem to do anything?
@@ -746,6 +766,11 @@ void beginTimeSinceLaunchMode() {
 
 // Terminate after one day
 bool testing_only_mode = false;
+
+// Shortcuts for setting the RAM vectors. Note we need the (void *) casts becuase the compiler won't let us make the vectors into `near __interrupt (* volatile vector)()` like it should.
+
+#define SET_CLKOUT_VECTOR(x) do {RV3032_CLKOUT_VECTOR_RAM = (void *) x;} while (0)
+#define SET_TRIGGER_VECTOR(x) do {TRIGGER_VECTOR_RAM = (void *) x;} while (0)
 
 // Registers R4-R10 are preserved across function calls, so we can even make calls out of the ISRs and stuff will
 // not get messed up.
@@ -790,9 +815,39 @@ void enter_tsl_mode() {
 // RETI (return from interrupt) at the end since the function itself will only have a
 // normal return.
 
-//#pragma vector = RV3032_CLKOUT_VECTOR
+// -- normal naked ISR
+// 24us
+// 2.04uA with zeros
+// 161uA peak
+// 29.44us wake time
+
+// -- ramfunc, FRAM controller on
+// 21us
+// 1.49uA with dashes
+// 2.17uA with zeros
+// 26.62us wake time
+
+// -- ramfunc, FRAM controller off
+// 21us
+// 2.04uA with zeros
+// peak 119uA
+// 26us wake time
+
+// -- normal naked ISR + 500 cycles
+// 500us
+// 2.15uA with zeros (1.9uA @ 1.8mA range, 2.15uA @ auto)
+// 240uA peak (3mA on auto)
+
+// -- ramfunc, FRAM controller off + 500 cycles
+// 499us
+// 2.15uA with zeros (2.15uA auto)
+// 4.9mA peak on auto
+
+
+#pragma vector = RV3032_CLKOUT_VECTOR
 __attribute__((ramfunc))
 __attribute__((retain))
+__attribute__((naked))
 void tsl_isr(void) {
 
     SBI( DEBUGA_POUT , DEBUGA_B );      // See latency to start ISR and how long it runs
@@ -806,6 +861,7 @@ void tsl_isr(void) {
     asm("               BIC.B     #2,&PAIFG_L+0         ; Clear the interrupt flag that got us here");
     asm("    mov.w  #ISR_DONE1,r8");
     //asm(" mov.w #%dh,r7" , 0x1234);
+    __delay_cycles(500);
 
     CBI( RV3032_CLKOUT_PIFG , RV3032_CLKOUT_B );      // Clear the pending RV3032 INT interrupt flag that got us into this ISR.
 
@@ -814,17 +870,85 @@ void tsl_isr(void) {
 
 }
 
-#warning
-#pragma vector = RV3032_CLKOUT_VECTOR
 __attribute__((ramfunc))
-__attribute__((retain))
+void start_ram_isr() {
+
+    // Set us up to run the RTC vector on next interrupt
+    SET_CLKOUT_VECTOR( &tsl_isr );
+    ACTIVATE_RAM_ISRS();
+
+    // Now we can finally turn off the FRAM controller!
+    FRCTL0=FRCTLPW;                  // FRCTLPW password. Always reads as 96h. To enable write access to the FRCTL registers, write A5h.
+    GCCTL0 &= ~FRPWR ;               // FRAM power control. Writing to the register enables or disables the FRAM power supply.  0b = FRAM power supply disabled.
+
+    // Wait for interrupt to fire at next clkout low-to-high change to drive us into the state machine (in either "pin loading" or "time since lanuch" mode)
+    __bis_SR_register(LPM4_bits | GIE );                 // Enter LPM4
+    // BIS.W    #248,SR
+
+    __no_operation();                                   // For debugger
+
+}
+
+
+/*
+
+// Here is the ASM version which is not worth the extra complexity. We could probably do even 50% better, but still probably not worth it.
+
+// 1.37uA
+// 48us
+#pragma vector = RV3032_CLKOUT_VECTOR
 __attribute__((naked))
+void lcd_show_squiggle_frame() {
+
+    asm("  OR.B     #128,&PAOUT_L+0"); // SET DEBUG
+
+    // Frame will be in R12 by calling convention
+
+    // First compute the source address ready_to_launch_lcd_frames[frame].as_words;
+
+    // Each ready_to_launch_lcd_frames[frame] is 32 bytes, so
+
+    asm("  OR.B     #80,&PAOUT_L+0   ");   // SET DEBUGA
+    asm("  SUB   #1,R13");        // Dec counter
+    asm("  JNE SKIP_SQ ");
+    asm("  MOV.W #ready_to_launch_lcd_frames,R12");   // Reset pointer to array base.
+    asm("  MOV.W #8,R13");         // Reset counter
+    asm("SKIP_SQ:");
+    asm("  MOV.W @R12+,(LCDM0W_L+0)");
+    asm("  MOV.W @R12+,(LCDM0W_L+2)");
+    asm("  MOV.W @R12+,(LCDM0W_L+4)");
+    asm("  MOV.W @R12+,(LCDM0W_L+6)");
+    asm("  MOV.W @R12+,(LCDM0W_L+8)");
+    asm("  MOV.W @R12+,(LCDM0W_L+10)");
+    asm("  MOV.W @R12+,(LCDM0W_L+12)");
+    asm("  MOV.W @R12+,(LCDM0W_L+14)");
+    asm("  MOV.W @R12+,(LCDM0W_L+16)");
+    asm("  MOV.W @R12+,(LCDM0W_L+18)");
+    asm("  MOV.W @R12+,(LCDM0W_L+20)");
+    asm("  MOV.W @R12+,(LCDM0W_L+22)");
+    asm("  MOV.W @R12+,(LCDM0W_L+24)");
+    asm("  MOV.W @R12+,(LCDM0W_L+26)");
+    asm("  MOV.W @R12+,(LCDM0W_L+28)");
+    asm("  MOV.W @R12+,(LCDM0W_L+30)");
+
+    asm("  BIC.B     #2,&PAIFG_L+0 ");  //Clear interrupt flag
+    asm("  AND.B     #127,&PAOUT_L+0"); // CLEAR DEBUG
+    asm(" RETI");
+
+}
+
+*/
+
 void rtc_isr(void) {
 
     // Wake time measured at 48us
     // TODO: Make sure there are no avoidable push/pops happening at ISR entry (seems too long)
 
     SBI( DEBUGA_POUT , DEBUGA_B );      // See latency to start ISR and how long it runs
+
+    // Now we can finally turn off the FRAM controller!
+    //FRCTL0=FRCTLPW;                  // FRCTLPW password. Always reads as 96h. To enable write access to the FRCTL registers, write A5h.
+    //GCCTL0 &= ~FRPWR ;               // FRAM power control. Writing to the register enables or disables the FRAM power supply.  0b = FRAM power supply disabled.
 
     if (  __builtin_expect( mode == TIME_SINCE_LAUNCH , 1 ) ) {            // This is where we will spend most of our life, so optimize for this case
 
@@ -993,13 +1117,37 @@ void rtc_isr(void) {
         }
     }
 
+/*
 
+#warning show if FRAM on or off
+    if (GCCTL0 & FRPWR) {
+        lcd_show_digit_f(5, 0x0d ); // 11.7uA, 260uA max, 47.9ms run time, 26.6us wake time
+    } else {
+        lcd_show_digit_f(5, 0x0e ); // 11.5uA, 344uA max, 47.9ms run time, 25.5us wake time
+    }
+*/
     CBI( RV3032_CLKOUT_PIFG , RV3032_CLKOUT_B );      // Clear the pending RV3032 INT interrupt flag that got us into this ISR.
 
     CBI( DEBUGA_POUT , DEBUGA_B );
 
     asm("     reti");            // Since this function is not flagged as an `interrupt`, we have to do the `reti` ourselves.
 
+}
+
+
+#warning
+__attribute__((ramfunc))
+__attribute__((naked))
+void error_modea(void) {
+
+    // Wake time measured at 48us
+    // TODO: Make sure there are no avoidable push/pops happening at ISR entry (seems too long)
+
+    while(1) {
+        SBI( DEBUGA_POUT , DEBUGA_B );      // See latency to start ISR and how long it runs
+        CBI( DEBUGA_POUT , DEBUGA_B );      // See latency to start ISR and how long it runs
+
+    }
 }
 
 // TODO: Try moving ISR and vector table into RAM to save 10us on wake and some amount of power for FRAM controller
@@ -1010,7 +1158,6 @@ void rtc_isr(void) {
 // when we then switch to time-since-lanuch mode, so this ISR can only get called in ready-to-lanuch mode.
 
 #pragma vector = TRIGGER_VECTOR
-
 __interrupt void trigger_isr(void) {
 
     #warning
@@ -1133,6 +1280,7 @@ __interrupt void tsl_isr(void) {
 int main( void )
 {
 
+
     WDTCTL = WDTPW | WDTHOLD | WDTSSEL__VLO;   // Give WD password, Stop watchdog timer, set WD source to VLO
                                                // The thinking is that maybe the watchdog will request the SMCLK even though it is stopped (this is implied by the datasheet flowchart)
                                                // Since we have to have VLO on for LCD anyway, mind as well point the WDT to it.
@@ -1143,25 +1291,11 @@ int main( void )
     PMMCTL0_H = PMMPW_H;                // Open PMM Registers for write
     PMMCTL0_L &= ~(SVSHE);              // Disable high-side SVS
 
-
-    // Disable the FRAM controller automatically turning on when we wake.
-    // "GCCTL0.FRLPMPWR 0b = FRAM startup is delayed to the first FRAM access after LPM exit"
-    // Since we are moving the ISR vector table to RAM and our ISRs are in RAM, this will prevent the
-    // FRAM controller from ever starting up, which saves power.
-
-#warning
-    //CBI( GCCTL0 , FRLPMPWR );
-
     initGPIO();
-
     initLCD();
-
     // Power up display with a nice dash pattern
     lcd_show_dashes();
-
     rv3032_init();        // Initialize the RV3032 with proper clkout & backup settings. Note that we must do this every time we power up since these settings are lost when we drop to backup mode when the battery is pulled.
-
-
     initLCDPrecomputedWordArrays();
 
 #warning
@@ -1175,6 +1309,17 @@ int main( void )
         blinkforeverandever();
 
     }
+
+#warning
+    lcd_show_zeros();
+    CBI( RV3032_CLKOUT_PIFG     , RV3032_CLKOUT_B    );
+    start_ram_isr();
+
+//    asm( " mov.w #1,r13" );     // Get ready for the squigle isr
+    // Wait for interrupt to fire at next clkout low-to-high change to drive us into the state machine (in either "pin loading" or "time since lanuch" mode)
+//    __bis_SR_register(LPM4_bits | GIE );                 // Enter LPM4
+//    __no_operation();                                   // For debugger
+
 
 
     // Check if this is the first time we've ever been powered up.
@@ -1198,6 +1343,7 @@ int main( void )
         // After first start up, unit must be re-powered to enter normal operation.
 
     }
+
 
     // Read the state of the RV3032. Returns an error if the chip has lost power since it was set (so the time is invalid) or if bad data from the RTC
     uint8_t rtcState = RV3032_read_state();
@@ -1287,9 +1433,12 @@ int main( void )
         mode = TIME_SINCE_LAUNCH;
     }
 
+    // Set us up to run the RTC vector on next interrupt
+    SET_CLKOUT_VECTOR( &rtc_isr );
+    SET_TRIGGER_VECTOR( &trigger_isr );
+    ACTIVATE_RAM_ISRS();
 
     // Wait for interrupt to fire at next clkout low-to-high change to drive us into the state machine (in either "pin loading" or "time since lanuch" mode)
-
     __bis_SR_register(LPM4_bits | GIE );                 // Enter LPM4
     // BIS.W    #248,SR
 
@@ -1298,7 +1447,6 @@ int main( void )
     // We should never get here
 
     error_mode( ERROR_MAIN_RETURN );                    // This would be very weird if we ever saw it.
-
 
 }
 

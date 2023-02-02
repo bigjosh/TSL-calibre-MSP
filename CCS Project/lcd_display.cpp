@@ -353,7 +353,7 @@ void fill_ready_to_lanch_lcd_frames() {
 
         // Alternating digits on the display go in alternating directions
         const glyph_segment_t even_digit_segments = squiggle_segments[ frame ];
-        const glyph_segment_t odd_digit_segments = squiggle_segments[ (SQUIGGLE_SEGMENTS_SIZE - frame) % (SQUIGGLE_SEGMENTS_SIZE-1) ];
+        const glyph_segment_t odd_digit_segments = squiggle_segments[ (SQUIGGLE_SEGMENTS_SIZE - frame) % (SQUIGGLE_SEGMENTS_SIZE) ];
 
         // Assign the lit up segments for each digit place in the current frame
 
@@ -374,15 +374,36 @@ void fill_ready_to_lanch_lcd_frames() {
 
 
         }
-/*
-        ready_to_launch_lcd_frames[frame].as_words[frame]=0xffff;
-        ready_to_launch_lcd_frames[frame].as_words[frame+8]=0xffff;
-*/
+
+        // We also need to put the COM connections into our array so we don't wipe them out
+        //LCDM4 =  0b01001000;  // L09=MSP_COM2  L08=MSP_COM3
+        //LCDM5 =  0b00010010;  // L10=MSP_COM0  L11=MSP_COM1
+
+        lcd_frame->as_bytes[4]=0b01001000;  // L09=MSP_COM2  L08=MSP_COM3
+        lcd_frame->as_bytes[5]=0b00010010;  // L10=MSP_COM0  L11=MSP_COM1
+
     }
 
+}
 
+
+// Highly optimized with pre-render buffer
+// 1.4uA
+// 138us
+
+void lcd_show_squiggle_frame( byte frame ) {
+
+    word *w = ready_to_launch_lcd_frames[frame].as_words;
+    word *lcdmemptr = LCDMEMW;
+
+    // Fill the LCD mem with our pre-computed words.
+
+    for(byte i=0;i<LCDMEM_WORD_COUNT;i++) {
+        *(lcdmemptr++) = *(w++);
+    }
 
 }
+
 
 // Fills the arrays
 
@@ -400,6 +421,9 @@ void initLCDPrecomputedWordArrays() {
     // Fill the array of frames for ready-to-launch-mode animation
     fill_ready_to_lanch_lcd_frames();
 }
+
+
+
 
 
 // Show the digit x at position p
@@ -615,8 +639,13 @@ void lcd_show_long_now() {
 }
 
 
+/*
+
+// Original non-optimized version.
+
 // Show a frame n the ready-to-lanuch squiggle animation
 // 0 <= step < SQUIGGLE_ANIMATION_FRAME_COUNT
+// 839us, ~1.5uA
 
 void lcd_show_squiggle_frame( byte step ) {
 
@@ -634,6 +663,9 @@ void lcd_show_squiggle_frame( byte step ) {
     }
 
 }
+
+*/
+
 
 // Fill the screen with horizontal dashes
 
@@ -936,8 +968,8 @@ constexpr glyph_segment_t centiday_message[] = {
                                                    glyph_H,
 };
 
-// Show copyright message
-void lcd_show_copyright_message() {
+// Show centiday message
+void lcd_show_centiday_message() {
 
     for( byte i=0; i<DIGITPLACE_COUNT; i++ ) {
         lcd_show_f(  i , centiday_message[ DIGITPLACE_COUNT - 1- i] );        // digit place 12 is rightmost, so reverse order for text

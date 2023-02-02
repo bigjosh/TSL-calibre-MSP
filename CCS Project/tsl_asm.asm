@@ -17,6 +17,8 @@
 			.ref	 	secs_lcdmem_word
 			.ref 		secs_lcd_words
 
+			.ref		ready_to_launch_lcd_frames
+
 			; R12:R13 = Days as BCD value
 
 			; R12 = Seconds
@@ -97,11 +99,53 @@ ISR_DONE
 
 
             nop
+
+;---- TEST SQUIGLLE ISR
+; 72us
+; 26us startup after CLKOUT from FRAM
+
+SHOW_SQUIG:
+
+    ; Frame will be in R12 by calling convention
+
+   	; First compute the source address ready_to_launch_lcd_frames[frame].as_words;
+
+    ; Each ready_to_launch_lcd_frames[frame] is 32 bytes, so
+
+ 	  OR.B      #128,&PAOUT_L+0  ;			// DebugA ON
+      SUB   #1,R13              ; Dec counter
+      JNE SKIP_SQ
+      MOV.W #ready_to_launch_lcd_frames,R12    ;   // Reset pointer to array base.
+      MOV.W #4,R13     ;         // Reset counter
+
+SKIP_SQ:
+      MOV.W @R12+,(LCDM0W_L+0)
+      MOV.W @R12+,(LCDM0W_L+2)
+      MOV.W @R12+,(LCDM0W_L+4)
+      MOV.W @R12+,(LCDM0W_L+6)
+      MOV.W @R12+,(LCDM0W_L+8)
+      MOV.W @R12+,(LCDM0W_L+10)
+      MOV.W @R12+,(LCDM0W_L+12)
+      MOV.W @R12+,(LCDM0W_L+14)
+      MOV.W @R12+,(LCDM0W_L+16)
+      MOV.W @R12+,(LCDM0W_L+18)
+      MOV.W @R12+,(LCDM0W_L+20)
+      MOV.W @R12+,(LCDM0W_L+22)
+      MOV.W @R12+,(LCDM0W_L+24)
+      MOV.W @R12+,(LCDM0W_L+26)
+      MOV.W @R12+,(LCDM0W_L+28)
+      MOV.W @R12+,(LCDM0W_L+30)
+
+      BIC.B     #2,&PAIFG_L+0 ;  //Clear interrupt flag
+ 	  AND.B     #127,&PAOUT_L+0       ; [] |../tsl-calibre-msp.cpp:1082|
+
+      RETI
+
 ;------------------------------------------------------------------------------
 ;           Interrupt Vectors
 ;------------------------------------------------------------------------------
 
             ;.sect   PORT1_VECTOR              ; Vector
-            .short  TSL_MODE_ISR              ;
+            .short  SHOW_SQUIG              ;
             .end
 

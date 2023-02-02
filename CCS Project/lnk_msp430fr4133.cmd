@@ -56,7 +56,26 @@ MEMORY
     SFR                     : origin = 0x0000, length = 0x0010
     PERIPHERALS_8BIT        : origin = 0x0010, length = 0x00F0
     PERIPHERALS_16BIT       : origin = 0x0100, length = 0x0100
-    RAM                     : origin = 0x2000, length = 0x0800
+    RAM                     : origin = 0x2000, length = 0x07E0	// 0x0800 - (15 entries * 2 bytes per entry)
+
+    /* These are the new RAM-based interrupt vectors. They live at the very top of RAM as per SLAU445I 1.15.1 */
+    /* Seems like a better way to position these would be to use expressions, but hey I'm just coping the way TI did it for the FRAM vector table */
+
+    RAM_INT45	    		: origin = 0x27E2, length = 0x0002
+    RAM_INT46	    		: origin = 0x27E4, length = 0x0002
+    RAM_INT47	    		: origin = 0x27E6, length = 0x0002
+    RAM_INT48	    		: origin = 0x27E8, length = 0x0002
+    RAM_INT49	    		: origin = 0x27EA, length = 0x0002
+    RAM_INT50	    		: origin = 0x27EC, length = 0x0002
+    RAM_INT51	    		: origin = 0x27EE, length = 0x0002
+    RAM_INT52	    		: origin = 0x27F0, length = 0x0002
+    RAM_INT53	    		: origin = 0x27F2, length = 0x0002
+    RAM_INT54	    		: origin = 0x27F4, length = 0x0002
+    RAM_INT55	    		: origin = 0x27F6, length = 0x0002
+    RAM_INT56	    		: origin = 0x27F8, length = 0x0002
+    RAM_INT57	    		: origin = 0x27FA, length = 0x0002
+    RAM_INT58	    		: origin = 0x27FC, length = 0x0002
+
     INFOA                   : origin = 0x1800, length = 0x0200
     FRAM                    : origin = 0xC400, length = 0x3B80
     JTAGSIGNATURE           : origin = 0xFF80, length = 0x0004, fill = 0xFFFF
@@ -175,6 +194,21 @@ SECTIONS
 
     .infoA (NOLOAD) : {} > INFOA              /* MSP430 INFO FRAM  Memory segments */
 
+    .ram_int45 : {} > RAM_INT45
+    .ram_int46 : {} > RAM_INT46
+    .ram_int47 : {} > RAM_INT47
+    .ram_int48 : {} > RAM_INT48
+    .ram_int49 : {} > RAM_INT49
+    .ram_int50 : {} > RAM_INT50
+    .ram_int51 : {} > RAM_INT51
+    .ram_int52 : {} > RAM_INT52
+    .ram_int53 : {} > RAM_INT53
+    .ram_int54 : {} > RAM_INT54
+    .ram_int55 : {} > RAM_INT55
+    .ram_int56 : {} > RAM_INT56
+    .ram_int57 : {} > RAM_INT57
+    .ram_int58 : {} > RAM_INT58
+
     /* MSP430 Interrupt vectors          */
     .int00       : {}               > INT00
     .int01       : {}               > INT01
@@ -243,4 +277,3 @@ SECTIONS
 /****************************************************************************/
 
 -l msp430fr4133.cmd
-
