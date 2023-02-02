@@ -16,7 +16,7 @@ Q1,MOSFET Transistor,2N7002K,NXP-Philips,,Possible,0.05,https://www.digikey.com/
 Q2,MOSFET Transistor,2N7002K,NXP-Philips,,Possible,0.05,https://www.digikey.com/en/products/detail/rohm-semiconductor/RK7002BMT116/4924083
 S1,Trigger Switch,ESE18R61D,Panasonic,,,0.63,https://www.digikey.com/product-detail/en/panasonic-electronic-components/ESE-18R61D/P13373SCT-ND/822309
 U1,MCU,MSP430FR4133IG56,TI,,,1.15,https://www.digikey.com/en/products/detail/texas-instruments/MSP430FR4133IG56/5067017
-U2,RTC,RV-3032-C7-32.768KHZ 2.5PPM-TA-QA,Micro Crystal,,,2.95,https://www.digikey.com/en/products/detail/micro-crystal-ag/rv-3032-c7-32-768khz-2-5ppm-ta-qa/16273065
+U2,RTC,RV-3032-C7,Micro Crystal,,,2.95,https://www.digikey.com/en/products/detail/micro-crystal-ag/rv-3032-c7-32-768khz-2-5ppm-ta-qa/16273065
 U3,REGULATOR,TPS7A0212PDBVR,TI,,Possible,0.5,https://www.digikey.com/en/products/detail/texas-instruments/tps7a0212pdbvr/12165190
 U4,Battery Holder,KEYSTONE1024,Keystone,,,1.601,https://www.digikey.com/product-detail/en/keystone-electronics/1024/36-1024-ND/2178268
 U5,Battery Holder,KEYSTONE1024,KeyStone,,,1.601,https://www.digikey.com/product-detail/en/keystone-electronics/1024/36-1024-ND/2178268
