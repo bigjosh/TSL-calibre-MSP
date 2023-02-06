@@ -11,7 +11,7 @@
             ;.text                           ; Assemble to Flash memory
             ;.data							;; Put functions into RAM?
 
-            ;.sect ".TI.ramfunc"				; Put these functions into RAM so they run with less power and if vector table is also in RAM then we can avoid turning on the FRAM controller altogether
+            .sect ".TI.ramfunc"				; Put these functions into RAM so they run with less power and if vector table is also in RAM then we can avoid turning on the FRAM controller altogether
             .retain                         ; Ensure current section gets linked
             .retainrefs
 
@@ -182,8 +182,6 @@ TSL_DONE
 ;Set the ISR vector to point here to start this mode.
 ;Assumes the symbol `ready_to_launch_lcd_frames` points to a table of LCD frames for the squiggle animation
 			.ref		ready_to_launch_lcd_frames
-
-
 
 RTL_MODE_BEGIN:
 	;This entry point sets up all the registers and changes the PORT_1 vector to point to the optimized ISR, which will get called directly on subsequent interrupts
