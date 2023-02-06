@@ -14,19 +14,16 @@
 
 extern "C" {
 
-    struct tslmode_state_t {
-        unsigned int s;
-        unsigned int m;
-        unsigned int h;
-        unsigned int d_1_10;
-        unsigned int d_100_1K;
-        unsigned int d_10k_100K;
-        unsigned int d_10k_1M;
-    };
+    // Entry set vector to this to enter ready-to-launch mode on next interrupt
+    // Assumes the symbol `ready_to_launch_lcd_frames` points to a table of LCD frames for the squiggle animation
+    extern unsigned RTL_MODE_BEGIN; /* declare external asm function as an unsigned so we can easily stick it into the vector. */
 
-    #pragma FUNC_NEVER_RETURNS
-    // Note the order here is reversed so that the 32 bit "days" value lands in registers rather than on the stack as per CCS calling conventions SLAA140A section 1.3
-    extern int enter_tslmode_asm( unsigned s ); /* declare external asm function */
+    // Entry vector for time-since-launch mode
+    // Assumes these symbols:
+    // .ref    secs_lcd_words          ; - table of prerendered values to write to the seconds word in LCDMEM (one entry for each second 0-59)
+    // .ref    secs                    ; - elapsed seconds
+    extern unsigned TSL_MODE_BEGIN; /* declare external asm function as an unsigned so we can easily stick it into the vector. */
+
 }
 
 #endif /* TSL_ASM_H_ */

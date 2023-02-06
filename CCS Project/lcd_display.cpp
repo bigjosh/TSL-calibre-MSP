@@ -154,12 +154,12 @@ struct digit_lpin_recond_t {
 // A digitplace is one of the 12 digits on the LCD display
 
 constexpr digit_lpin_recond_t digitplace_lpins_table[DIGITPLACE_COUNT] {
-    { 33 , 32 },        //  0 (LCD 12) - rightmost digit
-    { 35 , 34 },        //  1 (LCD 11)
-    { 30 , 31 },        //  2 (LCD 10)
-    { 28 , 29 },        //  3 {LCD 09)
-    { 26 , 27 },        //  4 {LCD 08)
-    { 20 , 21 },        //  5 {LCD 07)
+    { 33 , 32 },        //  0 (LCD 12) - sec   1 -rightmost digit
+    { 35 , 34 },        //  1 (LCD 11) - sec  10
+    { 30 , 31 },        //  2 (LCD 10) - min   1
+    { 28 , 29 },        //  3 {LCD 09) - min  10
+    { 26 , 27 },        //  4 {LCD 08) - hour  1
+    { 20 , 21 },        //  5 {LCD 07) - hour 10
     { 18 , 19 },        //  6 (LCD 06)
     { 16 , 17 },        //  7 (LCD 05)
     { 14 , 15 },        //  8 (LCD 04)
@@ -172,6 +172,10 @@ constexpr digit_lpin_recond_t digitplace_lpins_table[DIGITPLACE_COUNT] {
 #define SECS_TENS_DIGITPLACE_INDEX ( 1)
 #define MINS_ONES_DIGITPLACE_INDEX ( 2)
 #define MINS_TENS_DIGITPLACE_INDEX ( 3)
+
+// Note that hours digits did not end up on consecutive LPINs, so we update the bytes separately.
+#define HOURS_ONES_DIGITPLACE_INDEX ( 4)
+#define HOURS_TENS_DIGITPLACE_INDEX ( 5)
 
 // Returns the byte address for the specified L-pin
 // Assumes MSP430 LCD is in 4-Mux mode
@@ -291,13 +295,15 @@ static_assert( lpin_t<digitplace_lpins_table[SECS_TENS_DIGITPLACE_INDEX].lpin_a_
 static_assert( lpin_t<digitplace_lpins_table[SECS_ONES_DIGITPLACE_INDEX].lpin_a_thru_d >::lcdmem_offset() >> 1 ==  lpin_t<digitplace_lpins_table[SECS_TENS_DIGITPLACE_INDEX].lpin_e_thru_g>::lcdmem_offset() >> 1  , "The seconds ones and tens digits LPINs must be in the same LCDMEM word");
 
 
-// Write a value from the array into this word to update the two digits on the LCD display
-constexpr word *mins_lcdmem_word = &LCDMEMW[ lpin_t<digitplace_lpins_table[MINS_ONES_DIGITPLACE_INDEX].lpin_a_thru_d>::lcdmem_offset() >> 1 ];
+
 
 // Builds a RAM-based table of words where each word is the value you would assign to a single LCD word address to display a given 2-digit number
 // Note that this only works for cases where all 4 of the LPINs for a pair of digits are on consecutive LPINs that use on 2 LCDM addresses.
 // In our case, seconds and minutes meet this constraint (not by accident!) so we can do the *vast* majority of all updates efficiently with just a single instruction word assignment.
 // Note that if the LPINs are not in the right places, then this will fail by having some unlit segments in some numbers.
+
+// Note there is a tricky part - [59] = "00", [00]="01", .. [01] = "02". This is because the MSP430 only has POST INCREMENT instructions
+// and no pre increment, so we are basically living one second into the future get to use the free post increment and to save some cycles.
 
 // Returns the address in LCDMEM that you should assign a words[] to in order to display the indexed 2 digit number
 
@@ -323,7 +329,8 @@ void fill_lcd_words( word *words , const byte tens_digit_index , const byte ones
             word_of_nibbles.set_nibble( lpin_lcdmem_offset( ones_logical_digit.lpin_a_thru_d ) & 0x01 , lpin_nibble(ones_logical_digit.lpin_a_thru_d) , digit_segments[ones_digit].nibble_a_thru_d );
             word_of_nibbles.set_nibble( lpin_lcdmem_offset( ones_logical_digit.lpin_e_thru_g ) & 0x01 , lpin_nibble(ones_logical_digit.lpin_e_thru_g) , digit_segments[ones_digit].nibble_e_thru_g );
 
-            words[ (tens_digit * max_ones_digit) + ones_digit ] = word_of_nibbles.as_word;
+            // This next line is where we add the +1 offset to all our tables.
+            words[ (((tens_digit * max_ones_digit) + ones_digit) + ( (max_tens_digit*max_ones_digit )-1 )  ) % (max_tens_digit*max_ones_digit )] = word_of_nibbles.as_word;
 
         }
 
@@ -331,6 +338,60 @@ void fill_lcd_words( word *words , const byte tens_digit_index , const byte ones
     }
 
 };
+
+
+// Write a value from the array into this word to update the two digits on the LCD display
+constexpr word *mins_lcdmem_word = &LCDMEMW[ lpin_t<digitplace_lpins_table[MINS_ONES_DIGITPLACE_INDEX].lpin_a_thru_d>::lcdmem_offset() >> 1 ];
+
+
+byte hours_lcd_bytes[10];
+
+// The two pins for each of the two hours digits must be in the same LCDMEM byte for this optimization to work
+static_assert( lpin_t<digitplace_lpins_table[HOURS_ONES_DIGITPLACE_INDEX].lpin_a_thru_d>::lcdmem_offset() == lpin_t<digitplace_lpins_table[HOURS_ONES_DIGITPLACE_INDEX].lpin_e_thru_g>::lcdmem_offset() , "hours 1's digit pins must be in the same LCDMEM byte " );
+static_assert( lpin_t<digitplace_lpins_table[HOURS_TENS_DIGITPLACE_INDEX].lpin_a_thru_d>::lcdmem_offset() == lpin_t<digitplace_lpins_table[HOURS_TENS_DIGITPLACE_INDEX].lpin_e_thru_g>::lcdmem_offset() , "hours 1's digit pins must be in the same LCDMEM byte " );
+
+// T0 use the same table for the two hours digits, they both have have the nibbles in the same order
+// (if this is not possible, then you can use two tables, one for each order)
+static_assert( lpin_t<digitplace_lpins_table[SECS_ONES_DIGITPLACE_INDEX].lpin_a_thru_d >::nibble() ==lpin_t<digitplace_lpins_table[SECS_TENS_DIGITPLACE_INDEX].lpin_a_thru_d >::nibble() , "both hours digits must have thier nibbbles in the same order" );
+
+
+// Builds a RAM-based table of bytes where each bytes is the value you would assign to a single LCD byte address to display a given 1-digit number
+// Note that this only works for cases where both of the LPINs for a digit are on consecutive LPINs that use on 1 LCDM address.
+// In our case, hours ones and tens meet this constraint (not by accident!)
+// Note that if the LPINs are not in the right places, then this will fail by having some unlit segments in some numbers.
+
+// Returns the address in LCDMEM that you should assign a words[] to in order to display the indexed 2 digit number
+
+void fill_lcd_bytes( byte *bytes , const byte digit_index ) {
+
+    const digit_lpin_recond_t logical_digit = digitplace_lpins_table[ digit_index];
+
+
+    for( byte digit = 0; digit < 10  ; digit ++ ) {
+
+        // We do not need to initialize this since (if all the nibbles a really in the same word) then each of the nibbles will get assigned below.
+        byte byte_of_nibbles;
+
+        // The ` & 0x01` here is normalizing the address in the LCDMEM to be just the offset into the word (hi or low byte)
+
+        if  ( lpin_nibble( logical_digit.lpin_a_thru_d ) == LOWER ) {
+            // A-D is low
+            byte_of_nibbles =  digit_segments[digit].nibble_a_thru_d  | ( digit_segments[digit].nibble_e_thru_g  ) << 4;
+
+        } else {
+            // A-D is high
+            byte_of_nibbles =  (digit_segments[digit].nibble_a_thru_d << 4)  |  digit_segments[digit].nibble_e_thru_g  ;
+
+        }
+
+        bytes[ digit  ] = byte_of_nibbles;  // do not adjust +1 like we do for the words tables
+
+    }
+
+};
+
+
+
 
 // Define a full LCD frame so we can put it into LCD memory in one shot.
 // Note that a frame includes all of LCD memory even though only some of the nibbles are actually displayed
@@ -419,6 +480,7 @@ void initLCDPrecomputedWordArrays() {
     // Fill the minutes array
     fill_lcd_words( mins_lcd_words , MINS_TENS_DIGITPLACE_INDEX , MINS_ONES_DIGITPLACE_INDEX , 6 , 10 );
     // Fill the array of frames for ready-to-launch-mode animation
+    fill_lcd_bytes( hours_lcd_bytes , HOURS_ONES_DIGITPLACE_INDEX );
     fill_ready_to_lanch_lcd_frames();
 }
 
@@ -620,9 +682,6 @@ void lcd_show_digit_f( const uint8_t pos, const byte d ) {
 
     lcd_show_f( pos , digit_segments[ d ] );
 }
-
-
-
 
 
 // For now, show all 9's.
@@ -976,25 +1035,6 @@ void lcd_show_centiday_message() {
     }
 }
 
-// This is a shadow representation of the block of LCD memory in the MSP430
-// We can operate on it and then exact out the optimal set of instructions
-// to generate the updates on the block.
-// You'd hope the compiler could do this for us, but it is not good at this
-// so we have to effectively write our own to get the best possible
-
-struct lcdmem_block_t {
-
-    static const byte LCDMEM_SIZE=32;             // Total number of bytes in LCD mem. Note that we do not actually use them all, but our display is spread across it.
-
-    int lcdmem[ LCDMEM_SIZE ];      // We cheat and and use an int here so we can keep track of which slots are actually changed by presetting all to -1
-
-    void clear() {
-        for( auto i : lcdmem ) {
-            i = -1;
-        }
-    }
-
-};
 
 
 

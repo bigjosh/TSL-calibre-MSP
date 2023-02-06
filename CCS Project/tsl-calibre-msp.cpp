@@ -841,11 +841,11 @@ void enter_tsl_mode() {
 // -- ramfunc, FRAM controller off + 500 cycles
 // 499us
 // 2.15uA with zeros (2.15uA auto)
-// 4.9mA peak on auto
+// 4.9mA peak on auto. Zoomed in shows 245uA durring the 500us
 
 
-#pragma vector = RV3032_CLKOUT_VECTOR
-__attribute__((ramfunc))
+//#pragma vector = RV3032_CLKOUT_VECTOR
+//__attribute__((ramfunc))
 __attribute__((retain))
 __attribute__((naked))
 void tsl_isr(void) {
@@ -875,12 +875,13 @@ void start_ram_isr() {
 
     // Set us up to run the RTC vector on next interrupt
     SET_CLKOUT_VECTOR( &tsl_isr );
+/*
     ACTIVATE_RAM_ISRS();
 
     // Now we can finally turn off the FRAM controller!
     FRCTL0=FRCTLPW;                  // FRCTLPW password. Always reads as 96h. To enable write access to the FRCTL registers, write A5h.
     GCCTL0 &= ~FRPWR ;               // FRAM power control. Writing to the register enables or disables the FRAM power supply.  0b = FRAM power supply disabled.
-
+*/
     // Wait for interrupt to fire at next clkout low-to-high change to drive us into the state machine (in either "pin loading" or "time since lanuch" mode)
     __bis_SR_register(LPM4_bits | GIE );                 // Enter LPM4
     // BIS.W    #248,SR
@@ -1311,14 +1312,28 @@ int main( void )
     }
 
 #warning
-    lcd_show_zeros();
-    CBI( RV3032_CLKOUT_PIFG     , RV3032_CLKOUT_B    );
-    start_ram_isr();
 
-//    asm( " mov.w #1,r13" );     // Get ready for the squigle isr
+    SET_TRIGGER_VECTOR( &trigger_isr );
+    //SET_CLKOUT_VECTOR( &TSL_MODE_BEGIN );
+    SET_CLKOUT_VECTOR( &RTL_MODE_BEGIN );
+
+    secs = 55;
+    mins = 59;
+    hours = 23;
+
+    ACTIVATE_RAM_ISRS();
+
+    __bis_SR_register(LPM4_bits | GIE );                 // Enter LPM4
+    __no_operation();                                   // For debugger
+
+    //lcd_show_zeros();
+    //CBI( RV3032_CLKOUT_PIFG     , RV3032_CLKOUT_B    );
+    //start_ram_isr();
+
+    asm( " mov.w #1,r13" );     // Get ready for the squigle isr
     // Wait for interrupt to fire at next clkout low-to-high change to drive us into the state machine (in either "pin loading" or "time since lanuch" mode)
-//    __bis_SR_register(LPM4_bits | GIE );                 // Enter LPM4
-//    __no_operation();                                   // For debugger
+    __bis_SR_register(LPM4_bits | GIE );                 // Enter LPM4
+    __no_operation();                                   // For debugger
 
 
 
