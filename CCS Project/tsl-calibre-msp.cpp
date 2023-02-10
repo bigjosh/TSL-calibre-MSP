@@ -717,6 +717,110 @@ struct ram_vect_table_t {
 
 volatile ram_vect_table_t __attribute__(( __section__(".ramvects") )) ram_vector_table;
 
+
+// Terminate after one day
+bool testing_only_mode = false;
+
+// Shortcuts for setting the RAM vectors. Note we need the (void *) casts becuase the compiler won't let us make the vectors into `near __interrupt (* volatile vector)()` like it should.
+
+#define SET_CLKOUT_VECTOR(x) do {RV3032_CLKOUT_VECTOR_RAM = (void *) x;} while (0)
+#define SET_TRIGGER_VECTOR(x) do {TRIGGER_VECTOR_RAM = (void *) x;} while (0)
+
+
+
+// Called when trigger pin changes high to low, indicating the trigger has been pulled and we should start ticking.
+// Note that this interrupt is only enabled when we enter ready-to-launch mode, and then it is disabled and also the pin in driven low
+// when we then switch to time-since-lanuch mode, so this ISR can only get called in ready-to-lanuch mode.
+
+__interrupt void trigger_isr(void) {
+
+    #warning
+    SBI( DEBUGA_POUT , DEBUGA_B );
+
+    // First we delay for about 1000 cycles / 1.1Mhz  = ~1ms
+    // This will filter glitches since the pin will not still be low when we sample it after this delay. We want to be really sure!
+    __delay_cycles( 1000 );
+
+
+    // Then clear any interrupt flag that got us here.
+    // Timing here is critical, we must clear the flag *before* we capture the pin state or we might miss a change
+    CBI( TRIGGER_PIFG , TRIGGER_B );      // Clear any pending trigger pin interrupt flag
+
+    // Grab the current trigger pin level
+    unsigned triggerpin_level = TBI( TRIGGER_PIN , TRIGGER_B );
+
+
+    // Now we can check to see if the trigger pin was still low
+    // If it is not still low then we will return and this ISR will get called again if it goes low again or
+    // if it went low between when we cleared the flag and when we sampled it (VERY small race window of only 1/8th of a microsecond, but hey we need to be perfect, it could be a once in a lifetime moment and we dont want to miss it!)
+
+    if ( !triggerpin_level ) {      // trigger pulled?
+
+        // WE HAVE LIFTOFF!
+
+        // We need to get everything below done within 0.5 seconds so we do not miss the first tick (not hard)
+
+        // Disable the trigger pin and drive low to save power and prevent any more interrupts from it
+        // (if it stayed pulled up then it would draw power though the pull-up resistor whenever the pin was out)
+
+        CBI( TRIGGER_POUT , TRIGGER_B );      // low
+        SBI( TRIGGER_PDIR , TRIGGER_B );      // drive
+
+        CBI( TRIGGER_PIFG , TRIGGER_B );      // Clear any pending interrupt (it could have gone high again since we sampled it). We already triggered so we don't care anymore.
+
+        // Show all 0's on the LCD to quickly let the user know that we saw the pull
+        lcd_show_zeros();
+
+        // Do the actual launch, which will...
+        // 1. Read the current RTC time and save it to FRAM
+        // 2. Set the launchflag in FRAM so we will forevermore know that we did launch already.
+        // 3. Reset the current RTC time to midnight 1/1/00.
+
+        // Initialize our i2c pins as pull-up
+        i2c_init();
+
+        // First get current time and save it to FRAM for archival purposes.
+        unlock_persistant_data();
+        i2c_read( RV_3032_I2C_ADDR , RV3032_SECS_REG  , (void *)  &persistent_data.launched , sizeof( rv3032_time_block_t ) );
+        persistent_data.launch_flag=1;
+        lock_persistant_data();
+
+        // Then zero out the RTC to start counting over again, starting now. Note that writing any value to the seconds register resets the sub-second counters to the beginning of the second.
+        i2c_write( RV_3032_I2C_ADDR , RV3032_SECS_REG  , &rv_3032_time_block_init , sizeof( rv3032_time_block_t ) );
+
+        i2c_shutdown();
+
+        // We will get the next tick in 1000ms. Make sure we return from this ISR before then.
+
+        // Clear any pending RTC interrupt so we will not tick until the next pulse comes from RTC in 1000ms
+        // There could be a race where an RTC interrupt comes in just after the trigger was pulled, in which case we would
+        // have a pending interrupt that would get serviced immediately after we return from here, which would look ugly.
+        // We could also see an interrupt if the CLKOUT signal was low when trigger pulled (50% likelihood) since it will go high on reset.
+
+        CBI( RV3032_CLKOUT_PIFG , RV3032_CLKOUT_B );      // Clear any pending interrupt from CLKOUT
+
+        // Flash lights
+
+        flash();
+
+        // Start ticking from... now!
+
+        secs=0;
+        mins=0;
+        hours=0;
+        days=0;
+
+        // Begin TSL mode on next tick
+        SET_CLKOUT_VECTOR( &TSL_MODE_BEGIN );
+
+    }
+
+    CBI( DEBUGA_POUT , DEBUGA_B );
+
+}
+
+
+
 enum mode_t {
     LOAD_TRIGGER,                  // Waiting for pin to be inserted (shows dashes)
     ARMING,                 // Hold-off after pin is inserted to make sure we don't inadvertently trigger on a switch bounce (lasts 0.5s)
@@ -729,221 +833,9 @@ mode_t mode;
 unsigned int step;          // LOAD_TRIGGER      - Used to keep the position of the dash moving across the display (0=leftmost position, only one dash showing)
                             // READY_TO_LAUNCH   - Which step of the squigle animation
 
-
-// This ISR is only called when we are in Time Since Launch count up mode
-// It just keeps counting up on the screen as efficiently as possible
-// until it hits 1,000,000 days, at which time it switches to Long Now mode
-// which is permanent.
-
-// TODO: Move to RAM, Move vector table to RAM, write in ASM with auto-increment register for lcdmem_word pointer, maybe only clean stack once every 60 cycles
-// TODO: increment hour + date probably stays in C called from ASM. Maybe pass the hours and days in the call registers so they naturally are maintained across calls?
-
-__attribute__((ramfunc))  // This does not seem to do anything?
-__interrupt void rtc_isr_time_since_launch_mode() {
-
-    SBI( DEBUGA_POUT , DEBUGA_B );      // See latency to start ISR and how long it runs
-
-    secs++;
-
-     if (secs == 60) {
-
-         secs=0;
-
-     }
-
-    lcd_show_fast_secs(secs);
-
-    CBI( RV3032_CLKOUT_PIFG , RV3032_CLKOUT_B );      // Clear the pending RV3032 INT interrupt flag that got us into this ISR.
-
-    CBI( DEBUGA_POUT , DEBUGA_B );
-}
-
-// Copies interrupt vector table to RAM and then sets the RTC vector to point to the Time Since Launch mode ISR
-
-void beginTimeSinceLaunchMode() {
-
-}
-
-// Terminate after one day
-bool testing_only_mode = false;
-
-// Shortcuts for setting the RAM vectors. Note we need the (void *) casts becuase the compiler won't let us make the vectors into `near __interrupt (* volatile vector)()` like it should.
-
-#define SET_CLKOUT_VECTOR(x) do {RV3032_CLKOUT_VECTOR_RAM = (void *) x;} while (0)
-#define SET_TRIGGER_VECTOR(x) do {TRIGGER_VECTOR_RAM = (void *) x;} while (0)
-
-// Registers R4-R10 are preserved across function calls, so we can even make calls out of the ISRs and stuff will
-// not get messed up.
-
-/*
-
-
-enter_tslmode_asm
-
-            ; We get secs in R12 for free by the C passing conventions
-
-            mov         &secs_lcdmem_word,R_S_LCD_MEM       ;; Address in LCD memory to write seconds digits
-
-            mov         #secs_lcd_words,R_S_TBL
-            mov         R_S_TBL , R_S_PTR
-            mov         #SECS_PER_MIN,R_S_CNT
-*/
-
-/*
-
-void enter_tsl_mode() {
-    asm("R_S_LCD_MEM    .set      R4                                  ;; word address in LCDMEM that holds the segments for the 2 seconds digits");
-    asm("R_S_TBL        .set      R6                                  ;; base address of the table of data words to write to the seconds word in LCD memory");
-    asm("R_S_PTR        .set      R7                                  ;; ptr into next word to use in the table of data words to write to the seconds word in LCD memory");
-    asm("R_S_CNT        .set      R8                                  ;; Seconds counter, starts at 60 down to 0.");
-    asm("");
-    asm("               mov.w     &secs_lcdmem_word, R_S_LCD_MEM     ");
-    asm("               mov.w     #secs_lcd_words,R_S_TBL            ");
-    asm("               mov.w     R_S_TBL , R_S_PTR                  ");
-    //asm("               mov.w     #SECS_PER_MIN,R_S_CNT              ");
-
-    __bis_SR_register(LPM4_bits | GIE );                // Enter LPM4
-    __no_operation();                                   // For debugger
-
-}
-*/
-// Called on RV3032 CLKOUT pin rising edge (1Hz)
-
-// Note that we do not make this an "interrupt" function even though it is an ISR.
-// We can do this because we know that there is nothing being interrupted since we just
-// sleep between interrupts, so no need to save any registers. We do need to do our own
-// RETI (return from interrupt) at the end since the function itself will only have a
-// normal return.
-
-// -- normal naked ISR
-// 24us
-// 2.04uA with zeros
-// 161uA peak
-// 29.44us wake time
-
-// -- ramfunc, FRAM controller on
-// 21us
-// 1.49uA with dashes
-// 2.17uA with zeros
-// 26.62us wake time
-
-// -- ramfunc, FRAM controller off
-// 21us
-// 2.04uA with zeros
-// peak 119uA
-// 26us wake time
-
-// -- normal naked ISR + 500 cycles
-// 500us
-// 2.15uA with zeros (1.9uA @ 1.8mA range, 2.15uA @ auto)
-// 240uA peak (3mA on auto)
-
-// -- ramfunc, FRAM controller off + 500 cycles
-// 499us
-// 2.15uA with zeros (2.15uA auto)
-// 4.9mA peak on auto. Zoomed in shows 245uA durring the 500us
-
-
-//#pragma vector = RV3032_CLKOUT_VECTOR
+// Handle startup activities like loading the pin. Terminates into ready-to-launch mode
 //__attribute__((ramfunc))
-__attribute__((retain))
-__attribute__((naked))
-void tsl_isr(void) {
-
-    SBI( DEBUGA_POUT , DEBUGA_B );      // See latency to start ISR and how long it runs
-
-    asm("               mov.w       &(secs_lcd_words+6),&(LCDM0W_L+16)");
-//    asm("               dec         R_S_CNT");
-    asm("               JNE         ISR_DONE1");
-//    asm("               mov         R_S_TBL,R_S_PTR");
-//    asm("               mov         #SECS_PER_MIN,R_S_CNT");
-    asm("ISR_DONE1:");
-    asm("               BIC.B     #2,&PAIFG_L+0         ; Clear the interrupt flag that got us here");
-    asm("    mov.w  #ISR_DONE1,r8");
-    //asm(" mov.w #%dh,r7" , 0x1234);
-    __delay_cycles(500);
-
-    CBI( RV3032_CLKOUT_PIFG , RV3032_CLKOUT_B );      // Clear the pending RV3032 INT interrupt flag that got us into this ISR.
-
-    CBI( DEBUGA_POUT , DEBUGA_B );
-    asm("          RETI");                            // We did not mark this as an "interrupt" function, so we are responsible for the return. Note that this will just put us back in LPM sleep.
-
-}
-
-__attribute__((ramfunc))
-void start_ram_isr() {
-
-    // Set us up to run the RTC vector on next interrupt
-    SET_CLKOUT_VECTOR( &tsl_isr );
-/*
-    ACTIVATE_RAM_ISRS();
-
-    // Now we can finally turn off the FRAM controller!
-    FRCTL0=FRCTLPW;                  // FRCTLPW password. Always reads as 96h. To enable write access to the FRCTL registers, write A5h.
-    GCCTL0 &= ~FRPWR ;               // FRAM power control. Writing to the register enables or disables the FRAM power supply.  0b = FRAM power supply disabled.
-*/
-    // Wait for interrupt to fire at next clkout low-to-high change to drive us into the state machine (in either "pin loading" or "time since lanuch" mode)
-    __bis_SR_register(LPM4_bits | GIE );                 // Enter LPM4
-    // BIS.W    #248,SR
-
-    __no_operation();                                   // For debugger
-
-}
-
-
-/*
-
-// Here is the ASM version which is not worth the extra complexity. We could probably do even 50% better, but still probably not worth it.
-
-// 1.37uA
-// 48us
-#pragma vector = RV3032_CLKOUT_VECTOR
-__attribute__((naked))
-void lcd_show_squiggle_frame() {
-
-    asm("  OR.B     #128,&PAOUT_L+0"); // SET DEBUG
-
-    // Frame will be in R12 by calling convention
-
-    // First compute the source address ready_to_launch_lcd_frames[frame].as_words;
-
-    // Each ready_to_launch_lcd_frames[frame] is 32 bytes, so
-
-    asm("  OR.B     #80,&PAOUT_L+0   ");   // SET DEBUGA
-    asm("  SUB   #1,R13");        // Dec counter
-    asm("  JNE SKIP_SQ ");
-    asm("  MOV.W #ready_to_launch_lcd_frames,R12");   // Reset pointer to array base.
-    asm("  MOV.W #8,R13");         // Reset counter
-    asm("SKIP_SQ:");
-    asm("  MOV.W @R12+,(LCDM0W_L+0)");
-    asm("  MOV.W @R12+,(LCDM0W_L+2)");
-    asm("  MOV.W @R12+,(LCDM0W_L+4)");
-    asm("  MOV.W @R12+,(LCDM0W_L+6)");
-    asm("  MOV.W @R12+,(LCDM0W_L+8)");
-    asm("  MOV.W @R12+,(LCDM0W_L+10)");
-    asm("  MOV.W @R12+,(LCDM0W_L+12)");
-    asm("  MOV.W @R12+,(LCDM0W_L+14)");
-    asm("  MOV.W @R12+,(LCDM0W_L+16)");
-    asm("  MOV.W @R12+,(LCDM0W_L+18)");
-    asm("  MOV.W @R12+,(LCDM0W_L+20)");
-    asm("  MOV.W @R12+,(LCDM0W_L+22)");
-    asm("  MOV.W @R12+,(LCDM0W_L+24)");
-    asm("  MOV.W @R12+,(LCDM0W_L+26)");
-    asm("  MOV.W @R12+,(LCDM0W_L+28)");
-    asm("  MOV.W @R12+,(LCDM0W_L+30)");
-
-    asm("  BIC.B     #2,&PAIFG_L+0 ");  //Clear interrupt flag
-    asm("  AND.B     #127,&PAOUT_L+0"); // CLEAR DEBUG
-    asm(" RETI");
-
-}
-
-*/
-
-void rtc_isr(void) {
-
-    // Wake time measured at 48us
-    // TODO: Make sure there are no avoidable push/pops happening at ISR entry (seems too long)
+__interrupt void startup_isr(void) {
 
     SBI( DEBUGA_POUT , DEBUGA_B );      // See latency to start ISR and how long it runs
 
@@ -951,102 +843,7 @@ void rtc_isr(void) {
     //FRCTL0=FRCTLPW;                  // FRCTLPW password. Always reads as 96h. To enable write access to the FRCTL registers, write A5h.
     //GCCTL0 &= ~FRPWR ;               // FRAM power control. Writing to the register enables or disables the FRAM power supply.  0b = FRAM power supply disabled.
 
-    if (  __builtin_expect( mode == TIME_SINCE_LAUNCH , 1 ) ) {            // This is where we will spend most of our life, so optimize for this case
-
-        // 502us
-        // 170us
-
-        // Show current time
-
-        secs++;
-
-        if (secs == 60) {
-
-            secs=0;
-
-            mins++;
-
-            if (mins==60) {
-
-                mins = 0;
-
-                hours++;
-
-                if (hours==24) {
-
-                    hours = 0;
-
-                    if (days==999999) {
-
-                        for( uint8_t i=0 ; i<DIGITPLACE_COUNT; i++ ) {
-
-                            // The long now
-
-                            lcd_show_long_now();
-                            blinkforeverandever();
-
-                        }
-
-
-
-                    } else {
-
-                        if (testing_only_mode) {
-                            lcd_show_testing_only_message();
-                            blinkforeverandever();
-                        }
-
-                        days++;
-
-                        // TODO: Optimize
-                        lcd_show_digit_f(  6 , (days / 1      ) % 10  );
-                        lcd_show_digit_f(  7 , (days / 10     ) % 10  );
-                        lcd_show_digit_f(  8 , (days / 100    ) % 10  );
-                        lcd_show_digit_f(  9 , (days / 1000   ) % 10  );
-                        lcd_show_digit_f( 10 , (days / 10000  ) % 10  );
-                        lcd_show_digit_f( 11 , (days / 100000 ) % 10  );
-
-                    }
-
-
-                }
-
-                lcd_show_digit_f( 4 , hours % 10  );
-                lcd_show_digit_f( 5 , hours / 10  );
-
-            }
-
-            lcd_show_digit_f( 2 ,  mins % 10  );
-            lcd_show_digit_f( 3 ,  mins / 10  );
-
-        }
-
-        // Show current seconds on LCD using fast lookup table. This is a 16 bit MCU and we were careful to put the 4 nibbles that control the segments of the two seconds digits all in the same memory word,
-        // so we can set all the segments of the seconds digits with a single word write.
-
-        // Wow, this compiler is not good. Below we can remove a whole instruction with 3 cycles that is completely unnecessary.
-
-        // *secs_lcdmem_word = secs_lcd_words[secs];
-
-        asm("        MOV.B     &secs+0,r15           ; [] |../tsl-calibre-msp.cpp:1390| ");
-        asm("        RLAM.W    #1,r15                ; [] |../tsl-calibre-msp.cpp:1390| ");
-        asm("        MOV.W     secs_lcd_words+0(r15),(LCDM0W_L+16) ; [] |../tsl-calibre-msp.cpp:1390|");
-
-
-    } else if ( mode==READY_TO_LAUNCH  ) {       // We will be in this mode potentially for a very long time, so also be power efficient here.
-
-        // We depend on the trigger ISR to move us from ready-to-launch to time-since-launch
-
-        // Do the increment and normalize first so we know it will always be in range
-        step++;
-        step &=0x07;
-
-        lcd_show_squiggle_frame(step );
-
-        static_assert( SQUIGGLE_ANIMATION_FRAME_COUNT == 8 , "SQUIGGLE_ANIMATION_FRAME_COUNT should be exactly 8 so we can use a logical AND to keep it in bounds for efficiency");            // So we can use fast AND 0x07
-
-
-    } else if ( mode==ARMING ) {
+    if ( mode==ARMING ) {
 
         // This phase is just to add a 1000ms debounce to when the trigger is initially inserted at the factory to make sure we do
         // not accidentally fire then.
@@ -1066,7 +863,11 @@ void rtc_isr(void) {
             // Clear any pending interrupt so we will need a new transition to trigger
             CBI( TRIGGER_PIFG , TRIGGER_B);
 
-            mode = READY_TO_LAUNCH;
+            // Next tick will start showing the ready-to-launch animation which will continue until the trigger is pulled.
+            SET_CLKOUT_VECTOR( &RTL_MODE_BEGIN );
+
+            // When the trigger is pulled, it will generate a hardware interrupt and call this ISR which will start time since launch mode.
+            SET_TRIGGER_VECTOR(trigger_isr);
 
         } else {
 
@@ -1077,7 +878,6 @@ void rtc_isr(void) {
             step = 0;
 
         }
-
 
     } else { // if mode==LOAD_TRIGGER
 
@@ -1119,7 +919,6 @@ void rtc_isr(void) {
     }
 
 /*
-
 #warning show if FRAM on or off
     if (GCCTL0 & FRPWR) {
         lcd_show_digit_f(5, 0x0d ); // 11.7uA, 260uA max, 47.9ms run time, 26.6us wake time
@@ -1131,9 +930,144 @@ void rtc_isr(void) {
 
     CBI( DEBUGA_POUT , DEBUGA_B );
 
-    asm("     reti");            // Since this function is not flagged as an `interrupt`, we have to do the `reti` ourselves.
 
 }
+
+// Reference version of the ready to launch animation. This has been replaced with optimized ASM in tsl_asm.asm
+void ready_to_launch_reference() {
+    // We depend on the trigger ISR to move us from ready-to-launch to time-since-launch
+
+    // Do the increment and normalize first so we know it will always be in range
+    step++;
+    step &=0x07;
+
+    lcd_show_squiggle_frame(step );
+
+    static_assert( SQUIGGLE_ANIMATION_FRAME_COUNT == 8 , "SQUIGGLE_ANIMATION_FRAME_COUNT should be exactly 8 so we can use a logical AND to keep it in bounds for efficiency");            // So we can use fast AND 0x07
+
+}
+
+// Note that we do not make this an "interrupt" function even though it is an ISR.
+// We can do this because we know that there is nothing being interrupted since we just
+// sleep between interrupts, so no need to save any registers. We do need to do our own
+// RETI (return from interrupt) at the end since the function itself will only have a
+// normal return.
+
+// -- normal naked ISR
+// 24us
+// 2.04uA with zeros
+// 161uA peak
+// 29.44us wake time
+
+// -- ramfunc, FRAM controller on
+// 21us
+// 1.49uA with dashes
+// 2.17uA with zeros
+// 26.62us wake time
+
+// -- ramfunc, FRAM controller off
+// 21us
+// 2.04uA with zeros
+// peak 119uA
+// 26us wake time
+
+// -- normal naked ISR + 500 cycles
+// 500us
+// 2.15uA with zeros (1.9uA @ 1.8mA range, 2.15uA @ auto)
+// 240uA peak (3mA on auto)
+
+// -- ramfunc, FRAM controller off + 500 cycles
+// 499us
+// 2.15uA with zeros (2.15uA auto)
+// 4.9mA peak on auto. Zoomed in shows 245uA durring the 500us
+
+
+// Reference version of time-since-launch updater
+// This has been eplaced with ASM code in tsl_asm.asm
+void time_since_launch_reference() {
+    // 502us
+
+    // Show current time
+
+    secs++;
+
+    if (secs == 60) {
+
+        secs=0;
+
+        mins++;
+
+        if (mins==60) {
+
+            mins = 0;
+
+            hours++;
+
+            if (hours==24) {
+
+                hours = 0;
+
+                if (days==999999) {
+
+                    for( uint8_t i=0 ; i<DIGITPLACE_COUNT; i++ ) {
+
+                        // The long now
+
+                        lcd_show_long_now();
+                        blinkforeverandever();
+
+                    }
+
+
+
+                } else {
+
+                    if (testing_only_mode) {
+                        lcd_show_testing_only_message();
+                        blinkforeverandever();
+                    }
+
+                    days++;
+
+                    // TODO: Optimize
+                    lcd_show_digit_f(  6 , (days / 1      ) % 10  );
+                    lcd_show_digit_f(  7 , (days / 10     ) % 10  );
+                    lcd_show_digit_f(  8 , (days / 100    ) % 10  );
+                    lcd_show_digit_f(  9 , (days / 1000   ) % 10  );
+                    lcd_show_digit_f( 10 , (days / 10000  ) % 10  );
+                    lcd_show_digit_f( 11 , (days / 100000 ) % 10  );
+
+                }
+
+
+            }
+
+            lcd_show_digit_f( 4 , hours % 10  );
+            lcd_show_digit_f( 5 , hours / 10  );
+
+        }
+
+        lcd_show_digit_f( 2 ,  mins % 10  );
+        lcd_show_digit_f( 3 ,  mins / 10  );
+
+    }
+
+    // Show current seconds on LCD using fast lookup table. This is a 16 bit MCU and we were careful to put the 4 nibbles that control the segments of the two seconds digits all in the same memory word,
+    // so we can set all the segments of the seconds digits with a single word write.
+
+    *secs_lcdmem_word = secs_lcd_words[secs];
+
+    /*
+        // Wow, this compiler is not good. Below we can remove a whole instruction with 3 cycles that is completely unnecessary.
+
+        asm("        MOV.B     &secs+0,r15           ; [] |../tsl-calibre-msp.cpp:1390| ");
+        asm("        RLAM.W    #1,r15                ; [] |../tsl-calibre-msp.cpp:1390| ");
+        asm("        MOV.W     secs_lcd_words+0(r15),(LCDM0W_L+16) ; [] |../tsl-calibre-msp.cpp:1390|");
+    */
+
+}
+
+
 
 
 #warning
@@ -1151,101 +1085,6 @@ void error_modea(void) {
     }
 }
 
-// TODO: Try moving ISR and vector table into RAM to save 10us on wake and some amount of power for FRAM controller
-//       FRAM controller automatically turned off when entering LMP3 and automatically turned back on at first FRAM access.
-
-// Called when trigger pin changes high to low, indicating the trigger has been pulled and we should start ticking.
-// Note that this interrupt is only enabled when we enter ready-to-launch mode, and then it is disabled and also the pin in driven low
-// when we then switch to time-since-lanuch mode, so this ISR can only get called in ready-to-lanuch mode.
-
-#pragma vector = TRIGGER_VECTOR
-__interrupt void trigger_isr(void) {
-
-    #warning
-    SBI( DEBUGA_POUT , DEBUGA_B );
-
-    // First we delay for about 1000 / 1.1Mhz  = ~1ms
-    // This will filter glitches since the pin will not still be low when we sample it after this delay. We want to be really sure!
-    __delay_cycles( 1000 );
-
-
-    // Then clear any interrupt flag that got us here.
-    // Timing here is critical, we must clear the flag *before* we capture the pin state or we might miss a change
-    CBI( TRIGGER_PIFG , TRIGGER_B );      // Clear any pending trigger pin interrupt flag
-
-
-    // Grab the current trigger pin level
-    unsigned triggerpin_level = TBI( TRIGGER_PIN , TRIGGER_B );
-
-    // Now we can check to see if the trigger pin was still low
-    // If it is not still low then we will return and this ISR will get called again if it goes low again or
-    // if it went low between when we cleared the flag and when we sampled it (VERY small race window of only 1/8th of a microsecond, but hey we need to be perfect, it could be a once in a lifetime moment and we dont want to miss it!)
-
-    if ( !triggerpin_level ) {      // trigger pulled?
-
-        // WE HAVE LIFTOFF!
-
-        // We need to get everything below done within 0.5 seconds so we do not miss the first tick (not hard)
-
-        // Disable the trigger pin and drive low to save power and prevent any more interrupts from it
-        // (if it stayed pulled up then it would draw power though the pull-up resistor whenever the pin was out)
-
-        CBI( TRIGGER_POUT , TRIGGER_B );      // low
-        SBI( TRIGGER_PDIR , TRIGGER_B );      // drive
-
-        CBI( TRIGGER_PIFG , TRIGGER_B );      // Clear any pending interrupt (it could have gone high again since we sampled it). We already triggered so we don't care anymore.
-
-
-        // Show all 0's on the LCD to quickly let the user know that we saw the pull
-        lcd_show_zeros();
-
-        // Do the actual launch, which will...
-        // 1. Read the current RTC time and save it to FRAM
-        // 2. Set the launchflag in FRAM so we will forevermore know that we did launch already.
-        // 3. Reset the current RTC time to midnight 1/1/00.
-
-        // Initialize our i2c pins as pull-up
-        i2c_init();
-
-        // First get current time and save it to FRAM for archival storage.
-        unlock_persistant_data();
-        i2c_read( RV_3032_I2C_ADDR , RV3032_SECS_REG  , (void *)  &persistent_data.launched , sizeof( rv3032_time_block_t ) );
-        persistent_data.launch_flag=1;
-        lock_persistant_data();
-
-        // Then zero out the RTC to start counting over again, starting now. Note that writing any value to the seconds register resets the sub-second counters to the beginning of the second.
-        i2c_write( RV_3032_I2C_ADDR , RV3032_SECS_REG  , &rv_3032_time_block_init , sizeof( rv3032_time_block_t ) );
-
-        i2c_shutdown();
-
-        // We will get the next tick in 1000ms. Make sure we return from this ISR before then.
-
-        // Clear any pending RTC interrupt so we will not tick until the next pulse comes from RTC in 1000ms
-        // There could be a race where an RTC interrupt comes in just after the trigger was pulled, in which case we would
-        // have a pending interrupt that would get serviced immediately after we return from here, which would look ugly.
-        // We could also see an interrupt if the CLKOUT signal was low when trigger pulled (50% likelihood) since it will go high on reset.
-
-        CBI( RV3032_CLKOUT_PIFG , RV3032_CLKOUT_B );      // Clear any pending interrupt from CLKOUT
-
-        // Flash lights
-
-        flash();
-
-        // Start ticking from... now!
-
-        secs=0;
-        mins=0;
-        hours=0;
-        days=0;
-
-        mode = TIME_SINCE_LAUNCH;
-
-    }
-
-
-    CBI( DEBUGA_POUT , DEBUGA_B );
-
-}
 
 // The ISR we will put into the RAM-based vector table once we switch to TSL mode.
 // Once we enter TSL mode, we never leave and we never see any other interrupt besides RTC
@@ -1311,30 +1150,25 @@ int main( void )
 
     }
 
-#warning
 
-    SET_TRIGGER_VECTOR( &trigger_isr );
+    //flash();
+
+    //SET_TRIGGER_VECTOR( &trigger_isr );
     //SET_CLKOUT_VECTOR( &TSL_MODE_BEGIN );
-    SET_CLKOUT_VECTOR( &RTL_MODE_BEGIN );
+    //SET_CLKOUT_VECTOR( &RTL_MODE_BEGIN );
 
-    secs = 55;
-    mins = 59;
-    hours = 23;
+    //secs = 55;
+    //mins = 59;
+    //hours = 23;
 
-    ACTIVATE_RAM_ISRS();
+    //ACTIVATE_RAM_ISRS();
 
-    __bis_SR_register(LPM4_bits | GIE );                 // Enter LPM4
-    __no_operation();                                   // For debugger
+    //__bis_SR_register(LPM4_bits | GIE );                 // Enter LPM4
+    //__no_operation();                                   // For debugger
 
     //lcd_show_zeros();
     //CBI( RV3032_CLKOUT_PIFG     , RV3032_CLKOUT_B    );
     //start_ram_isr();
-
-    asm( " mov.w #1,r13" );     // Get ready for the squigle isr
-    // Wait for interrupt to fire at next clkout low-to-high change to drive us into the state machine (in either "pin loading" or "time since lanuch" mode)
-    __bis_SR_register(LPM4_bits | GIE );                 // Enter LPM4
-    __no_operation();                                   // For debugger
-
 
 
     // Check if this is the first time we've ever been powered up.
@@ -1373,10 +1207,12 @@ int main( void )
 
     }
 
-    if (rtcState==1) {
+    if (rtcState!=0) {
 
         // RTC lost power at some point so nothing we can do except show an error message forever.
 
+#warning
+        /*
         if (persistent_data.launch_flag) {
             lcd_show_batt_errorcode( BATT_ERROR_PRELAUNCH );
         } else {
@@ -1385,6 +1221,19 @@ int main( void )
 
         rv3032_shutdown();          // We can't use the RTC, so shut it down to save some power while we show error message, otherwise it would be in it's default powerup 32768 mode that uses like 3uA. NOte that we do not charge the backup cap in this mode becuase there is no point.
         blinkforeverandever();
+        */
+
+        rv3032_clear_LV_flags();
+
+        // Now remember that we did our start up. From now on, the RTC will run on its own forever.
+
+        unlock_persistant_data();
+        persistent_data.once_flag=0;             // Remember that we already started up once and never do it again.
+        persistent_data.launch_flag=0;           // Clear the launch flag even though we should never have to
+        lock_persistant_data();
+
+        lcd_show_first_start_message();
+        sleepforeverandever();
 
     }
 
@@ -1420,6 +1269,11 @@ int main( void )
         mode = LOAD_TRIGGER;                  // Go though the state machine to wait for trigger to be loaded
         step =0;                              // Used to slide a dash indicator pointing to the pin location
 
+
+        // Set us up to run the loading/ready-to-launch sequence on thie next tick
+        // NOte that the trigger ISR will be activated when we get into ready-to-launch
+        SET_CLKOUT_VECTOR( &startup_isr);
+
         // We will go into "load pin" mode when next second ticks. This gives the pull-up a chance to take effect and also avoids any bounce aliasing right at power up.
 
     } else {
@@ -1445,12 +1299,11 @@ int main( void )
         lcd_show_digit_f( 1 , secs / 10  );
 
         // Now start ticking at next second tick interrupt
-        mode = TIME_SINCE_LAUNCH;
+        // We do not set up the trigger ISR since it can never come. We will tick like this
+        // forever.
+        SET_CLKOUT_VECTOR( &TSL_MODE_BEGIN );
     }
 
-    // Set us up to run the RTC vector on next interrupt
-    SET_CLKOUT_VECTOR( &rtc_isr );
-    SET_TRIGGER_VECTOR( &trigger_isr );
     ACTIVATE_RAM_ISRS();
 
     // Wait for interrupt to fire at next clkout low-to-high change to drive us into the state machine (in either "pin loading" or "time since lanuch" mode)

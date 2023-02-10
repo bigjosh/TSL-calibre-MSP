@@ -195,7 +195,14 @@ RTL_MODE_BEGIN:
 	mov.w	#ready_to_launch_lcd_frames,R13 		; Save the address of the base of the table
 	mov.w	#(ready_to_launch_lcd_frames+8*32),R14 	; Save the address of the byte just past the end of the table in R12. We will use this to test when we need to go back to the begining
 
-	mov.w 	R13,R12									; Moe the base into our working pointer register
+	mov.w 	R13,R12									; Move the base into our working pointer register
+
+	;; Disable the FRAM controller
+	; With controller on uses 1.36uA
+	; With controller off uses 1.37uA
+	; Why?
+	; MOV.W	#FRCTLPW,&FRCTL0			; Write password to FRAM controller
+	; BIC.W	#FRPWR,&GCCTL0				; Clear the bit that turns on the controller on wake
 
 	; We are now ready, so drop into the real ISR. The real ISR will be called directly for now on since we updated the vector to point here.
 
@@ -204,6 +211,7 @@ RTL_MODE_BEGIN:
 RTL_MODE_ISR:
 
  	  OR.B      #128,&PAOUT_L+0  ;			// DebugA ON
+
 
 	; Copy the data for this frame into the LCDMEM registers
 	; note only need to do this for the LPINs that are actually connected

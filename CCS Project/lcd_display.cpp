@@ -160,12 +160,12 @@ constexpr digit_lpin_recond_t digitplace_lpins_table[DIGITPLACE_COUNT] {
     { 28 , 29 },        //  3 {LCD 09) - min  10
     { 26 , 27 },        //  4 {LCD 08) - hour  1
     { 20 , 21 },        //  5 {LCD 07) - hour 10
-    { 18 , 19 },        //  6 (LCD 06)
+    { 18 , 19 },        //  6 (LCD 06) - day 1
     { 16 , 17 },        //  7 (LCD 05)
     { 14 , 15 },        //  8 (LCD 04)
     {  1 , 13 },        //  9 (LCD 03)
     {  3 ,  2 },        // 10 (LCD 02)
-    {  5 ,  4 },        // 11 (LCD 01) - leftmost digit
+    {  5 ,  4 },        // 11 (LCD 01) - day 6 - leftmost digit
 };
 
 #define SECS_ONES_DIGITPLACE_INDEX ( 0)
