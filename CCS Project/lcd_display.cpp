@@ -284,8 +284,8 @@ static_assert( lpin_t<digitplace_lpins_table[SECS_ONES_DIGITPLACE_INDEX].lpin_a_
 // It does not matter if we pick ones or tens digit or upper or lower nibble because if they are all in the
 // same word. The `>>1` converts the byte pointer into a word pointer.
 
-#pragma RETAIN
-word *secs_lcdmem_word = (word *) (&LCDMEMW[ lpin_t<digitplace_lpins_table[SECS_ONES_DIGITPLACE_INDEX].lpin_a_thru_d>::lcdmem_offset() >> 1 ]);
+// This address is hardcoded into the ASM so we don't need the reference here.
+//word *secs_lcdmem_word = (word *) (&LCDMEMW[ lpin_t<digitplace_lpins_table[SECS_ONES_DIGITPLACE_INDEX].lpin_a_thru_d>::lcdmem_offset() >> 1 ]);
 
 #define MINS_PER_HOUR 60
 word mins_lcd_words[MINS_PER_HOUR];
@@ -568,7 +568,7 @@ inline void lcd_show() {
 }
 
 
-// Show the digit x at position p
+// Show the glyph x at position p
 // where p=0 is the rightmost digit
 
 
@@ -1010,36 +1010,27 @@ void lcd_show_clock_lost_message() {
 }
 
 
-// CLOCK LOSt
+// Refresh 100's days digits
 
-constexpr glyph_segment_t centiday_message[] = {
-                                                   glyph_lbrac,
-                                                   glyph_c,
-                                                   glyph_rbrac,
-                                                   glyph_2,
-                                                   glyph_0,
-                                                   glyph_2,
-                                                   glyph_3,
-                                                   glyph_SPACE,
-                                                   glyph_J,
-                                                   glyph_O,
-                                                   glyph_S,
-                                                   glyph_H,
+constexpr glyph_segment_t centesimus_dies_message[] = {
+    {0x09,0x05},
+    {0x08,0x06},
+    {0x0f,0x00},
+    {0x0b,0x06},
+    {0x0f,0x05},
+    {0x0b,0x06},
+    {0x0f,0x02},
+    {0x00,0x00},
+    {0x0e,0x04},
+    {0x0f,0x05},
+    {0x0d,0x03},
+    {0x06,0x07},
 };
 
-// Show centiday message
-void lcd_show_centiday_message() {
+// Refresh day 100's places digits
+void lcd_show_centesimus_dies_message() {
 
     for( byte i=0; i<DIGITPLACE_COUNT; i++ ) {
-        lcd_show_f(  i , centiday_message[ DIGITPLACE_COUNT - 1- i] );        // digit place 12 is rightmost, so reverse order for text
+        lcd_show_f(  i , centesimus_dies_message[ DIGITPLACE_COUNT - 1- i] );        // digit place 12 is rightmost, so reverse order for text
     }
 }
-
-
-
-
-
-
-
-
-

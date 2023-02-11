@@ -5,6 +5,7 @@
 
             .global RTL_MODE_BEGIN
             .global TSL_MODE_BEGIN
+            .global TSL_MODE_REFRESH
 
             ;---- Get these pointers from the C side
 
@@ -17,6 +18,10 @@
 
 			;Assumes the symbol `ram_vector_PORT1` is the address of the ISR vector we will take over.
 			.ref		ram_vector_PORT1
+
+			;tsl_next_day is called each 24 hours in TSL mode to update the day count and display
+			; Note this is the mangled C++ name for `void tsl_next_dayv()`
+			.ref		_Z12tsl_next_dayv
 
 ;Begin the RTL mode ISR
 ;Set the ISR vector to point here to start this mode.
@@ -141,10 +146,10 @@ HOURS_EQ_24
 
 			MOV.W		#0, R10			; Reset hours to 0
 
-			MOV.B		&(hours_lcd_bytes+0),&(LCDM0W_L+13)			; Display "2" in hours 10's digit
-			MOV.B		&(hours_lcd_bytes+0),&(LCDM0W_L+10)			; Display hours 1's digit in the hours ones digit on the LCD (see what I did there? :) )
+			MOV.B		&(hours_lcd_bytes+0),&(LCDM0W_L+13)			; Display "0" in hours 10's digit
+			MOV.B		&(hours_lcd_bytes+0),&(LCDM0W_L+10)			; Display "0" in hours 1's digit
 
-			;CALL		next_day										; Call the C side to increment day
+			CALL		#_Z12tsl_next_dayv							; Call the C++ side to increment day (this is the mangled name for `tsl_next_day()`
 
 
 TSL_DONE
@@ -167,6 +172,16 @@ TSL_DONE
             reti							; pops previous sleep mode, so puts us back to sleep
 
             nop
+
+            ;Has effect of skipping to next second. Should only be called at the top of a day.
+TSL_MODE_REFRESH
+			ADD.W		#2,R6						; Skip to next second
+			;MOV.B		&(hours_lcd_bytes+1),&(LCDM0W_L+10)			; Display "1" in hours 10's digit
+
+			; move the vector to point back to our actual updater now that display is refreshed
+			mov.w	#TSL_MODE_ISR, &ram_vector_PORT1
+
+			JMP		TSL_MODE_ISR
 
 ;---- RTL ISR RAMFUNC
 ; 48us
@@ -251,7 +266,7 @@ RTL_MODE_ISR:
 	  mov.w 	R13,R12									; Moe the base into our working pointer register
 
 RTL_DONE:
-      BIC.B     #2,&PAIFG_L+0 ;  //Clear interrupt flag
+      BIC.B     #2,&PAIFG_L+0 ;  	;Clear interrupt flag
  	  AND.B     #127,&PAOUT_L+0       ; [] |../tsl-calibre-msp.cpp:1082|
 
       RETI

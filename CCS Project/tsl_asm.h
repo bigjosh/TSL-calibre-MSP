@@ -24,6 +24,11 @@ extern "C" {
     // .ref    secs                    ; - elapsed seconds
     extern unsigned TSL_MODE_BEGIN; /* declare external asm function as an unsigned so we can easily stick it into the vector. */
 
+
+    // Entry point to refresh the hh:mm:ss to 00:00:01 at top of day.
+    // Will then switch the vector back to the normal TSL mode vector for the next tick.
+    extern unsigned TSL_MODE_REFRESH;
+
 }
 
 #endif /* TSL_ASM_H_ */

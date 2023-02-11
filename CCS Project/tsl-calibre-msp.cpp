@@ -587,7 +587,6 @@ uint8_t mins=0;
 uint8_t hours=0;
 uint32_t days=0;       // needs to be able to hold up to 1,000,000. I wish we had a 24 bit type here. MSPX has 20 bit addresses, but not available on our chip.
 
-
 // Read time from RTC into our global time variables
 
 void RV_3032_read_time() {
@@ -741,14 +740,12 @@ __interrupt void trigger_isr(void) {
     // This will filter glitches since the pin will not still be low when we sample it after this delay. We want to be really sure!
     __delay_cycles( 1000 );
 
-
     // Then clear any interrupt flag that got us here.
     // Timing here is critical, we must clear the flag *before* we capture the pin state or we might miss a change
     CBI( TRIGGER_PIFG , TRIGGER_B );      // Clear any pending trigger pin interrupt flag
 
     // Grab the current trigger pin level
     unsigned triggerpin_level = TBI( TRIGGER_PIN , TRIGGER_B );
-
 
     // Now we can check to see if the trigger pin was still low
     // If it is not still low then we will return and this ISR will get called again if it goes low again or
@@ -770,6 +767,7 @@ __interrupt void trigger_isr(void) {
 
         // Show all 0's on the LCD to quickly let the user know that we saw the pull
         lcd_show_zeros();
+
 
         // Do the actual launch, which will...
         // 1. Read the current RTC time and save it to FRAM
@@ -804,11 +802,7 @@ __interrupt void trigger_isr(void) {
         flash();
 
         // Start ticking from... now!
-
-        secs=0;
-        mins=0;
-        hours=0;
-        days=0;
+        // (We rely on the secs, mins, hours, and days_digits[] all having been init'ed to zeros.)
 
         // Begin TSL mode on next tick
         SET_CLKOUT_VECTOR( &TSL_MODE_BEGIN );
@@ -824,8 +818,6 @@ __interrupt void trigger_isr(void) {
 enum mode_t {
     LOAD_TRIGGER,                  // Waiting for pin to be inserted (shows dashes)
     ARMING,                 // Hold-off after pin is inserted to make sure we don't inadvertently trigger on a switch bounce (lasts 0.5s)
-    READY_TO_LAUNCH,        // Pin inserted, waiting for it to be removed (shows squiggles)
-    TIME_SINCE_LAUNCH       // Pin pulled, currently counting (shows count)
 };
 
 mode_t mode;
@@ -863,7 +855,7 @@ __interrupt void startup_isr(void) {
             // Clear any pending interrupt so we will need a new transition to trigger
             CBI( TRIGGER_PIFG , TRIGGER_B);
 
-            // Next tick will start showing the ready-to-launch animation which will continue until the trigger is pulled.
+            // Next tick will enter the ready-to-launch mode animation which will continue until the trigger is pulled.
             SET_CLKOUT_VECTOR( &RTL_MODE_BEGIN );
 
             // When the trigger is pulled, it will generate a hardware interrupt and call this ISR which will start time since launch mode.
@@ -933,6 +925,100 @@ __interrupt void startup_isr(void) {
 
 }
 
+
+// Spread the 6 day counter digits out to minimize superfluous digit updates and avoid mod and div operations.
+// These are set either when trigger is pulled or on power up after a battery change.
+
+unsigned days_digits[6];
+
+__interrupt void post_centiday_isr(void) {
+
+    lcd_show_digit_f( 0 , 1 );
+    lcd_show_digit_f( 1 , 0 );
+    lcd_show_digit_f( 2 , 0 );
+    lcd_show_digit_f( 3 , 0 );
+    lcd_show_digit_f( 4 , 0 );
+    lcd_show_digit_f( 5 , 0 );
+
+
+    lcd_show_digit_f(  6 , days_digits[0] );
+    lcd_show_digit_f(  7 , days_digits[1] );
+    lcd_show_digit_f(  8 , days_digits[2] );
+    lcd_show_digit_f(  9 , days_digits[3] );
+    lcd_show_digit_f( 10 , days_digits[4] );
+    lcd_show_digit_f( 11 , days_digits[5] );
+
+    SET_CLKOUT_VECTOR( &TSL_MODE_REFRESH );            // Make up for the second we lost.
+
+    CBI( RV3032_CLKOUT_PIFG , RV3032_CLKOUT_B );      // Clear the pending RV3032 INT interrupt flag that got us into this ISR.
+
+}
+
+
+// Called by the ASM TSL_MODE_ISR when it rolls over from 23:59:59 to 00:00:00
+// Note that since this is a `void` C++ function, the linker name gets mangled to `tsl_next_dayv`
+#pragma RETAIN
+void tsl_next_day() {
+
+    if (days_digits[0] < 9) {
+
+        days_digits[0]++;
+
+        lcd_show_digit_f(  6 , days_digits[0] );
+
+        return;
+
+    }
+
+    days_digits[0]=0x00;
+
+    if (days_digits[1] < 9) {
+
+        lcd_show_digit_f( 6 , 0 );
+
+        days_digits[1]++;
+
+        lcd_show_digit_f(  7 , days_digits[1] );
+
+        return;
+
+    }
+
+    days_digits[1]=0x00;
+
+    lcd_show_centesimus_dies_message();
+
+    SET_CLKOUT_VECTOR( post_centiday_isr );
+
+    if (days_digits[2] < 9) {
+        days_digits[2]++;
+        return;
+    }
+    days_digits[2]=0x00;
+
+    if (days_digits[3] < 9) {
+        days_digits[3]++;
+        return;
+    }
+    days_digits[3]=0x00;
+
+    if (days_digits[4] < 9) {
+        days_digits[4]++;
+        return;
+    }
+    days_digits[4]=0x00;
+
+    if (days_digits[5] < 9) {
+        days_digits[5]++;
+        return;
+    }
+
+    lcd_show_long_now();
+    blinkforeverandever();
+
+}
+
+
 // Reference version of the ready to launch animation. This has been replaced with optimized ASM in tsl_asm.asm
 void ready_to_launch_reference() {
     // We depend on the trigger ISR to move us from ready-to-launch to time-since-launch
@@ -983,7 +1069,7 @@ void ready_to_launch_reference() {
 
 
 // Reference version of time-since-launch updater
-// This has been eplaced with ASM code in tsl_asm.asm
+// This has been replaced with vastly more efficient ASM code in tsl_asm.asm
 void time_since_launch_reference() {
     // 502us
 
@@ -1067,56 +1153,6 @@ void time_since_launch_reference() {
 
 }
 
-
-
-
-#warning
-__attribute__((ramfunc))
-__attribute__((naked))
-void error_modea(void) {
-
-    // Wake time measured at 48us
-    // TODO: Make sure there are no avoidable push/pops happening at ISR entry (seems too long)
-
-    while(1) {
-        SBI( DEBUGA_POUT , DEBUGA_B );      // See latency to start ISR and how long it runs
-        CBI( DEBUGA_POUT , DEBUGA_B );      // See latency to start ISR and how long it runs
-
-    }
-}
-
-
-// The ISR we will put into the RAM-based vector table once we switch to TSL mode.
-// Once we enter TSL mode, we never leave and we never see any other interrupt besides RTC
-// so this is a no brainer. Running from RAM should be slightly lower power because (1) RAM
-// access is slightly lower power than FRAM and, (2) if we never touch FRAM after waking from LMP3
-// then the FRAM controller will stay disabled.
-
-/*
-    Save-on-entry registers. Registers R4-R10. It is the called function's responsibility to preserve the values
-    in these registers. If the called function modifies these registers, it saves them when it gains control and
-    preserves them when it returns control to the calling function.
-
-    We will use these regs to efficiently hold the timer values, knowing that we can call into a C function if we
-    need to (like to update hours and days) and it will not trash them.
-
-    The caller places the first arguments in registers R12-R15, in that order. The caller moves the remaining
-    arguments to the argument block in reverse order, placing the leftmost remaining argument at the lowest
-    address. Thus, the leftmost remaining argument is placed at the top of the stack. An argument with a type
-    larger than 16 bits that would start in a save-on-call register may be split between R15 and the stack.
-
-    Functions defined in C++ that must be called in asm must be defined extern "C", and functions defined in
-    asm that must be called in C++ must be prototyped extern "C" in the C++ file.
-
- */
-
-/*
-__attribute__((ramfunc))
-__interrupt void tsl_isr(void) {
-
-}
-*/
-
 int main( void )
 {
 
@@ -1150,26 +1186,67 @@ int main( void )
 
     }
 
+#warning
 
-    //flash();
+    if (0) {
+        // We have never launched!
 
-    //SET_TRIGGER_VECTOR( &trigger_isr );
-    //SET_CLKOUT_VECTOR( &TSL_MODE_BEGIN );
-    //SET_CLKOUT_VECTOR( &RTL_MODE_BEGIN );
+        // First we need to make sure that the trigger pin is inserted because
+        // we would not want to just launch because the pin was out when batteries were inserted.
+        // This also lets us test both trigger positions during commissioning at the factory.
 
-    //secs = 55;
-    //mins = 59;
-    //hours = 23;
+        CBI( TRIGGER_PDIR , TRIGGER_B );      // Input
+        SBI( TRIGGER_PREN , TRIGGER_B );      // Enable pull resistor
+        SBI( TRIGGER_POUT , TRIGGER_B );      // Pull up
 
-    //ACTIVATE_RAM_ISRS();
 
-    //__bis_SR_register(LPM4_bits | GIE );                 // Enter LPM4
-    //__no_operation();                                   // For debugger
+        mode = LOAD_TRIGGER;                  // Go though the state machine to wait for trigger to be loaded
+        step =0;                              // Used to slide a dash indicator pointing to the pin location
+
+
+        // Set us up to run the loading/ready-to-launch sequence on thie next tick
+        // NOte that the trigger ISR will be activated when we get into ready-to-launch
+        SET_CLKOUT_VECTOR( &startup_isr);
+
+        ACTIVATE_RAM_ISRS();
+
+        // Wait for interrupt to fire at next clkout low-to-high change to drive us into the state machine (in either "pin loading" or "time since lanuch" mode)
+        __bis_SR_register(LPM4_bits | GIE );                 // Enter LPM4
+
+    }
+
+
+
+    if (0) {
+
+        flash();
+
+        SET_TRIGGER_VECTOR( &trigger_isr );
+        SET_CLKOUT_VECTOR( &TSL_MODE_BEGIN );
+        //SET_CLKOUT_VECTOR( &RTL_MODE_BEGIN );
+
+        secs = 55;
+        mins = 59;
+        hours = 23;
+        days=1829;
+
+        lcd_show_zeros();
+        lcd_show_digit_f(  6 , (days / 1      ) % 10  );
+        lcd_show_digit_f(  7 , (days / 10     ) % 10  );
+        lcd_show_digit_f(  8 , (days / 100    ) % 10  );
+        lcd_show_digit_f(  9 , (days / 1000   ) % 10  );
+        lcd_show_digit_f( 10 , (days / 10000  ) % 10  );
+        lcd_show_digit_f( 11 , (days / 100000 ) % 10  );
+
+
+        ACTIVATE_RAM_ISRS();
+
+        __bis_SR_register(LPM4_bits | GIE );                 // Enter LPM4
+        __no_operation();                                   // For debugger
+    }
 
     //lcd_show_zeros();
     //CBI( RV3032_CLKOUT_PIFG     , RV3032_CLKOUT_B    );
-    //start_ram_isr();
-
 
     // Check if this is the first time we've ever been powered up.
     if (persistent_data.once_flag==1) {
@@ -1211,8 +1288,6 @@ int main( void )
 
         // RTC lost power at some point so nothing we can do except show an error message forever.
 
-#warning
-        /*
         if (persistent_data.launch_flag) {
             lcd_show_batt_errorcode( BATT_ERROR_PRELAUNCH );
         } else {
@@ -1221,19 +1296,6 @@ int main( void )
 
         rv3032_shutdown();          // We can't use the RTC, so shut it down to save some power while we show error message, otherwise it would be in it's default powerup 32768 mode that uses like 3uA. NOte that we do not charge the backup cap in this mode becuase there is no point.
         blinkforeverandever();
-        */
-
-        rv3032_clear_LV_flags();
-
-        // Now remember that we did our start up. From now on, the RTC will run on its own forever.
-
-        unlock_persistant_data();
-        persistent_data.once_flag=0;             // Remember that we already started up once and never do it again.
-        persistent_data.launch_flag=0;           // Clear the launch flag even though we should never have to
-        lock_persistant_data();
-
-        lcd_show_first_start_message();
-        sleepforeverandever();
 
     }
 
@@ -1284,12 +1346,24 @@ int main( void )
         // Note that the time was loaded from the RTC when we initialized it.
         // We only do this ONCE per set of batteries so no need for efficiency.
 
-        lcd_show_digit_f(  6 , (days / 1      ) % 10  );
-        lcd_show_digit_f(  7 , (days / 10     ) % 10  );
-        lcd_show_digit_f(  8 , (days / 100    ) % 10  );
-        lcd_show_digit_f(  9 , (days / 1000   ) % 10  );
-        lcd_show_digit_f( 10 , (days / 10000  ) % 10  );
-        lcd_show_digit_f( 11 , (days / 100000 ) % 10  );
+        secs=55;
+        mins=59;
+        hours=23;
+        days=9999999;
+
+        days_digits[0]= (days / 1      ) % 10 ;
+        days_digits[1]= (days / 10     ) % 10 ;
+        days_digits[2]= (days / 100    ) % 10 ;
+        days_digits[3]= (days / 1000   ) % 10 ;
+        days_digits[4]= (days / 10000  ) % 10 ;
+        days_digits[5]= (days / 100000 ) % 10 ;
+
+        lcd_show_digit_f(  6 , days_digits[0] );
+        lcd_show_digit_f(  7 , days_digits[1] );
+        lcd_show_digit_f(  8 , days_digits[2] );
+        lcd_show_digit_f(  9 , days_digits[3] );
+        lcd_show_digit_f( 10 , days_digits[4] );
+        lcd_show_digit_f( 11 , days_digits[5] );
 
         lcd_show_digit_f( 4 , hours % 10  );
         lcd_show_digit_f( 5 , hours / 10  );
