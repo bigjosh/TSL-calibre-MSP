@@ -1187,6 +1187,17 @@ int main( void )
     }
 
 #warning
+    if (1) {
+        SET_CLKOUT_VECTOR( &RTL_MODE_BEGIN);
+
+        ACTIVATE_RAM_ISRS();
+
+        // Wait for interrupt to fire at next clkout low-to-high change to drive us into the state machine (in either "pin loading" or "time since lanuch" mode)
+        __bis_SR_register(LPM4_bits | GIE );                 // Enter LPM4
+
+    }
+
+#warning
 
     if (0) {
         // We have never launched!
@@ -1345,11 +1356,6 @@ int main( void )
         // Show the time on the display
         // Note that the time was loaded from the RTC when we initialized it.
         // We only do this ONCE per set of batteries so no need for efficiency.
-
-        secs=55;
-        mins=59;
-        hours=23;
-        days=9999999;
 
         days_digits[0]= (days / 1      ) % 10 ;
         days_digits[1]= (days / 10     ) % 10 ;

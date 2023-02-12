@@ -144,7 +144,7 @@ constexpr glyph_segment_t right_tick_segments = { SEG_B_COM_BIT , SEG_E_COM_BIT 
 // Because this is a 4-mux LCD, we need 2 LCD pins for each digit because 2 pins *  4 com lines = 8 segments (7 for the 7-segment digit and sometimes one for an indicator)
 // These mappings come from our PCB trace layout
 
-struct digit_lpin_recond_t {
+struct digit_lpin_record_t {
     const uint8_t lpin_e_thru_g;       // The LPIN for segments E-G
     const uint8_t lpin_a_thru_d;       // The LPIN for segments A-D
 
@@ -153,7 +153,7 @@ struct digit_lpin_recond_t {
 // Map logical digits on the LCD display to LPINS on the MCU. Each LPIN maps to a single nibble the LCD controller memory.
 // A digitplace is one of the 12 digits on the LCD display
 
-constexpr digit_lpin_recond_t digitplace_lpins_table[DIGITPLACE_COUNT] {
+constexpr digit_lpin_record_t digitplace_lpins_table[DIGITPLACE_COUNT] {
     { 33 , 32 },        //  0 (LCD 12) - sec   1 -rightmost digit
     { 35 , 34 },        //  1 (LCD 11) - sec  10
     { 30 , 31 },        //  2 (LCD 10) - min   1
@@ -309,9 +309,9 @@ static_assert( lpin_t<digitplace_lpins_table[SECS_ONES_DIGITPLACE_INDEX].lpin_a_
 
 void fill_lcd_words( word *words , const byte tens_digit_index , const byte ones_digit_index , const byte max_tens_digit , const byte max_ones_digit ) {
 
-    const digit_lpin_recond_t tens_logical_digit = digitplace_lpins_table[tens_digit_index];
+    const digit_lpin_record_t tens_logical_digit = digitplace_lpins_table[tens_digit_index];
 
-    const digit_lpin_recond_t ones_logical_digit = digitplace_lpins_table[ones_digit_index];
+    const digit_lpin_record_t ones_logical_digit = digitplace_lpins_table[ones_digit_index];
 
 
     for( byte tens_digit = 0; tens_digit < max_tens_digit ; tens_digit ++ ) {
@@ -364,7 +364,7 @@ static_assert( lpin_t<digitplace_lpins_table[SECS_ONES_DIGITPLACE_INDEX].lpin_a_
 
 void fill_lcd_bytes( byte *bytes , const byte digit_index ) {
 
-    const digit_lpin_recond_t logical_digit = digitplace_lpins_table[ digit_index];
+    const digit_lpin_record_t logical_digit = digitplace_lpins_table[ digit_index];
 
 
     for( byte digit = 0; digit < 10  ; digit ++ ) {
@@ -394,7 +394,8 @@ void fill_lcd_bytes( byte *bytes , const byte digit_index ) {
 
 
 // Define a full LCD frame so we can put it into LCD memory in one shot.
-// Note that a frame includes all of LCD memory even though only some of the nibbles are actually displayed
+// Note that a frame only includes words of LCD memory that have actual pins used. This is hard coded here and in the
+// RTL_MODE_ISR. There are a total of only 8 words spread across 2 extents. This is driven by the PCB layout.
 // It is faster to copy a sequence of words than try to only set the nibbles that have changed.
 
 union lcd_frame_t {
@@ -402,15 +403,25 @@ union lcd_frame_t {
     byte as_bytes[LCDMEM_WORD_COUNT*2];
 };
 
-lcd_frame_t ready_to_launch_lcd_frames[READY_TO_LAUNCH_LCD_FRAME_COUNT];     // Precomputed ready-to-launch animation frames ready to copy directly to LCD memory
+#define RTL_LCDMEM_WORD_COUNT 8
 
-void fill_ready_to_lanch_lcd_frames() {
+// The LCDMEM words actually used in our PCB layout. Also hardcoded in RTL_MODE_ISR
+constexpr byte used_rtl_lcdmem_bytes[RTL_LCDMEM_WORD_COUNT] = {0,2,6,8,10,12,14,16};
+
+// Here we hard code the size of each frame to 8 words because it is hardcoded in the asm code, so no point in making it dynamic.
+// The fact that there are (8 frames * 8 words per frame * 2 bytes per word) in the animation is a happy conincendnce - it means we can use a single AND to reset the animation with no branch.
+#pragma DATA_ALIGN ( 128 )
+word ready_to_launch_lcd_frame_words[READY_TO_LAUNCH_LCD_FRAME_COUNT][RTL_LCDMEM_WORD_COUNT];     // Precomputed ready-to-launch animation frames ready to copy directly to LCD memory
+
+static_assert( READY_TO_LAUNCH_LCD_FRAME_COUNT*RTL_LCDMEM_WORD_COUNT*2 == 128 , "RTL_MODE_ISR requires the frame table to be 128 bytes long");
+
+void fill_ready_to_launch_lcd_frames() {
 
     // Generate each frame in the animation
 
     for( byte frame =0; frame < READY_TO_LAUNCH_LCD_FRAME_COUNT ; frame++ ) {
 
-        lcd_frame_t * const lcd_frame = &ready_to_launch_lcd_frames[frame];
+        lcd_frame_t lcd_frame;      // A full frame in working memory. We will later copy the words we need into our compact array.
 
         // Alternating digits on the display go in alternating directions
         const glyph_segment_t even_digit_segments = squiggle_segments[ frame ];
@@ -421,49 +432,54 @@ void fill_ready_to_lanch_lcd_frames() {
         for( byte digit = 0; digit <  DIGITPLACE_COUNT ; digit++ ) {
 
             // Tells us the lpins for this digitplace
-            const digit_lpin_recond_t logical_digit = digitplace_lpins_table[digit];
+            const digit_lpin_record_t logical_digit = digitplace_lpins_table[digit];
 
+            // Switch between clockwise and counter-clockwise rotation for alternating digits.
             const glyph_segment_t digit_segments = (digit & 0x01) ? odd_digit_segments : even_digit_segments;
 
             // Since we are filling the whole frame in batch, we don't care where the nibbles end up since we know we will eventually assign them all.
 
             // Set the a_thru_d nibble
-            set_nibble( &(lcd_frame->as_bytes[ lpin_lcdmem_offset( logical_digit.lpin_a_thru_d) ]) , lpin_nibble( logical_digit.lpin_a_thru_d ) , digit_segments.nibble_a_thru_d  );
+            set_nibble( &(lcd_frame.as_bytes[ lpin_lcdmem_offset( logical_digit.lpin_a_thru_d) ]) , lpin_nibble( logical_digit.lpin_a_thru_d ) , digit_segments.nibble_a_thru_d  );
 
             // Set the e_thru_g nibble
-            set_nibble( &(lcd_frame->as_bytes[ lpin_lcdmem_offset( logical_digit.lpin_e_thru_g) ]) , lpin_nibble( logical_digit.lpin_e_thru_g ) , digit_segments.nibble_e_thru_g  );
-
+            set_nibble( &(lcd_frame.as_bytes[ lpin_lcdmem_offset( logical_digit.lpin_e_thru_g) ]) , lpin_nibble( logical_digit.lpin_e_thru_g ) , digit_segments.nibble_e_thru_g  );
 
         }
 
-        // We also need to put the COM connections into our array so we don't wipe them out
-        //LCDM4 =  0b01001000;  // L09=MSP_COM2  L08=MSP_COM3
-        //LCDM5 =  0b00010010;  // L10=MSP_COM0  L11=MSP_COM1
+        // Now we extract only the LCDMEM words that have pins actually connected into the array that the ISR will use.
 
-        lcd_frame->as_bytes[4]=0b01001000;  // L09=MSP_COM2  L08=MSP_COM3
-        lcd_frame->as_bytes[5]=0b00010010;  // L10=MSP_COM0  L11=MSP_COM1
+
+        for( byte i=0 ; i< RTL_LCDMEM_WORD_COUNT ; i++ ) {
+            ready_to_launch_lcd_frame_words[frame][i] = lcd_frame.as_words[used_rtl_lcdmem_bytes[i]/2];  // div by 2 to convert byte index into word index
+        }
+
+
 
     }
 
 }
 
 
-// Highly optimized with pre-render buffer
-// 1.4uA
-// 138us
 
-void lcd_show_squiggle_frame( byte frame ) {
+/*
+    // Highly optimized with pre-render buffer
+    // 1.4uA
+    // 138us
 
-    word *w = ready_to_launch_lcd_frames[frame].as_words;
-    word *lcdmemptr = LCDMEMW;
+    void lcd_show_squiggle_frame( byte frame ) {
 
-    // Fill the LCD mem with our pre-computed words.
+        word *w = ready_to_launch_lcd_frames[frame].as_words;
+        word *lcdmemptr = LCDMEMW;
 
-    for(byte i=0;i<LCDMEM_WORD_COUNT;i++) {
-        *(lcdmemptr++) = *(w++);
+        // Fill the LCD mem with our pre-computed words.
+
+        for(byte i=0;i<LCDMEM_WORD_COUNT;i++) {
+            *(lcdmemptr++) = *(w++);
+        }
+
     }
-
-}
+*/
 
 
 // Fills the arrays
@@ -481,7 +497,7 @@ void initLCDPrecomputedWordArrays() {
     fill_lcd_words( mins_lcd_words , MINS_TENS_DIGITPLACE_INDEX , MINS_ONES_DIGITPLACE_INDEX , 6 , 10 );
     // Fill the array of frames for ready-to-launch-mode animation
     fill_lcd_bytes( hours_lcd_bytes , HOURS_ONES_DIGITPLACE_INDEX );
-    fill_ready_to_lanch_lcd_frames();
+    fill_ready_to_launch_lcd_frames();
 }
 
 

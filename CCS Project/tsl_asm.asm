@@ -42,6 +42,8 @@
 			.ref 	hours_lcd_bytes
 			.ref	hours
 
+			; A complicated 2D table of words that we write to LCDMEM for the frames of the ready-to-launch animation
+			.ref 	ready_to_launch_lcd_frame_words
 
 ; 17us when minutes do not change (!)
 
@@ -176,9 +178,8 @@ TSL_DONE
             ;Has effect of skipping to next second. Should only be called at the top of a day.
 TSL_MODE_REFRESH
 			ADD.W		#2,R6						; Skip to next second
-			;MOV.B		&(hours_lcd_bytes+1),&(LCDM0W_L+10)			; Display "1" in hours 10's digit
 
-			; move the vector to point back to our actual updater now that display is refreshed
+			; move the vector to point back to our actual updater now that seconds are corrected
 			mov.w	#TSL_MODE_ISR, &ram_vector_PORT1
 
 			JMP		TSL_MODE_ISR
@@ -207,10 +208,10 @@ RTL_MODE_BEGIN:
 	;expected to preserve them so they have the same value on return from a function as they had at the point of the
 	;call.
 
-	mov.w	#ready_to_launch_lcd_frames,R13 		; Save the address of the base of the table
-	mov.w	#(ready_to_launch_lcd_frames+8*32),R14 	; Save the address of the byte just past the end of the table in R12. We will use this to test when we need to go back to the begining
+	mov.w	#ready_to_launch_lcd_frame_words,R12 		; Save the address of the base of the table. We will use this as a live pointer.
+	mov.w	#(128-1),R13 								; We will use this for a 1 cycle, no branch way to normalize our pointer which by luck is into an 8*(8*2) table
+	mov.w	R12,R14										; Keep a copy of the base address to OR in later
 
-	mov.w 	R13,R12									; Move the base into our working pointer register
 
 	;; Disable the FRAM controller
 	; With controller on uses 1.36uA
@@ -228,44 +229,25 @@ RTL_MODE_ISR:
  	  OR.B      #128,&PAOUT_L+0  ;			// DebugA ON
 
 
-	; Copy the data for this frame into the LCDMEM registers
-	; note only need to do this for the LPINs that are actually connected
-	; note we can do this 4 bytes at a time for free using .W instructions
+	; Copy the data for this frame into the LCDMEM registers.
+	; note only need to do this for the LPINs that are actually connected,
+	; which are the only ones we put into the table.
+	; note we can do this 4 nibbles at a time for free using .W instructions.
 
       MOV.W @R12+,(LCDM0W_L+0)		; L0,L1,L2,L3 - 4 cycles
       MOV.W @R12+,(LCDM0W_L+2)		; L4,L5,L6,L7
-
-      	; These are the COM pins so we do not need to update them
-      ;MOV.W @R12+,(LCDM0W_L+4)		; L8,L9,L10,L11 (Not used, these are the COM pins)
-		; instead we replace the 4 cycle MOV + with a 1 cycle ADD (only 1 cycle because the #2 comes from the constants reg
-	  ADD.W #2,R12
-
-      MOV.W @R12+,(LCDM0W_L+6)		; L12,L13;L14,L15
+	;					   +4		; L8,L9,L10,L11  (THese are the COM pins)
+      MOV.W @R12+,(LCDM0W_L+6)		; L12,L13,L14,L15
       MOV.W @R12+,(LCDM0W_L+8)		; L16,L17,L18,L19
       MOV.W @R12+,(LCDM0W_L+10)		; L20,L21,L22,L23
       MOV.W @R12+,(LCDM0W_L+12)		; L24,L25,L26,L27
       MOV.W @R12+,(LCDM0W_L+14)		; L28,L29,L30,L31
       MOV.W @R12+,(LCDM0W_L+16)		; L32,L33,L34,L35
 
-		; None of these currently used so we can skip them
-		; and replace with a fast add saving 14-2=12 cycles
+      AND.W R13,R12					; Look ma, no compare/branch/load! 1 cycle each AND and OR.
+      OR.W  R14,R12					; OR back in the base address (remember it is 128 byte aligned)
 
-      ;MOV.W @R12+,(LCDM0W_L+18)		; None of these used so we can skip them
-      ;MOV.W @R12+,(LCDM0W_L+20)
-      ;MOV.W @R12+,(LCDM0W_L+22)
-      ;MOV.W @R12+,(LCDM0W_L+24)
-      ;MOV.W @R12+,(LCDM0W_L+26)
-      ;MOV.W @R12+,(LCDM0W_L+28)
-      ;MOV.W @R12+,(LCDM0W_L+30)
-      ADD.W #14,R12					; 2 cycles
 
-      CMP.w	R12,R14					;; Did we get to the end?
-      JNE RTL_DONE
-
-      ;Reset working pointer to begining of animation
-	  mov.w 	R13,R12									; Moe the base into our working pointer register
-
-RTL_DONE:
       BIC.B     #2,&PAIFG_L+0 ;  	;Clear interrupt flag
  	  AND.B     #127,&PAOUT_L+0       ; [] |../tsl-calibre-msp.cpp:1082|
 
