@@ -10,6 +10,8 @@
 
 #include "tsl_asm.h"
 
+#include "acid_fram_record.hpp"
+
 #define RV_3032_I2C_ADDR (0b01010001)           // Datasheet 6.6
 
 // RV3032 Registers
@@ -451,23 +453,40 @@ uint8_t c2bcd( uint8_t c ) {
 
 }
 
+// These two values must be atomically updated so that we can reliably count centuries even in the face
+// of a potential battery change that straddles the century roll over.
+
+struct century_counter_t {
+    unsigned postmidcentury_flag;       // Set to 1 if we have past the 50 year mark in current century.
+    unsigned century_count;             // How many centuries have we been in TSL mode?
+};
+
+
 // Here is the persistent data that we store in "information memory" FRAM that survives power cycles
 
 struct __attribute__((__packed__)) persistent_data_t {
 
-    rv3032_time_block_t commisioned;            // Calendar time when this unit was commissioned.
-    rv3032_time_block_t launched;               // Time when this unit was launched relative to commissioned.
-    byte once_flag;                             // Set to 1 on initial programming.
-    byte launch_flag;                           // Set to 0 on initial programming.
-    unsigned days_since_last_century;
-    unsigned century_count;
+    // Archival use only. Never read by the unit.
+    rv3032_time_block_t commisioned_time;       // Calendar time when this unit was commissioned. Set during programming, never read.
+    rv3032_time_block_t launched_time;          // Time when this unit was launched relative to commissioned. Set when trigger pulled, never read.
+
+    // State. We have 3 persistent states, (1) first startup fresh from programming, (2) ready to launch, (3) launched.
+    unsigned once_flag;                             // Set to 1 first time we boot up after programming
+    unsigned launch_flag;                           // Set to 1 when the trigger pin is pulled
+
+    // Used to count centuries since the RTC does not.
+    // Note this is complicated because there is no way to atomically write to the FRAM, and in fact any one write
+    // could be corrupted if power fails just at the right moment. But since at most one write can fail, we can use
+    // a two-step commit with a fall back.
+
+    acid_FRAM_record_t<century_counter_t> acid_century_counter;
+
 };
 
 // Tell compiler/linker to put this in "info memory" at 0x1800
 // This area of memory never gets overwritten, not by power cycle and not by downloading a new binary image into program FRAM.
 // We have to mark `volatile` so that the compiler will really go to the FRAM every time rather than optimizing out some accesses.
 volatile persistent_data_t __attribute__(( __section__(".infoA") )) persistent_data;
-
 
 void unlock_persistant_data() {
     SYSCFG0 = PFWP;                     // Write protect only program FRAM. Interestingly it appears that the password is not needed here?
@@ -496,7 +515,10 @@ void rv3032_init() {
 
 
     // Set all the registers we care about that can get reset by either power-on-reset or recover from backup
+    //uint8_t clkout2_reg = 0b00000000;        // CLKOUT XTAL low freq mode, freq=32768Hz
+    //uint8_t clkout2_reg = 0b00100000;        // CLKOUT XTAL low freq mode, freq=1024Hz
     uint8_t clkout2_reg = 0b01100000;        // CLKOUT XTAL low freq mode, freq=1Hz
+
     i2c_write( RV_3032_I2C_ADDR , 0xc3 , &clkout2_reg , 1 );
 
     // First control reg. Note that turning off backup switch-over seems to save ~0.1uA
@@ -751,11 +773,9 @@ __interrupt void trigger_isr(void) {
     // If it is not still low then we will return and this ISR will get called again if it goes low again or
     // if it went low between when we cleared the flag and when we sampled it (VERY small race window of only 1/8th of a microsecond, but hey we need to be perfect, it could be a once in a lifetime moment and we dont want to miss it!)
 
-    if ( !triggerpin_level ) {      // trigger pulled?
+    if ( !triggerpin_level ) {      // trigger still pulled?
 
         // WE HAVE LIFTOFF!
-
-        // We need to get everything below done within 0.5 seconds so we do not miss the first tick (not hard)
 
         // Disable the trigger pin and drive low to save power and prevent any more interrupts from it
         // (if it stayed pulled up then it would draw power though the pull-up resistor whenever the pin was out)
@@ -779,7 +799,7 @@ __interrupt void trigger_isr(void) {
 
         // First get current time and save it to FRAM for archival purposes.
         unlock_persistant_data();
-        i2c_read( RV_3032_I2C_ADDR , RV3032_SECS_REG  , (void *)  &persistent_data.launched , sizeof( rv3032_time_block_t ) );
+        i2c_read( RV_3032_I2C_ADDR , RV3032_SECS_REG  , (void *)  &persistent_data.launched_time , sizeof( rv3032_time_block_t ) );
         persistent_data.launch_flag=1;
         lock_persistant_data();
 
@@ -813,6 +833,107 @@ __interrupt void trigger_isr(void) {
 
 }
 
+/*
+
+ 1024hz RTL pattern readings with Energytrace over 5 mins
+ FRPWR is cleared on each ISR call with the following line at the very top...
+      BIC.W     #FRPWR,(GCCTL0) ;           // Disable FRAM. Writing to the register enables or disables the FRAM power supply.  0b = FRAM power supply disabled.
+ It would be nice if we could permanently disable the FRAM, but does not seem possible on this chip because it is automatically enabled when exiting LPM.
+
+ RAMFUNC  FRPWR  CLKOUT   I
+ =======  =====  =====    =======
+   Y        0     1kHz     0.354mA
+   Y        0     1kHz     0.351mA
+   Y        1     1kHz     0.385mA
+   Y        1     1kHz     0.371mA
+   Y        1     1kHz     0.372mA
+   Y        1     1Hz      0.0021mA
+   Y        1     1Hz      0.0021mA
+   Y        0     1Hz      0.0021mA
+   N        1     1Hz      0.0027mA
+   N        1     1Hz      0.0027mA
+
+*/
+
+
+/*
+byte fram_state = 0;
+
+// Push trigger button to check that the FRAM controller stayed off
+__attribute__((ramfunc))
+__interrupt void show_fram_controller_state() {
+
+    // show if FRAM on or off. Note we can not use normal LCD_show function becuase it is in FRAM
+    if (fram_state) {
+        *secs_lcdmem_word = secs_lcd_words[0];  // "01"=ON
+    } else {
+        GCCTL0 &= ~FRPWR ;               // FRAM power control. Writing to the register enables or disables the FRAM power supply.  0b = FRAM power supply disabled.
+        *secs_lcdmem_word = secs_lcd_words[9];  // "10"=OFF
+    }
+
+    //static byte mc=0;
+
+
+    // Clear pending trigger interrupt so we will need a new transition to trigger again
+    CBI( TRIGGER_PIFG , TRIGGER_B);
+}
+
+
+
+
+// Push trigger button to check that the FRAM controller stayed off
+__attribute__((ramfunc))
+__interrupt void toggle_fram_controller_state() {
+
+    // show if FRAM on or off. Note we can not use normal LCD_show function becuase it is in FRAM
+    if (fram_state) {
+        fram_state=0;
+        *secs_lcdmem_word = secs_lcd_words[29];  // "30"=OFF
+    } else {
+        fram_state=1;
+        *secs_lcdmem_word = secs_lcd_words[30];  // "31"=ON
+    }
+
+    // Clear pending trigger interrupt so we will need a new transition to trigger again
+    CBI( TRIGGER_PIFG , TRIGGER_B);
+}
+
+
+__attribute__((ramfunc))
+__interrupt void enter_fram_disabled() {
+    // Now we can finally turn off the FRAM controller!
+    FRCTL0=FRCTLPW;                  // FRCTLPW password. Always reads as 96h. To enable write access to the FRCTL registers, write A5h.
+    GCCTL0 &= ~FRPWR ;               // FRAM power control. Writing to the register enables or disables the FRAM power supply.  0b = FRAM power supply disabled.
+    SET_CLKOUT_VECTOR( &show_fram_controller_state);
+
+
+    // Setup trigger to call the ISR that shows if FRAM enabled of disabled so we can double check it is actually working.
+
+
+    CBI( TRIGGER_PDIR , TRIGGER_B );      // Input
+    SBI( TRIGGER_PREN , TRIGGER_B );      // Enable pull resistor
+    SBI( TRIGGER_POUT , TRIGGER_B );      // Pull up
+
+    SBI( TRIGGER_PIE  , TRIGGER_B );          // Enable interrupt on the INT pin high to low edge. Normally pulled-up when pin is inserted (switch lever is depressed)
+    SBI( TRIGGER_PIES , TRIGGER_B );          // Interrupt on high-to-low edge (the pin is pulled up by MSP430 and then RV3032 driven low with open collector by RV3032)
+
+    // Clear any pending interrupt so we will need a new transition to trigger
+    CBI( TRIGGER_PIFG , TRIGGER_B);
+
+    SET_TRIGGER_VECTOR( & toggle_fram_controller_state );
+
+
+    // show if FRAM on or off. Note we can not use normal LCD_show function becuase it is in FRAM
+    if (GCCTL0 & FRPWR) {
+        *secs_lcdmem_word = secs_lcd_words[0];  // "01"=ON
+    } else {
+        *secs_lcdmem_word = secs_lcd_words[59];  // "00"=OFF
+    }
+
+    CBI( RV3032_CLKOUT_PIFG , RV3032_CLKOUT_B );      // Clear the pending RV3032 INT interrupt flag that got us into this ISR.
+}
+
+*/
 
 
 enum mode_t {
@@ -830,10 +951,6 @@ unsigned int step;          // LOAD_TRIGGER      - Used to keep the position of 
 __interrupt void startup_isr(void) {
 
     SBI( DEBUGA_POUT , DEBUGA_B );      // See latency to start ISR and how long it runs
-
-    // Now we can finally turn off the FRAM controller!
-    //FRCTL0=FRCTLPW;                  // FRCTLPW password. Always reads as 96h. To enable write access to the FRCTL registers, write A5h.
-    //GCCTL0 &= ~FRPWR ;               // FRAM power control. Writing to the register enables or disables the FRAM power supply.  0b = FRAM power supply disabled.
 
     if ( mode==ARMING ) {
 
@@ -910,14 +1027,6 @@ __interrupt void startup_isr(void) {
         }
     }
 
-/*
-#warning show if FRAM on or off
-    if (GCCTL0 & FRPWR) {
-        lcd_show_digit_f(5, 0x0d ); // 11.7uA, 260uA max, 47.9ms run time, 26.6us wake time
-    } else {
-        lcd_show_digit_f(5, 0x0e ); // 11.5uA, 344uA max, 47.9ms run time, 25.5us wake time
-    }
-*/
     CBI( RV3032_CLKOUT_PIFG , RV3032_CLKOUT_B );      // Clear the pending RV3032 INT interrupt flag that got us into this ISR.
 
     CBI( DEBUGA_POUT , DEBUGA_B );
@@ -1171,7 +1280,11 @@ int main( void )
     initLCD();
     // Power up display with a nice dash pattern
     lcd_show_dashes();
-    rv3032_init();        // Initialize the RV3032 with proper clkout & backup settings. Note that we must do this every time we power up since these settings are lost when we drop to backup mode when the battery is pulled.
+
+    // Initialize the RV3032 with proper clkout & backup settings.
+    rv3032_init();
+
+    // Initialize the lookup tables we use for efficiently updating the LCD
     initLCDPrecomputedWordArrays();
 
 #warning
@@ -1188,6 +1301,7 @@ int main( void )
 
 #warning
     if (1) {
+
         SET_CLKOUT_VECTOR( &RTL_MODE_BEGIN);
 
         ACTIVATE_RAM_ISRS();
@@ -1228,7 +1342,7 @@ int main( void )
 
 
 
-    if (0) {
+    if (1) {
 
         flash();
 
@@ -1326,7 +1440,7 @@ int main( void )
     // Read the time from the RTC into our global time variables. This will be either (1) the time since we were commissioned if not launched, or (2) the time since launch if we were launched.
     RV_3032_read_time();
 
-    if ( persistent_data.launch_flag == 0 ) {
+    if ( persistent_data.launch_flag != 0x01 ) {
 
         // We have never launched!
 
@@ -1343,7 +1457,7 @@ int main( void )
         step =0;                              // Used to slide a dash indicator pointing to the pin location
 
 
-        // Set us up to run the loading/ready-to-launch sequence on thie next tick
+        // Set us up to run the loading/ready-to-launch sequence on the next tick
         // NOte that the trigger ISR will be activated when we get into ready-to-launch
         SET_CLKOUT_VECTOR( &startup_isr);
 
@@ -1371,16 +1485,21 @@ int main( void )
         lcd_show_digit_f( 10 , days_digits[4] );
         lcd_show_digit_f( 11 , days_digits[5] );
 
+        // Note here that we show the time as read from the RTC, but on the next call to the
+        // ISR that happens in 1 second, we will use these same values to show the *next* second
+        // since the ISR seconds table is offset by 1. We do this for efficiency since the MSP430
+        // only has post-increment, so it would take an extra cycle to increment before display in the ISR.
+
         lcd_show_digit_f( 4 , hours % 10  );
         lcd_show_digit_f( 5 , hours / 10  );
-        lcd_show_digit_f( 2 , mins % 10  );
-        lcd_show_digit_f( 3 , mins / 10  );
-        lcd_show_digit_f( 0 , secs % 10  );
-        lcd_show_digit_f( 1 , secs / 10  );
+        lcd_show_digit_f( 2 , mins  % 10  );
+        lcd_show_digit_f( 3 , mins  / 10  );
+        lcd_show_digit_f( 0 , secs  % 10  );
+        lcd_show_digit_f( 1 , secs  / 10  );
 
         // Now start ticking at next second tick interrupt
         // We do not set up the trigger ISR since it can never come. We will tick like this
-        // forever.
+        // forever (or at least until we loose power).
         SET_CLKOUT_VECTOR( &TSL_MODE_BEGIN );
     }
 
@@ -1392,7 +1511,10 @@ int main( void )
 
     __no_operation();                                   // For debugger
 
-    // We should never get here
+    // We should never ever get here
+
+    // Disable interrupts
+    __disable_interrupt();
 
     error_mode( ERROR_MAIN_RETURN );                    // This would be very weird if we ever saw it.
 
