@@ -81,7 +81,7 @@ TSL_MODE_BEGIN:
 
 TSL_MODE_ISR
 
- 	  		OR.B      	#128,&PAOUT_L+0  			; Set DEBUGA for profiling purposes.
+ 	  		;OR.B      	#128,&PAOUT_L+0  			; Set DEBUGA for profiling purposes.
 
  	  		; These next 3 lines are where this product spends the *VAST* majority of its life, so we hyper-optimize.
 
@@ -169,7 +169,7 @@ TSL_DONE
         	;is active and if we overwrite it with a 0 then we would lose it forever.
         	MOV.B     #0,&PAIFG_L+0         ; Clear the interrupt flag that got us here
 
- 	  		AND.B     #127,&PAOUT_L+0       ; Clear DEBUGA for profiling purposes.
+ 	  		;AND.B     #127,&PAOUT_L+0       ; Clear DEBUGA for profiling purposes.
 
             reti							; pops previous sleep mode, so puts us back to sleep
             								; TODO: Replace this IRET with a sleep and save 4 cycles, and then
@@ -228,7 +228,7 @@ RTL_MODE_BEGIN:
 ; We leave this mode when the trigger is pulled by the trigger ISR
 RTL_MODE_ISR:
 
- 	  OR.B      #128,&PAOUT_L+0  ;			// DebugA ON
+ 	; OR.B      #128,&PAOUT_L+0  ;			// DebugA ON
 	; BIC.W		#FRPWR,(GCCTL0) ;           // Disable FRAM. Writing to the register enables or disables the FRAM power supply.  0b = FRAM power supply disabled.
 
 	; Copy the data for this frame into the LCDMEM registers.
@@ -255,7 +255,7 @@ RTL_MODE_ISR:
       								; in RTL mode the person could pull the trigger, which would set the flag for that pin and if
       								; we then hd bad timing and cleared that bit here then the pull would be lost forever.
 
- 	  AND.B     #127,&PAOUT_L+0       ; DEBUGA OFF
+ 	  ; AND.B     #127,&PAOUT_L+0       ; DEBUGA OFF
 
       RETI
 
