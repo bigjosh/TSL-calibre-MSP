@@ -32,15 +32,15 @@
 ; 	secs		   - elapsed seconds
 
 			.ref 	secs_lcd_words			; - table of prerendered values to write to the seconds word in LCDMEM (one entry for each second 0-59)
-			.ref	secs					; - elapsed seconds
+			.ref	rtc_secs				; - elapsed seconds starting point, read from the RTC in the startup C code
 
 			.ref 	mins_lcd_words			; - table of prerendered values to write to the minutes word in LCDMEM (one entry for each min 0-59)
-			.ref	mins					; - elapsed minutes
+			.ref	rtc_mins				; - elapsed minutes starting point, read from the RTC in the start up C code
 
 			; Unforntunately hours digits can not be on consecutive LPINs and we are out of call-saved registers
 			; anyway so we update the hours digits seporately using these procomuted segment byte arrays
 			.ref 	hours_lcd_bytes
-			.ref	hours
+			.ref	rtc_hours
 
 			; A complicated 2D table of words that we write to LCDMEM for the frames of the ready-to-launch animation
 			.ref 	ready_to_launch_lcd_frame_words
@@ -48,6 +48,15 @@
 ; 17us when minutes do not change (!)
 
 TSL_MODE_BEGIN:
+
+	;This ISR initializes the TSL mode and executes the first pass. It, in turn, changes the ISR vector so that the next
+	;time the interrupt happens, just the next pass executes without the initialization. Why run the init code off an ISR?
+	;Why not just call the init in the forground thread and have it set everything up for the ISR?
+	;We need to init everything into very specific registers for the ISR to be hyperefficient, and we can only
+	;have that kind of control in ASM. If any C code runs after our init, it could clobber so of this careful set up.
+	;By doing the init on the first ISR call, we are sure that no C code will run after we do our init.
+	;We could potentially have the C code call the init code and then have the init code inititiate the sleep,
+	;but then the ASM init code would have to be the last code to run before sleeping and that would make the flow in the C side ugly.
 
 	;For MSP430 and MSP430X, the ABI designates R4-R10 as callee-saved registers. That is, a called function is
 	;expected to preserve them so they have the same value on return from a function as they had at the point of the
@@ -57,7 +66,7 @@ TSL_MODE_BEGIN:
 			MOV.W		#(secs_lcd_words+2*60),R5	; R5=1 byte past end of the secs table
 
 			; R6 = compute our location in the table based on current seconds
-			MOV.B		&secs,R6					; Start with seconds. Note that secs are stored as a byte on the C side.
+			MOV.B		&rtc_secs,R6				; Start with seconds. Note that secs are stored as a byte on the C side.
 			ADD.W		R6,R6						; Double it so it is now a word pointer
 			ADD.W		R4,R6						; R6=Pointer to location of next sec in secs table
 
@@ -66,7 +75,7 @@ TSL_MODE_BEGIN:
 			MOV.W		#(mins_lcd_words+2*60),R8	; R8=1 byte past end of the mins table
 
 			; R9= compute our location in the table based on current minutes
-			MOV.B		&mins,R9					; Start with mins. Note that these are stored as a byte on the C side.
+			MOV.B		&rtc_mins,R9				; Start with mins. Note that these are stored as a byte on the C side.
 			ADD.W		R9,R9						; Double it so it is now a word pointer
 			ADD.W		R7,R9						; R9=location of next min in mins table
 
@@ -74,14 +83,14 @@ TSL_MODE_BEGIN:
 			; the straight value there and then compute everything else each update.
 			; thats OK since hours update only 1/3600th of the time. If we really wanted we could
 			; hand-code this all in ASM and then be able to use all regs, but not worth it.
-			MOV.B		&hours,R10					;  R10=Hours
+			MOV.B		&rtc_hours,R10					;  R10=Hours
 
 			; move the vector to point to our actual updater now that all the registers are set
 			mov.w	#TSL_MODE_ISR, &ram_vector_PORT1
 
 TSL_MODE_ISR
 
- 	  		OR.B      	#128,&PAOUT_L+0  			; Set DEBUGA for profiling purposes.
+ 	  		;OR.B      	#128,&PAOUT_L+0  			; Set DEBUGA for profiling purposes.
 
  	  		; These next 3 lines are where this product spends the *VAST* majority of its life, so we hyper-optimize.
 
@@ -169,11 +178,11 @@ TSL_DONE
         	;is active and if we overwrite it with a 0 then we would lose it forever.
         	MOV.B     #0,&PAIFG_L+0         ; Clear the interrupt flag that got us here
 
- 	  		AND.B     #127,&PAOUT_L+0       ; Clear DEBUGA for profiling purposes.
+ 	  		;AND.B     #127,&PAOUT_L+0       ; Clear DEBUGA for profiling purposes.
 
             reti							; pops previous sleep mode, so puts us back to sleep
             								; TODO: Replace this IRET with a sleep and save 4 cycles, and then
-            								; just clear the stack every minute.
+            								; just clear 60 PUSHes off the stack every minute wiht a single write to SP.
 
             nop
 
@@ -228,8 +237,7 @@ RTL_MODE_BEGIN:
 ; We leave this mode when the trigger is pulled by the trigger ISR
 RTL_MODE_ISR:
 
- 	  OR.B      #128,&PAOUT_L+0  ;			// DebugA ON
-	; BIC.W		#FRPWR,(GCCTL0) ;           // Disable FRAM. Writing to the register enables or disables the FRAM power supply.  0b = FRAM power supply disabled.
+ 	; OR.B      #128,&PAOUT_L+0  ;			// DebugA ON - For profiling
 
 	; Copy the data for this frame into the LCDMEM registers.
 	; note only need to do this for the LPINs that are actually connected,
@@ -255,7 +263,7 @@ RTL_MODE_ISR:
       								; in RTL mode the person could pull the trigger, which would set the flag for that pin and if
       								; we then hd bad timing and cleared that bit here then the pull would be lost forever.
 
- 	  AND.B     #127,&PAOUT_L+0       ; DEBUGA OFF
+ 	  ; AND.B     #127,&PAOUT_L+0       ; DEBUGA OFF - For profiling
 
       RETI
 

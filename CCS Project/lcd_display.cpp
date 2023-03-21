@@ -343,7 +343,6 @@ void fill_lcd_words( word *words , const byte tens_digit_index , const byte ones
 // Write a value from the array into this word to update the two digits on the LCD display
 constexpr word *mins_lcdmem_word = &LCDMEMW[ lpin_t<digitplace_lpins_table[MINS_ONES_DIGITPLACE_INDEX].lpin_a_thru_d>::lcdmem_offset() >> 1 ];
 
-
 byte hours_lcd_bytes[10];
 
 // The two pins for each of the two hours digits must be in the same LCDMEM byte for this optimization to work
