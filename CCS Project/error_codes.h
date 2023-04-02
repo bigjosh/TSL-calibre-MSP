@@ -9,7 +9,10 @@
 #define ERROR_CODES_H_
 
 
-// // We got bad data from the RV3032 checking the status reg on startup. Either defective chip or PCB connection?
+// We got bad data from the RV3032 checking the status reg on startup. Either defective chip or PCB connection?
+// Note that you can get this in the case where you pull batteries and replace them with ones that had *lower* voltage
+// since then the RTC will still be in backup mode. If this happens, you can just pull the batteries again and leave them
+// out for a minute so that the voltage on the backup capacitor has a chance to run down.
 #define ERROR_BAD_CLOCK       1
 
 // The main() function continued running after the line that puts the processor to sleep which should never happen.

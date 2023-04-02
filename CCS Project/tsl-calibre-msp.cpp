@@ -811,7 +811,6 @@ __interrupt void trigger_isr(void) {
         // Show all 0's on the LCD to quickly let the user know that we saw the pull
         lcd_show_zeros();
 
-
         // Do the actual launch, which will...
         // 1. Read the current RTC time and save it to FRAM
         // 2. Set the launchflag in FRAM so we will forevermore know that we did launch already.
@@ -823,8 +822,8 @@ __interrupt void trigger_isr(void) {
         // First get current time and save it to FRAM for archival purposes.
         // Also update the persistent storage to reflect that we launched now.
         unlock_persistant_data();
-        i2c_read( RV_3032_I2C_ADDR , RV3032_SECS_REG  , (void *)  &persistent_data.launched_time , sizeof( rv3032_time_block_t ) );
-        persistent_data.launch_flag=1;
+        i2c_read( RV_3032_I2C_ADDR , RV3032_SECS_REG  , (void *)  &persistent_data.launched , sizeof( rv3032_time_block_t ) );
+        persistent_data.launch_flag=0x01;
         persistent_data.acid_century_counter.writeData(&century_counter_init);
         lock_persistant_data();
 
@@ -832,6 +831,8 @@ __interrupt void trigger_isr(void) {
         i2c_write( RV_3032_I2C_ADDR , RV3032_SECS_REG  , &rv_3032_time_block_init , sizeof( rv3032_time_block_t ) );
 
         i2c_shutdown();
+
+        // Note that the time variables will already be initialized to zero from power up
 
         // We will get the next tick in 1000ms. Make sure we return from this ISR before then.
 
@@ -1364,94 +1365,9 @@ int main( void )
     // Initialize the lookup tables we use for efficiently updating the LCD
     initLCDPrecomputedWordArrays();
 
-#warning
-    if ( TBI( DEBUGB_PIN , DEBUGB_B ) == 0 ) {       // If debug B pin is tied low at power up...
-
-        unlock_persistant_data();
-        persistent_data.once_flag=1;            // Trigger a first time power up
-        lock_persistant_data();
-
-        lcd_show_testing_only_message();
-        blinkforeverandever();
-
-    }
-
-#warning
-    if (1) {
-
-        SET_CLKOUT_VECTOR( &RTL_MODE_BEGIN);
-
-        ACTIVATE_RAM_ISRS();
-
-        // Wait for interrupt to fire at next clkout low-to-high change to drive us into the state machine (in either "pin loading" or "time since lanuch" mode)
-        __bis_SR_register(LPM4_bits | GIE );                 // Enter LPM4
-
-    }
-
-#warning
-
-    if (0) {
-        // We have never launched!
-
-        // First we need to make sure that the trigger pin is inserted because
-        // we would not want to just launch because the pin was out when batteries were inserted.
-        // This also lets us test both trigger positions during commissioning at the factory.
-
-        CBI( TRIGGER_PDIR , TRIGGER_B );      // Input
-        SBI( TRIGGER_PREN , TRIGGER_B );      // Enable pull resistor
-        SBI( TRIGGER_POUT , TRIGGER_B );      // Pull up
-
-
-        mode = LOAD_TRIGGER;                  // Go though the state machine to wait for trigger to be loaded
-        step =0;                              // Used to slide a dash indicator pointing to the pin location
-
-
-        // Set us up to run the loading/ready-to-launch sequence on thie next tick
-        // NOte that the trigger ISR will be activated when we get into ready-to-launch
-        SET_CLKOUT_VECTOR( &startup_isr);
-
-        ACTIVATE_RAM_ISRS();
-
-        // Wait for interrupt to fire at next clkout low-to-high change to drive us into the state machine (in either "pin loading" or "time since lanuch" mode)
-        __bis_SR_register(LPM4_bits | GIE );                 // Enter LPM4
-
-    }
-
-
-
-    if (1) {
-
-        flash();
-
-        SET_TRIGGER_VECTOR( &trigger_isr );
-        SET_CLKOUT_VECTOR( &TSL_MODE_BEGIN );
-        //SET_CLKOUT_VECTOR( &RTL_MODE_BEGIN );
-
-        secs = 55;
-        mins = 59;
-        hours = 23;
-        days=1829;
-
-        lcd_show_zeros();
-        lcd_show_digit_f(  6 , (days / 1      ) % 10  );
-        lcd_show_digit_f(  7 , (days / 10     ) % 10  );
-        lcd_show_digit_f(  8 , (days / 100    ) % 10  );
-        lcd_show_digit_f(  9 , (days / 1000   ) % 10  );
-        lcd_show_digit_f( 10 , (days / 10000  ) % 10  );
-        lcd_show_digit_f( 11 , (days / 100000 ) % 10  );
-
-
-        ACTIVATE_RAM_ISRS();
-
-        __bis_SR_register(LPM4_bits | GIE );                 // Enter LPM4
-        __no_operation();                                   // For debugger
-    }
-
-    //lcd_show_zeros();
-    //CBI( RV3032_CLKOUT_PIFG     , RV3032_CLKOUT_B    );
-
     // Check if this is the first time we've ever been powered up.
-    if (persistent_data.once_flag!=1) {
+    if (persistent_data.once_flag!=0x01) {
+
 
         // First clear the low voltage flag on the RV3032 so from now on we will care if it looses time.
         // We check if these flags have been set on each power up to know if the RTC still knows what time it is, or if the battery was out for too long.
@@ -1461,8 +1377,8 @@ int main( void )
         // Now remember that we did our start up. From now on, the RTC will run on its own forever.
 
         unlock_persistant_data();
-        persistent_data.once_flag=1;             // Remember that we already started up once and never do it again.
-        persistent_data.launch_flag=0;           // Clear the launch flag even though we should never have to just to make sure we can not end up in undefined state if someone messes with this data
+        persistent_data.once_flag=0x01;             // Remember that we already started up once and never do it again.
+        persistent_data.launch_flag=0xff;           // Clear the launch flag even though we should never have to
         lock_persistant_data();
 
         lcd_show_first_start_message();
@@ -1490,7 +1406,7 @@ int main( void )
 
         // RTC lost power at some point so nothing we can do except show an error message forever.
 
-        if (persistent_data.launch_flag) {
+        if (persistent_data.launch_flag!=0x00) {
             lcd_show_batt_errorcode( BATT_ERROR_PRELAUNCH );
         } else {
             lcd_show_batt_errorcode( BATT_ERROR_POSTLAUNCH );
@@ -1530,7 +1446,6 @@ int main( void )
         SBI( TRIGGER_PREN , TRIGGER_B );      // Enable pull resistor
         SBI( TRIGGER_POUT , TRIGGER_B );      // Pull up
 
-
         mode = LOAD_TRIGGER;                  // Go though the state machine to wait for trigger to be loaded
         step =0;                              // Used to slide a dash indicator pointing to the pin location
 
@@ -1542,6 +1457,9 @@ int main( void )
         // We will go into "load pin" mode when next second ticks. This gives the pull-up a chance to take effect and also avoids any bounce aliasing right at power up.
 
     } else {
+
+        // Read the time from the RTC into our global time variables. This will be either (1) the time since we were commissioned if not launched, or (2) the time since launch if we were launched.
+        RV_3032_read_time();
 
         // We have already been triggered and time is already loaded into variables by the RV3032_read_time() function.
 
@@ -1616,14 +1534,23 @@ int main( void )
         lcd_show_digit_f( 1 , secs  / 10  );
 
         // Now start ticking at next second tick interrupt
+        // The TSL_MODE_BEGIN ISR will initialize the TSL mode counting registers from
+        // the `hours`, `mins`, and `secs` globals. Note thta the ISR does not know about `days`
+        // becuase it calls back to the C `tsl_next_day()` routine when days increment.
         // We do not set up the trigger ISR since it can never come. We will tick like this
         // forever (or at least until we loose power).
         SET_CLKOUT_VECTOR( &TSL_MODE_BEGIN );
     }
 
+    // Activate the RAM-based ISR vector table (rather than the default FRAM based one).
+    // We use the RAM-based one so that we do not have to unlock FRAM every time we want to
+    // update an entry. It was also hoped that the RAM-based one would be more power efficient
+    // but this does not seem to matter in practice.
+
     ACTIVATE_RAM_ISRS();
 
     // Wait for interrupt to fire at next clkout low-to-high change to drive us into the state machine (in either "pin loading" or "time since lanuch" mode)
+    // Could also enable the trigger pin change ISR if we are in RTL mode.
     __bis_SR_register(LPM4_bits | GIE );                 // Enter LPM4
     // BIS.W    #248,SR
 
@@ -1633,7 +1560,6 @@ int main( void )
 
     // Disable interrupts
     __disable_interrupt();
-
     error_mode( ERROR_MAIN_RETURN );                    // This would be very weird if we ever saw it.
 
 }
