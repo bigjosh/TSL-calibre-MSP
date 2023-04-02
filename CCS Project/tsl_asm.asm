@@ -12,7 +12,7 @@
             ;.text                           ; Assemble to Flash memory
             ;.data							;; Put functions into RAM?
 
-            .sect ".TI.ramfunc"				; Put these functions into RAM so they run with less power and if vector table is also in RAM then we can avoid turning on the FRAM controller altogether
+            .sect ".TI.ramfunc"				; Put these functions into RAM where they seem to use slightly less power
             .retain                         ; Ensure current section gets linked
             .retainrefs
 
@@ -23,7 +23,7 @@
 			; Note this is the mangled C++ name for `void tsl_next_dayv()`
 			.ref		_Z12tsl_next_dayv
 
-;Begin the RTL mode ISR
+;Begin the TSL mode ISR
 ;Set the ISR vector to point here to start this mode.
 ;On the next tick, it will increment the seconds and display the result.
 
@@ -53,13 +53,13 @@ TSL_MODE_BEGIN:
 	;expected to preserve them so they have the same value on return from a function as they had at the point of the
 	;call. We will use these since we call back to C when date count changes and we don't want them to get clobbered.
 
-			MOV.W 		#secs_lcd_words,R4			; Base of the table
-			MOV.W		#(secs_lcd_words+2*60),R5	; 1 byte past end of the table
+			MOV.W 		#secs_lcd_words,R4			; R4=Base of the secs table
+			MOV.W		#(secs_lcd_words+2*60),R5	; R5=1 byte past end of the secs table
 
 			; R6 = compute our location in the table based on current seconds
 			MOV.B		&secs,R6					; Start with seconds. Note that secs are stored as a byte on the C side.
 			ADD.W		R6,R6						; Double it so it is now a word pointer
-			ADD.W		R4,R6						; Now offset it into the table
+			ADD.W		R4,R6						; R6=Pointer to location of next sec in secs table
 
 
 			MOV.W 		#mins_lcd_words,R7			; R7=Base of the mins table
@@ -68,7 +68,7 @@ TSL_MODE_BEGIN:
 			; R9= compute our location in the table based on current minutes
 			MOV.B		&mins,R9					; Start with mins. Note that these are stored as a byte on the C side.
 			ADD.W		R9,R9						; Double it so it is now a word pointer
-			ADD.W		R7,R9						; R9 now = location of current minute in table
+			ADD.W		R7,R9						; R9=location of next min in mins table
 
 			; We only have one call saved register left, so for hours we only keep
 			; the straight value there and then compute everything else each update.
@@ -81,7 +81,7 @@ TSL_MODE_BEGIN:
 
 TSL_MODE_ISR
 
- 	  		OR.B      	#128,&PAOUT_L+0  			; Set DEBUGA for profiling purposes.
+ 	  		;OR.B      	#128,&PAOUT_L+0  			; Set DEBUGA for profiling purposes.
 
  	  		; These next 3 lines are where this product spends the *VAST* majority of its life, so we hyper-optimize.
 
@@ -169,9 +169,11 @@ TSL_DONE
         	;is active and if we overwrite it with a 0 then we would lose it forever.
         	MOV.B     #0,&PAIFG_L+0         ; Clear the interrupt flag that got us here
 
- 	  		AND.B     #127,&PAOUT_L+0       ; Clear DEBUGA for profiling purposes.
+ 	  		;AND.B     #127,&PAOUT_L+0       ; Clear DEBUGA for profiling purposes.
 
             reti							; pops previous sleep mode, so puts us back to sleep
+            								; TODO: Replace this IRET with a sleep and save 4 cycles, and then
+            								; just clear the stack every minute.
 
             nop
 
@@ -226,8 +228,8 @@ RTL_MODE_BEGIN:
 ; We leave this mode when the trigger is pulled by the trigger ISR
 RTL_MODE_ISR:
 
- 	  OR.B      #128,&PAOUT_L+0  ;			// DebugA ON
-
+ 	; OR.B      #128,&PAOUT_L+0  ;			// DebugA ON
+	; BIC.W		#FRPWR,(GCCTL0) ;           // Disable FRAM. Writing to the register enables or disables the FRAM power supply.  0b = FRAM power supply disabled.
 
 	; Copy the data for this frame into the LCDMEM registers.
 	; note only need to do this for the LPINs that are actually connected,
@@ -236,7 +238,7 @@ RTL_MODE_ISR:
 
       MOV.W @R12+,(LCDM0W_L+0)		; L0,L1,L2,L3 - 4 cycles
       MOV.W @R12+,(LCDM0W_L+2)		; L4,L5,L6,L7
-	;					   +4		; L8,L9,L10,L11  (THese are the COM pins)
+	;					   +4		; L8,L9,L10,L11  (These are the COM pins, do not want to mess with them)
       MOV.W @R12+,(LCDM0W_L+6)		; L12,L13,L14,L15
       MOV.W @R12+,(LCDM0W_L+8)		; L16,L17,L18,L19
       MOV.W @R12+,(LCDM0W_L+10)		; L20,L21,L22,L23
@@ -248,8 +250,12 @@ RTL_MODE_ISR:
       OR.W  R14,R12					; OR back in the base address (remember it is 128 byte aligned)
 
 
-      BIC.B     #2,&PAIFG_L+0 ;  	;Clear interrupt flag
- 	  AND.B     #127,&PAOUT_L+0       ; [] |../tsl-calibre-msp.cpp:1082|
+      BIC.B     #2,&PAIFG_L+0 ;  	; Clear interrupt flag
+      								; Note that we can not use the constant-MOV 0x00 trick that worked above becuase
+      								; in RTL mode the person could pull the trigger, which would set the flag for that pin and if
+      								; we then hd bad timing and cleared that bit here then the pull would be lost forever.
+
+ 	  ; AND.B     #127,&PAOUT_L+0       ; DEBUGA OFF
 
       RETI
 

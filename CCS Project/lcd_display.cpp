@@ -285,7 +285,7 @@ static_assert( lpin_t<digitplace_lpins_table[SECS_ONES_DIGITPLACE_INDEX].lpin_a_
 // same word. The `>>1` converts the byte pointer into a word pointer.
 
 // This address is hardcoded into the ASM so we don't need the reference here.
-//word *secs_lcdmem_word = (word *) (&LCDMEMW[ lpin_t<digitplace_lpins_table[SECS_ONES_DIGITPLACE_INDEX].lpin_a_thru_d>::lcdmem_offset() >> 1 ]);
+word *secs_lcdmem_word = (word *) (&LCDMEMW[ lpin_t<digitplace_lpins_table[SECS_ONES_DIGITPLACE_INDEX].lpin_a_thru_d>::lcdmem_offset() >> 1 ]);
 
 #define MINS_PER_HOUR 60
 word mins_lcd_words[MINS_PER_HOUR];
@@ -342,7 +342,6 @@ void fill_lcd_words( word *words , const byte tens_digit_index , const byte ones
 
 // Write a value from the array into this word to update the two digits on the LCD display
 constexpr word *mins_lcdmem_word = &LCDMEMW[ lpin_t<digitplace_lpins_table[MINS_ONES_DIGITPLACE_INDEX].lpin_a_thru_d>::lcdmem_offset() >> 1 ];
-
 
 byte hours_lcd_bytes[10];
 
@@ -1026,7 +1025,7 @@ void lcd_show_clock_lost_message() {
 }
 
 
-// Refresh 100's days digits
+// Every 100 days
 
 constexpr glyph_segment_t centesimus_dies_message[] = {
     {0x09,0x05},
