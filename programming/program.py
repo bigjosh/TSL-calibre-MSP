@@ -36,7 +36,7 @@ input("Press Enter to continue...")
 # read device UID
 # MSP430Flasher.exe -j FAST -r [dump.txt,0x1A0A-0x1A11]
 
-# MSP430Flasher.exe -j fast -r [uuid.txt,0x1A04-0x1A0a] -r [device.txt,0x1a04-0x1a07] -w tsl-calibre-msp.txt -z [VCC]
+# MSP430Flasher.exe -j fast  -e ERASE_MAIN -r [uuid.txt,0x1A04-0x1A0a] -r [device.txt,0x1a04-0x1a07] -w tsl-calibre-msp.txt -v -z [VCC]
 # MSP430Flasher.exe -j fast -r [info.txt,0x1800-0x1900] -z [RESET,VCC]
 
 # MSP430FR4133 F0h 81h

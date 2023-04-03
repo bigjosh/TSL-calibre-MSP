@@ -60,28 +60,13 @@ void depower_rv3032() {
 
 }
 
-// TODO: Make this LPM4.5
-// TODO: Clearing GIE does not prevent wakeup from LPM4.5
+// Goes into LPM3.5 to save power since we can never wake from here.
 // In LPMx.0 draws 1.38uA with the "First STart" message.
 // In LPMx.5 draws 1.13uA with the "First STart" message.
 
+// Clearing GIE does not prevent wakeup from LPMx.5 so all interrupts must have been individually disabled.
 #pragma FUNC_NEVER_RETURNS
 void sleepforeverandever(){
-
-
-    // Since we will never wake up, we can depower the RTC
-    depower_rv3032();
-
-
-    // Mind as well go into deep LPMx.5 sleep since we will never wake up, but in these modes there is no general way to disable
-    // Interrupts and any interrupt powers up the CPU. We could carefully disable any possible interrupt sources here, but too much
-    // work for saving 0.2uA considering that if we get here then we really don't care about battery life anyway.
-
-    // Power usage with blinking "testing only" message measured with EnergyTrace
-    // LPM 3   - 17uA? Why so much?
-    // LPM 3.5 - 0.8uA
-    // LPM 4
-    // LPM 4.5 - 0.8uA (so maybe it just does not really go into 4.5 if the LCD is enabled?
 
     // These lines enable the LPMx.5 modes
     PMMCTL0_H = PMMPW_H;                    // Open PMM Registers for write
@@ -92,14 +77,14 @@ void sleepforeverandever(){
 
 }
 
-// TODO: Make this LPM4.5
+// Assumes all interrupts have been individually disabled.
 #pragma FUNC_NEVER_RETURNS
 void blinkforeverandever(){
     lcd_blinking_mode();
     sleepforeverandever();
 }
 
-// TODO: Make this LPM4.5
+// Assumes all interrupts have been individually disabled.
 #pragma FUNC_NEVER_RETURNS
 void error_mode( byte code ) {
     lcd_show_errorcode(code);
@@ -183,8 +168,15 @@ inline void initGPIO() {
     // Now we need to setup interrupt on RTC CLKOUT pin to wake us on each rising edge (1Hz)
 
     CBI( RV3032_CLKOUT_PDIR , RV3032_CLKOUT_B );    // Set input
-    SBI( RV3032_CLKOUT_PIES , RV3032_CLKOUT_B );    // Interrupt on falling edge (Driven by RV3032 CLKOUT pin which we program to run at 1Hz). Falling edge so we wait a full second until first tick (signal starts LOW).
-    // Do not enable interrupt on the CLKOUT pin yet.
+    CBI( RV3032_CLKOUT_PIES , RV3032_CLKOUT_B );    // Interrupt on rising edge (Driven by RV3032 CLKOUT pin which we program to run at 1Hz).
+
+    /* RV3230 App Guide Section 4.21.1:
+     *  the 1 Hz clock can be enabled
+     *  on CLKOUT pin. The positive edge corresponds to the 1 Hz tick for the clock counter increment (except for
+     *  the possible positive edge when the STOP bit is cleared).
+     */
+
+    // Note that we do not enable the CLKOUT interrupt until we enter RTL or TSL mode
 
     // --- Trigger
 
@@ -505,11 +497,6 @@ century_counter_t century_counter_init = {
     .century_count = 0,
 };
 
-// Initial starting state for a century counter
-century_counter_t century_counter_init = {
-    .postmidcentury_flag = 0,
-    .century_count = 0,
-};
 
 // Here is the persistent data that we store in "information memory" FRAM that survives power cycles
 // and reprogramming.
@@ -554,6 +541,7 @@ void lock_persistant_data() {
 // Clears the low voltage flag
 // sets clkout to 1Hz
 // Enables backup capacitor
+// Does not enable any interrupts
 
 void rv3032_init() {
 
@@ -667,10 +655,6 @@ uint16_t rtc_days=0;       // only needs to be able to hold up to 1 century of d
 
 century_counter_t century_counter;      // Cached copy of the ACID one in `persistantData` so we do not need to read that one out every time while running
 unsigned days_into_current_century;     // So we know when to update the post mid century flag and then to tick the century
-
-// This counts the centuries, which we have to do separately since the RTC will not do it for us
-century_counter_t century_counter;
-unsigned days_into_current_century;
 
 // Read time from RTC into our global time variables
 
@@ -865,18 +849,19 @@ __interrupt void trigger_isr(void) {
         // Also update the persistent storage to reflect that we launched now.
         unlock_persistant_data();
         i2c_read( RV_3032_I2C_ADDR , RV3032_SECS_REG  , (void *)  &persistent_data.launched_time , sizeof( rv3032_time_block_t ) );
-        persistent_data.launch_flag=1;
+        persistent_data.launch_flag=0x01;
         persistent_data.acid_century_counter.writeData(&century_counter_init);
         lock_persistant_data();
 
         // Then zero out the RTC to start counting over again, starting now. Note that writing any value to the seconds register resets the sub-second counters to the beginning of the second.
+        // "Writing to the Seconds register creates an immediate positive edge on the LOW signal on CLKOUT pin."
         i2c_write( RV_3032_I2C_ADDR , RV3032_SECS_REG  , &rv_3032_time_block_init , sizeof( rv3032_time_block_t ) );
 
         i2c_shutdown();
 
         // Note that the time variables will already be initialized to zero from power up
 
-        // We will get the next tick in 1000ms. Make sure we return from this ISR before then.
+        // We will get the next tick with a rising edge on CLKOUT in 1000ms. Make sure we return from this ISR before then.
 
         // Clear any pending RTC interrupt so we will not tick until the next pulse comes from RTC in 1000ms
         // There could be a race where an RTC interrupt comes in just after the trigger was pulled, in which case we would
@@ -920,86 +905,6 @@ __interrupt void trigger_isr(void) {
    Y        0     1Hz      0.0021mA
    N        1     1Hz      0.0027mA
    N        1     1Hz      0.0027mA
-
-*/
-
-
-/*
-byte fram_state = 0;
-
-// Push trigger button to check that the FRAM controller stayed off
-__attribute__((ramfunc))
-__interrupt void show_fram_controller_state() {
-
-    // show if FRAM on or off. Note we can not use normal LCD_show function becuase it is in FRAM
-    if (fram_state) {
-        *secs_lcdmem_word = secs_lcd_words[0];  // "01"=ON
-    } else {
-        GCCTL0 &= ~FRPWR ;               // FRAM power control. Writing to the register enables or disables the FRAM power supply.  0b = FRAM power supply disabled.
-        *secs_lcdmem_word = secs_lcd_words[9];  // "10"=OFF
-    }
-
-    //static byte mc=0;
-
-
-    // Clear pending trigger interrupt so we will need a new transition to trigger again
-    CBI( TRIGGER_PIFG , TRIGGER_B);
-}
-
-
-
-
-// Push trigger button to check that the FRAM controller stayed off
-__attribute__((ramfunc))
-__interrupt void toggle_fram_controller_state() {
-
-    // show if FRAM on or off. Note we can not use normal LCD_show function becuase it is in FRAM
-    if (fram_state) {
-        fram_state=0;
-        *secs_lcdmem_word = secs_lcd_words[29];  // "30"=OFF
-    } else {
-        fram_state=1;
-        *secs_lcdmem_word = secs_lcd_words[30];  // "31"=ON
-    }
-
-    // Clear pending trigger interrupt so we will need a new transition to trigger again
-    CBI( TRIGGER_PIFG , TRIGGER_B);
-}
-
-
-__attribute__((ramfunc))
-__interrupt void enter_fram_disabled() {
-    // Now we can finally turn off the FRAM controller!
-    FRCTL0=FRCTLPW;                  // FRCTLPW password. Always reads as 96h. To enable write access to the FRCTL registers, write A5h.
-    GCCTL0 &= ~FRPWR ;               // FRAM power control. Writing to the register enables or disables the FRAM power supply.  0b = FRAM power supply disabled.
-    SET_CLKOUT_VECTOR( &show_fram_controller_state);
-
-
-    // Setup trigger to call the ISR that shows if FRAM enabled of disabled so we can double check it is actually working.
-
-
-    CBI( TRIGGER_PDIR , TRIGGER_B );      // Input
-    SBI( TRIGGER_PREN , TRIGGER_B );      // Enable pull resistor
-    SBI( TRIGGER_POUT , TRIGGER_B );      // Pull up
-
-    SBI( TRIGGER_PIE  , TRIGGER_B );          // Enable interrupt on the INT pin high to low edge. Normally pulled-up when pin is inserted (switch lever is depressed)
-    SBI( TRIGGER_PIES , TRIGGER_B );          // Interrupt on high-to-low edge (the pin is pulled up by MSP430 and then RV3032 driven low with open collector by RV3032)
-
-    // Clear any pending interrupt so we will need a new transition to trigger
-    CBI( TRIGGER_PIFG , TRIGGER_B);
-
-    SET_TRIGGER_VECTOR( & toggle_fram_controller_state );
-
-
-    // show if FRAM on or off. Note we can not use normal LCD_show function becuase it is in FRAM
-    if (GCCTL0 & FRPWR) {
-        *secs_lcdmem_word = secs_lcd_words[0];  // "01"=ON
-    } else {
-        *secs_lcdmem_word = secs_lcd_words[59];  // "00"=OFF
-    }
-
-    CBI( RV3032_CLKOUT_PIFG , RV3032_CLKOUT_B );      // Clear the pending RV3032 INT interrupt flag that got us into this ISR.
-}
 
 */
 
@@ -1380,7 +1285,6 @@ void time_since_launch_reference() {
 int main( void )
 {
 
-
     WDTCTL = WDTPW | WDTHOLD | WDTSSEL__VLO;   // Give WD password, Stop watchdog timer, set WD source to VLO
                                                // The thinking is that maybe the watchdog will request the SMCLK even though it is stopped (this is implied by the datasheet flowchart)
                                                // Since we have to have VLO on for LCD anyway, mind as well point the WDT to it.
@@ -1412,7 +1316,6 @@ int main( void )
         rv3032_clear_LV_flags();
 
         // Now remember that we did our start up. From now on, the RTC will run on its own forever.
-
         unlock_persistant_data();
         persistent_data.once_flag=0x01;             // Remember that we already started up once and never do it again.
         persistent_data.launch_flag=0xff;           // Clear the launch flag even though we should never have to
@@ -1422,7 +1325,6 @@ int main( void )
         sleepforeverandever();
 
         // After first start up, unit must be re-powered to enter normal operation.
-
     }
 
 
@@ -1431,9 +1333,12 @@ int main( void )
 
     if (rtcState==2) {
 
-        // We got bad data from the RTC. Either defective chip or PCB connection?
+        // We got bad data from the RTC. Could be defective chip or
+        // bad PCB connection, but most likely is that batteries were pulled
+        // and new batteries had lower voltage than old, so RTC stayed in backup mode.
+        // If this does happen, you can just wait a few minutes for the RTC backup voltage to
+        // drop and then remove and reinsert the batteries to restart and it should be fine.
 
-        // Mind as well turn it off since we have no idea what it is doing.
         error_mode( ERROR_BAD_CLOCK );
 
     }
@@ -1442,7 +1347,7 @@ int main( void )
 
         // RTC lost power at some point so nothing we can do except show an error message forever.
 
-        if (persistent_data.launch_flag!=0x00) {
+        if (persistent_data.launch_flag != 0x01) {
             lcd_show_batt_errorcode( BATT_ERROR_PRELAUNCH );
         } else {
             lcd_show_batt_errorcode( BATT_ERROR_POSTLAUNCH );
@@ -1453,19 +1358,22 @@ int main( void )
 
     }
 
+    // If we get here then we know the RTC is good and that it has good clock data (ie it has been continuously powered since it was commissioned at the factory)
+
     // Wait for any clkout transition so we know we have at least 500ms to read out time and activate interrupt before time changes so we dont miss any seconds.
     // This should always take <500ms
     // This also proves the RV3032 is running and we are connected on clkout
     unsigned start_val = TBI( RV3032_CLKOUT_PIN, RV3032_CLKOUT_B );
     while (TBI( RV3032_CLKOUT_PIN, RV3032_CLKOUT_B )==start_val); // wait for any transition
 
+    // Now we enable the interrupt on the RTC CLKOUT pin. For now on we must remember to
+    // disable it again if we are going to end up in sleepforever mode.
+
     // Clear any pending interrupts from the RV3032 clkout pin and then enable interrupts for the next falling edge
     // We we should not get a real one for 500ms so we have time to do our stuff
 
     CBI( RV3032_CLKOUT_PIFG     , RV3032_CLKOUT_B    );
-    CBI( RV3032_CLKOUT_PIE      , RV3032_CLKOUT_B    );
-
-    // If we get here then we know the RTC is good and that it has good clock data (ie it has been continuously powered since it was commissioned at the factory)
+    SBI( RV3032_CLKOUT_PIE      , RV3032_CLKOUT_B    );
 
     if ( persistent_data.launch_flag != 0x01 ) {
 
@@ -1542,9 +1450,7 @@ int main( void )
         days_digits[4]= (days_since_launch / 10000  ) % 10 ;
         days_digits[5]= (days_since_launch / 100000 ) % 10 ;
 
-        // Show the time since launch on the display
-
-        // Show the time since launch on the display
+        // Show the days since launch on the display
 
         lcd_show_digit_f(  6 , days_digits[0] );
         lcd_show_digit_f(  7 , days_digits[1] );
@@ -1583,15 +1489,21 @@ int main( void )
 
     // Wait for interrupt to fire at next clkout low-to-high change to drive us into the state machine (in either "pin loading" or "time since lanuch" mode)
     // Could also enable the trigger pin change ISR if we are in RTL mode.
-    __bis_SR_register(LPM4_bits | GIE );                 // Enter LPM4
-    // BIS.W    #248,SR
-
+    // Note if we use LPM3_bits then we burn 18uA versus <2uA if we use LPM4_bits.
+    __bis_SR_register(LPM4_bits | GIE );                // Enter LPM4
     __no_operation();                                   // For debugger
 
     // We should never ever get here
 
-    // Disable interrupts
-    __disable_interrupt();
+    // Disable all interrupts since any interrupt will wake us from LPMx.5 and execute a reset, even if interrupts are disabled.
+    // Since we never expect to get here, be safe and disable everything.
+
+    CBI( RV3032_CLKOUT_PIE , RV3032_CLKOUT_B );     // Disable interrupt.
+    CBI( RV3032_CLKOUT_PIFG , RV3032_CLKOUT_B );    // Clear any pending interrupt.
+
+    CBI( TRIGGER_PIE , TRIGGER_B );                 // Disable interrupt
+    CBI( TRIGGER_PIFG , TRIGGER_B );                // Clear any pending interrupt.
+
     error_mode( ERROR_MAIN_RETURN );                    // This would be very weird if we ever saw it.
 
 }
