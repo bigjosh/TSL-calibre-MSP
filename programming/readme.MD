@@ -20,7 +20,7 @@
     | SBWTDIO | R | 
     | SBWTICK | T |
 
-## Commissioning
+## Commissioning Procedure
 1. Connect a new TSL board without batteries to the programming connector.
 2. Run the `program.py` program and make sure it completes without error.
 3. Confirm that the TSL display shows the "First Start" message.
@@ -32,7 +32,8 @@
 9. Confirm that the dancing dashes display lights all the LCD segments and that it steps with a steady 1Hz cadence.
 10. Pack it up and ship it out! 
 
-
+Note that this procedure intentionally does not prove out the flash LEDs. We could flash them when we insert the pin, 
+but just that little test flash uses up many years of battery life. Should we do it? 
 
 
 
