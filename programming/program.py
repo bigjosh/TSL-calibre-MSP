@@ -4,6 +4,10 @@ import time
 
 import shutil
 
+import hashlib
+
+firmware_file_name = "tsl-calibre-msp.txt"
+
 
 # // The format that we use to store timestamps
 #
@@ -28,25 +32,37 @@ def create_timestamp_file():
         f.write("@1800\n")
         f.write(f"{t.tm_sec:02d} {t.tm_min:02d} {t.tm_hour:02d} {t.tm_wday:02d} {t.tm_mday:02d} {t.tm_mon:02d} {t.tm_year%100:02d}\n")
 
-# first we create a timestamp file. This will get burned into this unit as the "commisioned time".
-# note that this time is never used by the unit - it is only here for archival purposes so that if this
-# unit ever dies then someone can read the commisioned time out and then use it to calculate when the device
-# was first programmed and when it was triggered.
+# load the firmware file into memory variable `data`
+
+with open(firmware_file_name, 'rb') as file_to_check:
+    # read contents of the file
+    data = file_to_check.read()
+
+# cacluate the hash of the firmware file
+firmware_hash = hashlib.md5(data).hexdigest()
+
+print( f"Firmware hash is {firmware_hash}\n")
+        
+# Create the image to burn into the unit by appending a timestamp to the firmware
+
+with open('output.txt','wb') as wfd:
+    # prepend a time stamp (in TI HEX format)
+
+    # get the current time
+    t = time.localtime()
+    wfd.write("@1800\n".encode())
+    wfd.write(f"{t.tm_sec:02d} {t.tm_min:02d} {t.tm_hour:02d} {t.tm_wday:02d} {t.tm_mday:02d} {t.tm_mon:02d} {t.tm_year%100:02d}\n".encode())
+        
+    # ...and add firmware file into the image file
+    # note that the firmware comes last becuase the TI tools add a "q" to the end of this file. 
+    with open('tsl-calibre-msp.txt','rb') as rfd:
+        shutil.copyfileobj(rfd, wfd)
+
 # If you ever need to read the commisioned time out of a unit, you can use the command...
 # MSP430Flasher.exe -j fast -r [commisioned_time.txt,0x1800-0x1806] -z [VCC]
 # Do note that the timestamp does not a a century field, so you will have to infer what century the unit was commisioned
 # in using other factors like how dusty it is. 
 
-create_timestamp_file()
-
-# next we concatinate the timestamp plus the firmware into a single output file.
-# sadly we must do this becuase it seems that the flasher tool only obeys a single write per invokation, and starting it is slow
-# note that the firmware file must come last becuase it ends with a "q" that will end the write. :/
-# This file copy code comes from https://stackoverflow.com/a/27077437/3152071
-with open('output.txt','wb') as wfd:
-    for f in ['timestamp.txt','tsl-calibre-msp.txt']:
-        with open(f,'rb') as fd:
-            shutil.copyfileobj(fd, wfd)
 
 # Here is the meat where we...
 # 1. Grab the device UUID and ID from the MSP430 chip. This will let us keep a record of the serial number and what version of the chip this unit has
@@ -58,7 +74,7 @@ with open('output.txt','wb') as wfd:
 # -v verifies the contents of the FRAM match the firmware file
 # -z [VCC] leaves the device powered up via the VCC pin (You should see the "First Start" message on the LCD display)
 
-command = f"MSP430Flasher.exe -j fast -r [uuid.txt,0x1A04-0x1A0a] -r [device.txt,0x1a04-0x1a07] -e NO_ERASE -w output.txt -v -z [VCC]"
+command = f"MSP430Flasher.exe -j fast -r [uuid.txt,0x1A04-0x1A0a] -r [device.txt,0x1a04-0x1a07] -e ERASE_MAIN -w output.txt -v -z [VCC]"
 
 print("STARING COMMAND:")
 print(command)
@@ -70,6 +86,25 @@ if result.returncode != 0:
     print("MSPFlasher failed!")
     exit()
 
+
+# Lets grab the UUID and device info and make into a serial number
+
+with open("uuid.txt","r") as f:
+    # throw away the address line
+    f.readline()
+    # grab the UUID without trailing newline
+    uuid_raw = f.readline().rstrip()
+
+with open("device.txt","r") as f:
+    # throw away the address line
+    f.readline()
+    # grab the UUID without trailing newline
+    device_raw = f.readline().rstrip()
+
+# concat the two and and remove embeded spaces
+serial_no = ( device_raw + uuid_raw ).replace(" ","")
+
+print( f"Serial number is {serial_no}\n")
 
 input("Press Enter to continue...")
 
