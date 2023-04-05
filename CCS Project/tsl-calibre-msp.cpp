@@ -377,8 +377,6 @@ rv3032_time_block_t rv_3032_time_block_init = {
 };
 
 
-
-
 // This table of days per month came from the RX8900 datasheet page 9
 
 static uint8_t daysInMonth( uint8_t m , uint8_t y) {
@@ -1320,6 +1318,9 @@ int main( void )
         persistent_data.once_flag=0x01;             // Remember that we already started up once and never do it again.
         persistent_data.launch_flag=0xff;           // Clear the launch flag even though we should never have to
         lock_persistant_data();
+
+        // Flash the LEDs to prove they work.
+        flash();
 
         lcd_show_first_start_message();
         sleepforeverandever();
