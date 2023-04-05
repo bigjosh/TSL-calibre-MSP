@@ -3,7 +3,7 @@
 ## Set up
 
 ### Software
- 1.hic factorem Download `program.py` and `tsl-calibre-msp.txt` from a release in this repo.
+ 1. Download `program.py` and `tsl-calibre-msp.txt` from a release in this repo.
  2. Install Python. (The TSL programming script is in Python)
  3. Install [KeyRing](https://pypi.org/project/keyring/). (We use KeyRing to securely store the AirTable API key)
  4. Install [MSPFlasher](https://www.ti.com/tool/MSP430-FLASHER). (This actually talks to the programming hardware)
