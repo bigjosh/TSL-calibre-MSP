@@ -37,6 +37,11 @@
 9. Confirm that the dancing dashes display lights all the LCD segments and that it steps with a steady 1Hz cadence.
 10. Pack it up and ship it out! 
 
+## Troubleshooting
+
+Try unplugging the EZFET board from the USB and plugging it back in. Sometimes it gets messed up if the computer goes to sleep.
+
+
 
 
  
