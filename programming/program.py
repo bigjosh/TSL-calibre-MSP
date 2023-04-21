@@ -3,17 +3,26 @@
 # sorry it is so ugly, but i wanted it to be pythonic
 
 import subprocess
-
 import time
-
 import shutil
-
 import hashlib
+import tempfile
+import os
 
 # the following are for airtable stuff
 import keyring
 import http.client
 import json
+
+#MSPFlasher executable name
+mspflasher_name = "MSP430Flasher"
+
+#locate executable
+mspflasher_exec = shutil.which( mspflasher_name )
+#check that it was found
+if mspflasher_exec is None:
+    raise Exception("MSPFlasher executable must be in search path")
+
 
 # Airtable API host
 host = "api.airtable.com"
@@ -66,86 +75,128 @@ while True:
         print("Goodbye.")
         exit(0)
             
-    # Create the combined image to burn into the unit that includes both timestamp and firmware
-
-    with open('output.txt','wb') as wfd:
-        # get the current time
-        t = time.localtime()
+    # Create a temp directory for the files we are creating, then create temp files for the firmware image (will auto delete everything when pass finished)
+    with tempfile.TemporaryDirectory() as tempdir:
         
-        # prepend a time stamp (in TI HEX format)
-        # 1800 is the begining of "information memory" FRAM. 
-        wfd.write("@1800\n".encode())
-        wfd.write(f"{t.tm_sec:02d} {t.tm_min:02d} {t.tm_hour:02d} {t.tm_wday:02d} {t.tm_mday:02d} {t.tm_mon:02d} {t.tm_year%100:02d}\n".encode())
+        # first we create a firmware image to write to FRAM. We do this by combining a timestamp with the compiled firmware 
+
+        image_file_name = os.path.join( tempdir , 'image.txt' )    
+        with open( image_file_name ,'wb') as wfd:
+        
+            # get the current time
+            t = time.localtime()
             
-        # ...and append firmware file into the image file
-        # note that the firmware comes last becuase the TI tools add a "q" to the end of this file.
-        with open('tsl-calibre-msp.txt','rb') as rfd:
-            shutil.copyfileobj(rfd, wfd)
+            # prepend a time stamp (in TI HEX format)
+            # 1800 is the begining of "information memory" FRAM.
+            wfd.write("@1800\n".encode())
+            wfd.write(f"{t.tm_sec:02d} {t.tm_min:02d} {t.tm_hour:02d} {t.tm_wday:02d} {t.tm_mday:02d} {t.tm_mon:02d} {t.tm_year%100:02d}\n".encode())
+                
+            # ...and append firmware file into the image file
+            # note that the firmware comes last becuase the TI tools add a "q" to the end of this file.
+            with open('tsl-calibre-msp.txt','rb') as rfd:
+                shutil.copyfileobj(rfd, wfd)
 
-    # If you ever need to read the commisioned time out of a unit, you can use the command...
-    # MSP430Flasher.exe -j fast -r [commisioned_time.txt,0x1800-0x1806] -z [VCC]
-    # Do note that the timestamp does not have a century field, so you will have to infer what century the unit was commisioned
-    # in using other factors like how dusty it is. 
+            # If you ever need to read the commisioned time out of a unit, you can use the command...
+            # MSP430Flasher.exe -j fast -r [commisioned_time.txt,0x1800-0x1806] -z [VCC]
+            # Do note that the timestamp does not have a century field, so you will have to infer what century the unit was commisioned
+            # in using other factors like how dusty it is. 
 
-    # Here is the meat where we...
-    # 1. Grab the device UUID and ID from the MSP430 chip. This will let us keep a record of the serial number and what version of the chip this unit has.
-    # 2. Erase the FRAM. 
-    # 3. Burn the combined image into the unit.
-
-    # -j fast means use the fastest clock speed so programming will go as quickly as possible (it still takes a couple seconds)
-    # -e ERASE_MAIN prepares the FRAM to recieve the firmware download
-    # -v verifies the contents of the FRAM match the firmware file
-    # -z [VCC] leaves the device powered up via the VCC pin (You should see the "First Start" message on the LCD display)
-
-    command = f"MSP430Flasher.exe -j fast -r [uuid.txt,0x1A04-0x1A0a] -r [device.txt,0x1a04-0x1a07] -e ERASE_MAIN -w output.txt -v -z [VCC]"
-
-    print("STARING COMMAND:")
-    print(command)
-
-    result = subprocess.run(command, capture_output=False)
-
-    # Check the return code and print the output
-    if result.returncode != 0:
-        print("MSPFlasher failed!")
-        exit(1)
-
-
-    # Lets grab the UUID and device info and make into a serial number
-    # these are in TI HEX format so we have to throw away the first line and then strip out all whitespace from the second line to get a clean hex digit string
-
-    with open("uuid.txt","r") as f:
-        # throw away the address line
-        f.readline()
-        # grab the UUID without trailing newline
-        uuid_raw = f.readline().rstrip()
-
-    with open("device.txt","r") as f:
-        # throw away the address line
-        f.readline()
-        # grab the device info without trailing newline
-        device_raw = f.readline().rstrip()
-
-    # concat the two and and remove embeded spaces
-    deviceid = ( device_raw + uuid_raw ).replace(" ","")
-
-    print( f"Device ID is {deviceid}\n")
-
-    print( "Adding record to airtable...\n")
-
-    airtable_record_request = airtable_record_template.format(serialno,firmware_hash,deviceid)
-
-    # Make the API request to create a new record
-    conn = http.client.HTTPSConnection(host)
-    conn.request("POST", endpoint, airtable_record_request, airtable_headers)
-    response = conn.getresponse()
-
-    # Check if the request was successful
-    if response.status == 200:
-        print("New record created successfully!")
-    else:
-        print("Error creating new record")
-        print(response.read().decode())
-        exit(1)
-
+        # Here is the meat where we...
+        # 1. Grab the device UUID and ID from the MSP430 chip. This will let us keep a record of the serial number and what version of the chip this unit has.
+        # 2. Erase the FRAM. 
+        # 3. Burn the combined image into the unit.
     
+        # start with executable
+        call_line = [mspflasher_exec]
 
+        # -j fast means use the fastest clock speed so programming will go as quickly as possible (it still takes a couple seconds)
+        call_line +=[ "-j" , "fast" ]
+
+        # dump the whole device descriptor table
+        # note that it would be nice to just dump the two parts we need (device_id & uuid), but there is an undocumented limitation
+        # in MSP430Flasher where if you try to do consecutive read operations, it just siliently ignores the second one. So instead
+        # we dump the whole table and will parse out the parts we care about later. 
+        # device desciptor table is in the MSP430FR4133 datasheet section 9.1
+        
+        # Dump the device descirtor data from the MSP430 to a file named `dd.txt` in the temp directory. 
+        dd_file_name = os.path.join( tempdir , 'dd.txt')
+        call_line += [ "-r" , f"[{dd_file_name},0x1a00-0x1a12]" ]
+        
+        # -e ERASE_MAIN prepares the FRAM to recieve the firmware download
+        call_line += ["-e","ERASE_MAIN"]
+        
+        #program in the firmware image we created earlier
+        call_line += ["-w" , image_file_name ]
+        
+        # -v verifies the contents of the FRAM match the firmware image file
+        call_line += ["-v"]
+        
+        # -z [VCC] leaves the device powered up via the EZ-FET programmer VCC pin (You should see the "First Start" message on the LCD display)
+        call_line += ["-z" , "[RESET,VCC]"]
+        
+        print("STARING COMMAND:")
+        print(call_line)
+
+        result = subprocess.run( call_line , capture_output=False)
+
+        # Check the return code and print the output
+        if result.returncode != 0:
+            print("MSPFlasher failed!")
+            exit(1)
+
+        # Lets grab the UUID and device info from the device descripto dump and make them into a serial number
+        
+        
+        # these are in TI HEX format so we have to throw away the first line and then strip out all whitespace from the second line to get a clean hex digit string
+
+        with open(dd_file_name,"r") as f:
+            # throw away the address line
+            f.readline()
+                    
+            # grab first and second line and strip all whitespace
+            line1 = f.readline()
+            line2 = f.readline()
+            
+            # now line1 is bytes 0x1a00-0x1a0f of the device desriptor table as ascii hex digits
+            # now line2 is bytes 0x1a10-0x1a11 of the device desriptor table as ascii hex digits
+            
+            # make all the read bytes into a single linear array
+            dd_hex_bytes = (line1+line2).split()
+
+            # note in all the extractions below that in Python string slices, the end index is one past the index               
+                                            
+            # device info is 0x1a04-0x1a07 (4 bytes)
+            device_info =  dd_hex_bytes[ 0x04 : 0x08 ]
+
+            # Lot waffer ID 0x1a0a-0x1a0d
+            lot_waffer = dd_hex_bytes[ 0x0a : 0x0e ]
+            
+            # Die X pos 0x1a0e-0x1a0f               
+            die_x_pos =  dd_hex_bytes[ 0x0e : 0x10 ]
+            
+            # Die Y pos 0x1a10-0x1a11
+            die_y_pos = dd_hex_bytes[ 0x10 : 0x12 ]
+            
+			# I know this is ugly, but seems to be the phythonic way to join these all into a string with no seporator.
+			# Do you know a better way? 
+            device_uuid = "".join(device_info+lot_waffer+die_x_pos+die_y_pos)
+
+            print( f"Device UUID is {device_uuid}\n")
+
+            print( "Adding record to airtable...\n")
+
+            airtable_record_request = airtable_record_template.format(serialno,firmware_hash,device_uuid)
+
+            # Make the API request to create a new record
+            conn = http.client.HTTPSConnection(host)
+            conn.request("POST", endpoint, airtable_record_request, airtable_headers)
+            response = conn.getresponse()
+
+            # Check if the request was successful
+            if response.status == 200:
+                print("New record created successfully!")
+            else:
+                print("Error creating new record")
+                print(response.read().decode())
+                exit(1)
+            
