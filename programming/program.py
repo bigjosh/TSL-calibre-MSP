@@ -132,7 +132,7 @@ while True:
         call_line += ["-v"]
         
         # -z [VCC] leaves the device powered up via the EZ-FET programmer VCC pin (You should see the "First Start" message on the LCD display)
-        call_line += ["-z" , "[RESET,VCC]"]
+        call_line += ["-z" , "[VCC]"]
         
         print("STARING COMMAND:")
         print(call_line)
