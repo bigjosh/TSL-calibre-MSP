@@ -134,9 +134,11 @@ inline void initGPIO() {
 
 
     // --- TSP7A LCD voltage regulator
+    SBI( TSP_IN_POUT , TSP_IN_B );          // Power up TSP
+    SBI( TSP_IN_PDIR , TSP_IN_B );
 
-    SBI( TSP_IN_POUT , TSP_IN_B );          // Power up
-    SBI( TSP_ENABLE_POUT , TSP_ENABLE_B );  // Enable
+    SBI( TSP_ENABLE_POUT , TSP_ENABLE_B );  // Enable TSP
+    SBI( TSP_ENABLE_PDIR , TSP_ENABLE_B );
 
     // --- Debug pins
 
