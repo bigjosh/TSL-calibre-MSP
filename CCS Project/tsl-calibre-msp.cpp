@@ -762,35 +762,6 @@ void testLeapYear() {
 
 */
 
-// Structure for an interrupt table
-
-struct ram_vect_table_t {
-    void (*vect_LCD_E)();
-    void (*vect_PORT2)();
-    void (*vect_PORT1)();
-    void (*vect_ADC)();
-    void (*vect_USCI_B0)();
-    void (*vect_USCI_A0)();
-    void (*vect_WDT)();
-    void (*vect_RTC)();
-    void (*vect_TIMER1_A1)();
-    void (*vect_TIMER1_A0)();
-    void (*vect_TIMER0_A1)();
-    void (*vect_TIMER0_A0)();
-    void (*vect_UNMI)();
-    void (*vect_SYSNMI)();
-    void (*vect_reset)();
-};
-
-
-// Put that interrupt table into RAM (normally it is at the top of FRAM).
-// I originally did this so we could disable the FRAM controller altogether to save power,
-// but that did not seem to make much difference. But we will keep the ISRs in RAM becuase
-// this way we do not need to unlock the FRAM every time we want to change an ISR.
-
-volatile ram_vect_table_t __attribute__(( __section__(".ramvects") )) ram_vector_table;
-
-
 // Shortcuts for setting the RAM vectors. Note we need the (void *) casts becuase the compiler won't let us make the vectors into `near __interrupt (* volatile vector)()` like it should.
 
 #define SET_CLKOUT_VECTOR(x) do {RV3032_CLKOUT_VECTOR_RAM = (void *) x;} while (0)
