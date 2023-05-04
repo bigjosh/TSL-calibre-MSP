@@ -762,42 +762,85 @@ void testLeapYear() {
 
 */
 
-// Structure for an interrupt table
-
-struct ram_vect_table_t {
-    void (*vect_LCD_E)();
-    void (*vect_PORT2)();
-    void (*vect_PORT1)();
-    void (*vect_ADC)();
-    void (*vect_USCI_B0)();
-    void (*vect_USCI_A0)();
-    void (*vect_WDT)();
-    void (*vect_RTC)();
-    void (*vect_TIMER1_A1)();
-    void (*vect_TIMER1_A0)();
-    void (*vect_TIMER0_A1)();
-    void (*vect_TIMER0_A0)();
-    void (*vect_UNMI)();
-    void (*vect_SYSNMI)();
-    void (*vect_reset)();
-};
-
-
-// Put that interrupt table into RAM (normally it is at the top of FRAM).
-// I originally did this so we could disable the FRAM controller altogether to save power,
-// but that did not seem to make much difference. But we will keep the ISRs in RAM becuase
-// this way we do not need to unlock the FRAM every time we want to change an ISR.
-
-volatile ram_vect_table_t __attribute__(( __section__(".ramvects") )) ram_vector_table;
-
-
 // Shortcuts for setting the RAM vectors. Note we need the (void *) casts becuase the compiler won't let us make the vectors into `near __interrupt (* volatile vector)()` like it should.
 
 #define SET_CLKOUT_VECTOR(x) do {RV3032_CLKOUT_VECTOR_RAM = (void *) x;} while (0)
 #define SET_TRIGGER_VECTOR(x) do {TRIGGER_VECTOR_RAM = (void *) x;} while (0)
+#define SET_UNMI_VECTOR(x)  do {ram_vector_UNMI = (void *) x;} while (0)
 
 // Terminate after one day
 bool testing_only_mode = false;
+
+
+void launch() {
+
+    // WE HAVE LIFTOFF!
+
+    // Disable the trigger pin and drive low to save power and prevent any more interrupts from it
+    // (if it stayed pulled up then it would draw power though the pull-up resistor whenever the pin was out)
+    CBI( TRIGGER_POUT , TRIGGER_B );      // low
+    SBI( TRIGGER_PDIR , TRIGGER_B );      // drive
+
+    CBI( TRIGGER_PIFG , TRIGGER_B );      // Clear any pending interrupt (it could have gone high again since we sampled it). We already triggered so we don't care anymore.
+
+
+    // Disable the NMI pin
+    SFRIE1&=~NMIIE;                  // NMI pin Interrupts disabled
+    SFRIFG1&=~NMIIFG;                // Clear any pending interrupt (it could have gone high again since we sampled it). We already triggered so we don't care anymore.
+
+    // Flick LCD module on and off in the hopes that this will reset the prescaller and frame stepper.
+    LCDCTL0 &= ~LCDON;
+    LCDCTL0 |=  LCDON;
+
+
+    // Show all 0's on the LCD to quickly let the user know that we saw the pull
+    lcd_show_zeros();
+
+    // Do the actual launch, which will...
+    // 1. Read the current RTC time and save it to FRAM
+    // 2. Set the launchflag in FRAM so we will forevermore know that we did launch already.
+    // 3. Reset the current RTC time to midnight 1/1/00.
+
+    // Initialize our i2c pins as pull-up
+    i2c_init();
+
+    // First get current time and save it to FRAM for archival purposes.
+    // Also update the persistent storage to reflect that we launched now.
+    unlock_persistant_data();
+    i2c_read( RV_3032_I2C_ADDR , RV3032_SECS_REG  , (void *)  &persistent_data.launched_time , sizeof( rv3032_time_block_t ) );
+    persistent_data.launch_flag=0x01;
+    persistent_data.acid_century_counter.writeData(&century_counter_init);
+    lock_persistant_data();
+
+    // Then zero out the RTC to start counting over again, starting now. Note that writing any value to the seconds register resets the sub-second counters to the beginning of the second.
+    // "Writing to the Seconds register creates an immediate positive edge on the LOW signal on CLKOUT pin."
+    i2c_write( RV_3032_I2C_ADDR , RV3032_SECS_REG  , &rv_3032_time_block_init , sizeof( rv3032_time_block_t ) );
+
+    i2c_shutdown();
+
+    // Note that the time variables will already be initialized to zero from power up
+
+    // We will get the next tick with a rising edge on CLKOUT in 1000ms. Make sure we return from this ISR before then.
+
+    // Clear any pending RTC interrupt so we will not tick until the next pulse comes from RTC in 1000ms
+    // There could be a race where an RTC interrupt comes in just after the trigger was pulled, in which case we would
+    // have a pending interrupt that would get serviced immediately after we return from here, which would look ugly.
+    // We could also see an interrupt if the CLKOUT signal was low when trigger pulled (50% likelihood) since it will go high on reset.
+
+    CBI( RV3032_CLKOUT_PIFG , RV3032_CLKOUT_B );      // Clear any pending interrupt from CLKOUT
+
+    // Flash lights
+
+    flash();
+
+    // Start ticking from... now!
+    // (We rely on the secs, mins, hours, and days_digits[] all having been init'ed to zeros.)
+
+    // Begin TSL mode on next tick
+    SET_CLKOUT_VECTOR( &TSL_MODE_BEGIN );
+
+
+}
 
 // Called when trigger pin changes high to low, indicating the trigger has been pulled and we should start ticking.
 // Note that this interrupt is only enabled when we enter ready-to-launch mode, and then it is disabled and also the pin in driven low
@@ -826,65 +869,34 @@ __interrupt void trigger_isr(void) {
 
         // WE HAVE LIFTOFF!
 
-        // Disable the trigger pin and drive low to save power and prevent any more interrupts from it
-        // (if it stayed pulled up then it would draw power though the pull-up resistor whenever the pin was out)
-
-        CBI( TRIGGER_POUT , TRIGGER_B );      // low
-        SBI( TRIGGER_PDIR , TRIGGER_B );      // drive
-
-        CBI( TRIGGER_PIFG , TRIGGER_B );      // Clear any pending interrupt (it could have gone high again since we sampled it). We already triggered so we don't care anymore.
-
-        // Show all 0's on the LCD to quickly let the user know that we saw the pull
-        lcd_show_zeros();
-
-        // Do the actual launch, which will...
-        // 1. Read the current RTC time and save it to FRAM
-        // 2. Set the launchflag in FRAM so we will forevermore know that we did launch already.
-        // 3. Reset the current RTC time to midnight 1/1/00.
-
-        // Initialize our i2c pins as pull-up
-        i2c_init();
-
-        // First get current time and save it to FRAM for archival purposes.
-        // Also update the persistent storage to reflect that we launched now.
-        unlock_persistant_data();
-        i2c_read( RV_3032_I2C_ADDR , RV3032_SECS_REG  , (void *)  &persistent_data.launched_time , sizeof( rv3032_time_block_t ) );
-        persistent_data.launch_flag=0x01;
-        persistent_data.acid_century_counter.writeData(&century_counter_init);
-        lock_persistant_data();
-
-        // Then zero out the RTC to start counting over again, starting now. Note that writing any value to the seconds register resets the sub-second counters to the beginning of the second.
-        // "Writing to the Seconds register creates an immediate positive edge on the LOW signal on CLKOUT pin."
-        i2c_write( RV_3032_I2C_ADDR , RV3032_SECS_REG  , &rv_3032_time_block_init , sizeof( rv3032_time_block_t ) );
-
-        i2c_shutdown();
-
-        // Note that the time variables will already be initialized to zero from power up
-
-        // We will get the next tick with a rising edge on CLKOUT in 1000ms. Make sure we return from this ISR before then.
-
-        // Clear any pending RTC interrupt so we will not tick until the next pulse comes from RTC in 1000ms
-        // There could be a race where an RTC interrupt comes in just after the trigger was pulled, in which case we would
-        // have a pending interrupt that would get serviced immediately after we return from here, which would look ugly.
-        // We could also see an interrupt if the CLKOUT signal was low when trigger pulled (50% likelihood) since it will go high on reset.
-
-        CBI( RV3032_CLKOUT_PIFG , RV3032_CLKOUT_B );      // Clear any pending interrupt from CLKOUT
-
-        // Flash lights
-
-        flash();
-
-        // Start ticking from... now!
-        // (We rely on the secs, mins, hours, and days_digits[] all having been init'ed to zeros.)
-
-        // Begin TSL mode on next tick
-        SET_CLKOUT_VECTOR( &TSL_MODE_BEGIN );
+        launch();
 
     }
 
     DEBUG_PULSE_OFF();
 
 }
+
+// Called when NMI pin pin changes high to low, indicating the trigger has been pulled and we should start ticking.
+// Note that this interrupt is only enabled when we enter ready-to-launch mode, and then it is disabled
+// when we then switch to time-since-lanuch mode, so this ISR can only get called in ready-to-lanuch mode.
+
+__interrupt void unmi_isr(void) {
+
+    DEBUG_PULSE_ON();
+
+    // Note that there is a hardware glitch filter on the NMI pin
+
+    // Then the interrupt flag that got us here.
+    SFRIFG1&=~NMIIFG;
+
+    // WE HAVE LIFTOFF!
+    launch();
+
+    DEBUG_PULSE_OFF();
+
+}
+
 
 /*
 
@@ -934,13 +946,13 @@ __interrupt void startup_isr(void) {
 
         // If trigger is still inserted 1 second later  (since we entered arming mode) , then go into READY_TO_LAUNCH were we wait for it to be pulled
 
-        if ( TBI( TRIGGER_PIN , TRIGGER_B )  ) {        // Trigger still pin inserted? (switch open, pin high)
+        if ( 1||  TBI( TRIGGER_PIN , TRIGGER_B )  ) {        // Trigger still pin inserted? (switch open, pin high)
 
             // Now we need to setup interrupt on trigger pull to wake us when pin  goes low
             // This way we can react instantly when the user pulls the pin.
 
-            SBI( TRIGGER_PIE  , TRIGGER_B );          // Enable interrupt on the INT pin high to low edge. Normally pulled-up when pin is inserted (switch lever is depressed)
-            SBI( TRIGGER_PIES , TRIGGER_B );          // Interrupt on high-to-low edge (the pin is pulled up by MSP430 and then RV3032 driven low with open collector by RV3032)
+            //SBI( TRIGGER_PIE  , TRIGGER_B );          // Enable interrupt on the INT pin high to low edge. Normally pulled-up when pin is inserted (switch lever is depressed)
+            //SBI( TRIGGER_PIES , TRIGGER_B );          // Interrupt on high-to-low edge (the pin is pulled up by MSP430 and then RV3032 driven low with open collector by RV3032)
 
             // Clear any pending interrupt so we will need a new transition to trigger
             CBI( TRIGGER_PIFG , TRIGGER_B);
@@ -949,7 +961,17 @@ __interrupt void startup_isr(void) {
             SET_CLKOUT_VECTOR( &RTL_MODE_BEGIN );
 
             // When the trigger is pulled, it will generate a hardware interrupt and call this ISR which will start time since launch mode.
-            SET_TRIGGER_VECTOR(trigger_isr);
+            //SET_TRIGGER_VECTOR(trigger_isr);
+
+
+            // Next set everything up so we can also trigger off NMI
+            // PUll up resistor on by default
+            SFRRPCR|=SYSNMIIES;         // Interrupt on falling edge of RST/NMI pin (do before SYSNMI bit to avoid spurious trigger)
+            SFRRPCR|=SYSNMI;            // NMI/RST pin to NMI function
+            SFRIE1|=NMIIE;              // NMI pin Interrupts enabled
+
+            // When the pin goes low, it will generate a user NMI and call this ISR which will launch.
+            SET_UNMI_VECTOR(unmi_isr);
 
         } else {
 
@@ -1325,7 +1347,7 @@ int main( void )
         flash();
 
         lcd_show_first_start_message();
-        sleepforeverandever();
+        //sleepforeverandever();
 
         // After first start up, unit must be re-powered to enter normal operation.
     }
@@ -1390,7 +1412,7 @@ int main( void )
         SBI( TRIGGER_PREN , TRIGGER_B );      // Enable pull resistor
         SBI( TRIGGER_POUT , TRIGGER_B );      // Pull up
 
-        mode = LOAD_TRIGGER;                  // Go though the state machine to wait for trigger to be loaded
+        mode = ARMING;                  // Go though the state machine to wait for trigger to be loaded
         step =0;                              // Used to slide a dash indicator pointing to the pin location
 
 
