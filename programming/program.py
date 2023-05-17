@@ -48,7 +48,8 @@ airtable_record_template = '''
           "fields": {{
             "Serialnumber": "{}",
             "Firmware": "{}",
-            "DeviceID": "{}"
+            "DeviceID": "{}",
+            "MAC": "{}"
           }}
         }}
       ]
@@ -550,9 +551,14 @@ def program_loop():
 
                 print( f"Device UUID is {device_uuid}\n")
 
+                #save the MAC of this machine so we can trace where it was programmed
+                mac_id =  format( uuid.getnode() , "x")
+
+                print( f"Machine MAC id is {mac_id}\n")
+
                 print( "Adding record to airtable...\n")
 
-                airtable_record_request = airtable_record_template.format(serialno,firmware_hash,device_uuid)
+                airtable_record_request = airtable_record_template.format(serialno,firmware_hash,device_uuid,mac_id)
 
                 # Make the API request to create a new record
                 conn = http.client.HTTPSConnection(host)
