@@ -103,8 +103,18 @@ void lcd_show_zeros();
 // use fill_lcd_words() to fill these arrays.
 
 extern word secs_lcd_words[SECS_PER_MIN];
+extern word secs_lcd_words_no_offset[SECS_PER_MIN];
+
 
 // Write a value from this array into this word to update the two digits on the LCD display
 extern word *secs_lcdmem_word;
+
+
+extern word mins_lcd_words[MINS_PER_HOUR];
+extern word mins_lcd_words_no_offset[MINS_PER_HOUR];
+
+// Write a value from the array into this word to update the two digits on the LCD display
+extern word *mins_lcdmem_word;
+
 
 #endif /* LCD_DISPLAY_H_ */

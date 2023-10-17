@@ -272,6 +272,7 @@ constexpr byte LCDMEM_WORD_COUNT=16;             // Total number of words in LCD
 
 #pragma RETAIN
 word secs_lcd_words[SECS_PER_MIN];
+word secs_lcd_words_no_offset[SECS_PER_MIN];
 
 // Make sure that the 4 nibbles that make up the 2 seconds digits are all in the same word in LCD memory
 // Note that if you move pins around and are not able to satisfy this requirement, you can not use this optimization and will instead need to manually set the various nibbles in LCDMEM individually.
@@ -289,6 +290,8 @@ word *secs_lcdmem_word = (word *) (&LCDMEMW[ lpin_t<digitplace_lpins_table[SECS_
 
 #define MINS_PER_HOUR 60
 word mins_lcd_words[MINS_PER_HOUR];
+word mins_lcd_words_no_offset[MINS_PER_HOUR];
+
 
 static_assert( lpin_t<digitplace_lpins_table[SECS_ONES_DIGITPLACE_INDEX].lpin_a_thru_d >::lcdmem_offset() >> 1 ==  lpin_t<digitplace_lpins_table[SECS_ONES_DIGITPLACE_INDEX].lpin_e_thru_g>::lcdmem_offset() >> 1  , "The seconds ones digit LPINs must be in the same LCDMEM word");
 static_assert( lpin_t<digitplace_lpins_table[SECS_TENS_DIGITPLACE_INDEX].lpin_a_thru_d >::lcdmem_offset() >> 1 ==  lpin_t<digitplace_lpins_table[SECS_TENS_DIGITPLACE_INDEX].lpin_e_thru_g>::lcdmem_offset() >> 1  , "The seconds tens digit LPINs must be in the same LCDMEM word");
@@ -302,12 +305,12 @@ static_assert( lpin_t<digitplace_lpins_table[SECS_ONES_DIGITPLACE_INDEX].lpin_a_
 // In our case, seconds and minutes meet this constraint (not by accident!) so we can do the *vast* majority of all updates efficiently with just a single instruction word assignment.
 // Note that if the LPINs are not in the right places, then this will fail by having some unlit segments in some numbers.
 
-// Note there is a tricky part - [59] = "00", [00]="01", .. [01] = "02". This is because the MSP430 only has POST INCREMENT instructions
+// Note there is a tricky part - [59] = "00", [00]="01", [01] = "02"... [58] = "59". This is because the MSP430 only has POST INCREMENT instructions
 // and no pre increment, so we are basically living one second into the future get to use the free post increment and to save some cycles.
 
 // Returns the address in LCDMEM that you should assign a words[] to in order to display the indexed 2 digit number
 
-void fill_lcd_words( word *words , const byte tens_digit_index , const byte ones_digit_index , const byte max_tens_digit , const byte max_ones_digit ) {
+void fill_lcd_words( word *words , word *words_no_offset ,  const byte tens_digit_index , const byte ones_digit_index , const byte max_tens_digit , const byte max_ones_digit ) {
 
     const digit_lpin_record_t tens_logical_digit = digitplace_lpins_table[tens_digit_index];
 
@@ -331,6 +334,7 @@ void fill_lcd_words( word *words , const byte tens_digit_index , const byte ones
 
             // This next line is where we add the +1 offset to all our tables.
             words[ (((tens_digit * max_ones_digit) + ones_digit) + ( (max_tens_digit*max_ones_digit )-1 )  ) % (max_tens_digit*max_ones_digit )] = word_of_nibbles.as_word;
+            words_no_offset[ (tens_digit * max_ones_digit) + ones_digit] = word_of_nibbles.as_word;
 
         }
 
@@ -341,7 +345,7 @@ void fill_lcd_words( word *words , const byte tens_digit_index , const byte ones
 
 
 // Write a value from the array into this word to update the two digits on the LCD display
-constexpr word *mins_lcdmem_word = &LCDMEMW[ lpin_t<digitplace_lpins_table[MINS_ONES_DIGITPLACE_INDEX].lpin_a_thru_d>::lcdmem_offset() >> 1 ];
+word *mins_lcdmem_word = &LCDMEMW[ lpin_t<digitplace_lpins_table[MINS_ONES_DIGITPLACE_INDEX].lpin_a_thru_d>::lcdmem_offset() >> 1 ];
 
 byte hours_lcd_bytes[10];
 
@@ -491,9 +495,9 @@ void initLCDPrecomputedWordArrays() {
     // these two updates are optimized since they account for the VAST majority of all time spent in the CPU active mode.
 
     // Fill the seconds array
-    fill_lcd_words( secs_lcd_words , SECS_TENS_DIGITPLACE_INDEX , SECS_ONES_DIGITPLACE_INDEX , 6 , 10 );
+    fill_lcd_words( secs_lcd_words , secs_lcd_words_no_offset , SECS_TENS_DIGITPLACE_INDEX , SECS_ONES_DIGITPLACE_INDEX , 6 , 10 );
     // Fill the minutes array
-    fill_lcd_words( mins_lcd_words , MINS_TENS_DIGITPLACE_INDEX , MINS_ONES_DIGITPLACE_INDEX , 6 , 10 );
+    fill_lcd_words( mins_lcd_words , mins_lcd_words_no_offset , MINS_TENS_DIGITPLACE_INDEX , MINS_ONES_DIGITPLACE_INDEX , 6 , 10 );
     // Fill the array of frames for ready-to-launch-mode animation
     fill_lcd_bytes( hours_lcd_bytes , HOURS_ONES_DIGITPLACE_INDEX );
     fill_ready_to_launch_lcd_frames();

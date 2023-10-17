@@ -762,10 +762,132 @@ void testLeapYear() {
 
 */
 
+// This is slow but simple. Only called once per day and only in countdown mode.
+
+void show_days( unsigned d ) {
+
+    for( unsigned n = 6; n < 12 ; n++ ) {
+
+        unsigned x = d / 10;
+
+        unsigned y = d - (x*10);
+
+        lcd_show_digit_f(  n , y  );
+
+        d = x;
+
+    }
+
+}
+
 // Shortcuts for setting the RAM vectors. Note we need the (void *) casts becuase the compiler won't let us make the vectors into `near __interrupt (* volatile vector)()` like it should.
 
 #define SET_CLKOUT_VECTOR(x) do {RV3032_CLKOUT_VECTOR_RAM = (void *) x;} while (0)
 #define SET_TRIGGER_VECTOR(x) do {TRIGGER_VECTOR_RAM = (void *) x;} while (0)
+
+// Count backwards. Switches to normal mode when it hits zero.
+__interrupt void time_since_launch_countdown_isr() {
+
+    if (rtc_secs == 0) {
+
+        if (rtc_mins == 0 ) {
+
+            if (rtc_hours == 0) {
+
+                if (rtc_days == 0 ) {
+
+                    // BOOM, we are at count-down time zero. Switch to normal operation
+                    // We treat this as if the pin had just been pulled and record the current time so we
+                    // can recover from battery changes.
+
+                    // Show all 0's on the LCD to quickly let the user know that we saw the pull
+                    lcd_show_zeros();
+
+                    // Do the actual launch, which will...
+                    // 1. Read the current RTC time and save it to FRAM
+                    // 2. Set the launchflag in FRAM so we will forevermore know that we did launch already.
+                    // 3. Reset the current RTC time to midnight 1/1/00.
+
+                    // Initialize our i2c pins as pull-up
+                    i2c_init();
+
+                    // First get current time and save it to FRAM for archival purposes.
+                    // Also update the persistent storage to reflect that we launched now.
+                    unlock_persistant_data();
+                    i2c_read( RV_3032_I2C_ADDR , RV3032_SECS_REG  , (void *)  &persistent_data.launched_time , sizeof( rv3032_time_block_t ) );
+                    persistent_data.launch_flag=0x01;
+                    persistent_data.acid_century_counter.writeData(&century_counter_init);
+                    lock_persistant_data();
+
+                    i2c_shutdown();
+
+                    // Note that the time variables will already be initialized to zero from power up
+
+                    // We will get the next tick with a rising edge on CLKOUT in 1000ms. Make sure we return from this ISR before then.
+
+                    // Clear any pending RTC interrupt so we will not tick until the next pulse comes from RTC in 1000ms
+                    // There could be a race where an RTC interrupt comes in just after the trigger was pulled, in which case we would
+                    // have a pending interrupt that would get serviced immediately after we return from here, which would look ugly.
+                    // We could also see an interrupt if the CLKOUT signal was low when trigger pulled (50% likelihood) since it will go high on reset.
+
+                    CBI( RV3032_CLKOUT_PIFG , RV3032_CLKOUT_B );      // Clear any pending interrupt from CLKOUT
+
+                    // Flash lights
+
+                    flash();
+
+                    // Start ticking from... now!
+                    // (We rely on the secs, mins, hours, and days_digits[] all having been init'ed to zeros.)
+
+                    // Begin TSL mode on next tick
+                    SET_CLKOUT_VECTOR( &TSL_MODE_BEGIN );
+
+                } else {
+                    rtc_days--;
+                }
+
+
+                show_days( rtc_days );
+
+                rtc_hours = 23;
+
+            } else {
+
+                rtc_hours--;
+            }
+
+            lcd_show_digit_f( 4 , rtc_hours % 10  );
+            lcd_show_digit_f( 5 , rtc_hours / 10  );
+
+            rtc_mins = 59;
+
+
+        } else {
+
+            rtc_mins--;
+
+        }
+
+        // Remember that digits in the lcd-words arrays are off by one, so [59] = "00"
+        *mins_lcdmem_word = mins_lcd_words_no_offset[rtc_mins];
+
+        rtc_secs = 59;
+
+    } else {
+        // Remember that digits in the lcd-words arrays are off by one, so [1] = "00"
+        //*secs_lcdmem_word = secs_lcd_words[rtc_secs];
+        rtc_secs--;
+    }
+
+    *secs_lcdmem_word = secs_lcd_words_no_offset[rtc_secs];
+
+
+    CBI( RV3032_CLKOUT_PIFG , RV3032_CLKOUT_B );      // Clear any pending interrupt from CLKOUT
+
+}
+
+
+
 
 // Terminate after one day
 bool testing_only_mode = false;
@@ -805,24 +927,19 @@ __interrupt void trigger_isr(void) {
 
         CBI( TRIGGER_PIFG , TRIGGER_B );      // Clear any pending interrupt (it could have gone high again since we sampled it). We already triggered so we don't care anymore.
 
-        // Show all 0's on the LCD to quickly let the user know that we saw the pull
-        lcd_show_zeros();
 
-        // Do the actual launch, which will...
-        // 1. Read the current RTC time and save it to FRAM
-        // 2. Set the launchflag in FRAM so we will forevermore know that we did launch already.
-        // 3. Reset the current RTC time to midnight 1/1/00.
+        lcd_show_zeros();
+        rtc_days = 1827;        // Days in 5 calendar years (if pulled before March 1, 2024).
+        show_days( rtc_days );
+
+
+        // Reset the RTC to be phase aligned with our pull
 
         // Initialize our i2c pins as pull-up
         i2c_init();
 
         // First get current time and save it to FRAM for archival purposes.
         // Also update the persistent storage to reflect that we launched now.
-        unlock_persistant_data();
-        i2c_read( RV_3032_I2C_ADDR , RV3032_SECS_REG  , (void *)  &persistent_data.launched_time , sizeof( rv3032_time_block_t ) );
-        persistent_data.launch_flag=0x01;
-        persistent_data.acid_century_counter.writeData(&century_counter_init);
-        lock_persistant_data();
 
         // Then zero out the RTC to start counting over again, starting now. Note that writing any value to the seconds register resets the sub-second counters to the beginning of the second.
         // "Writing to the Seconds register creates an immediate positive edge on the LOW signal on CLKOUT pin."
@@ -830,7 +947,6 @@ __interrupt void trigger_isr(void) {
 
         i2c_shutdown();
 
-        // Note that the time variables will already be initialized to zero from power up
 
         // We will get the next tick with a rising edge on CLKOUT in 1000ms. Make sure we return from this ISR before then.
 
@@ -848,8 +964,8 @@ __interrupt void trigger_isr(void) {
         // Start ticking from... now!
         // (We rely on the secs, mins, hours, and days_digits[] all having been init'ed to zeros.)
 
-        // Begin TSL mode on next tick
-        SET_CLKOUT_VECTOR( &TSL_MODE_BEGIN );
+        // Begin TSL counddown mode on next tick
+        SET_CLKOUT_VECTOR( &time_since_launch_countdown_isr );
 
     }
 
@@ -1252,6 +1368,8 @@ void time_since_launch_reference() {
     */
 
 }
+
+
 
 int main( void )
 {
