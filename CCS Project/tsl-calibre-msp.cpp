@@ -821,17 +821,6 @@ __interrupt void time_since_launch_countdown_isr() {
 
                     i2c_shutdown();
 
-                    // Note that the time variables will already be initialized to zero from power up
-
-                    // We will get the next tick with a rising edge on CLKOUT in 1000ms. Make sure we return from this ISR before then.
-
-                    // Clear any pending RTC interrupt so we will not tick until the next pulse comes from RTC in 1000ms
-                    // There could be a race where an RTC interrupt comes in just after the trigger was pulled, in which case we would
-                    // have a pending interrupt that would get serviced immediately after we return from here, which would look ugly.
-                    // We could also see an interrupt if the CLKOUT signal was low when trigger pulled (50% likelihood) since it will go high on reset.
-
-                    CBI( RV3032_CLKOUT_PIFG , RV3032_CLKOUT_B );      // Clear any pending interrupt from CLKOUT
-
                     // Flash lights
 
                     flash();
@@ -841,6 +830,12 @@ __interrupt void time_since_launch_countdown_isr() {
 
                     // Begin TSL mode on next tick
                     SET_CLKOUT_VECTOR( &TSL_MODE_BEGIN );
+
+                    CBI( RV3032_CLKOUT_PIFG , RV3032_CLKOUT_B );      // Clear any pending interrupt from CLKOUT
+
+                    // We are done with countdown mode - start counting up on next tick.
+                    return;
+
 
                 } else {
                     rtc_days--;
@@ -930,6 +925,7 @@ __interrupt void trigger_isr(void) {
 
         lcd_show_zeros();
         rtc_days = 1827;        // Days in 5 calendar years (if pulled before March 1, 2024).
+
         show_days( rtc_days );
 
 
