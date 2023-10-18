@@ -819,6 +819,10 @@ __interrupt void time_since_launch_countdown_isr() {
                     persistent_data.acid_century_counter.writeData(&century_counter_init);
                     lock_persistant_data();
 
+                    // Then zero out the RTC to start counting over again, starting now. Note that writing any value to the seconds register resets the sub-second counters to the beginning of the second.
+                    // "Writing to the Seconds register creates an immediate positive edge on the LOW signal on CLKOUT pin."
+                    i2c_write( RV_3032_I2C_ADDR , RV3032_SECS_REG  , &rv_3032_time_block_init , sizeof( rv3032_time_block_t ) );
+
                     i2c_shutdown();
 
                     // Flash lights
@@ -926,6 +930,11 @@ __interrupt void trigger_isr(void) {
         lcd_show_zeros();
         rtc_days = 1827;        // Days in 5 calendar years (if pulled before March 1, 2024).
 
+//        Test rollover
+//        rtc_days=0;
+//        rtc_mins=1;
+
+
         show_days( rtc_days );
 
 
@@ -960,7 +969,7 @@ __interrupt void trigger_isr(void) {
         // Start ticking from... now!
         // (We rely on the secs, mins, hours, and days_digits[] all having been init'ed to zeros.)
 
-        // Begin TSL counddown mode on next tick
+        // Begin TSL countdown mode on next tick
         SET_CLKOUT_VECTOR( &time_since_launch_countdown_isr );
 
     }
