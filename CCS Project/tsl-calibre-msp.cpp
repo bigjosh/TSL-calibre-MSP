@@ -36,8 +36,6 @@
 #define DEBUG_PULSE_ON()     {}
 #define DEBUG_PULSE_OFF()    {}
 
-
-
 // Put the LCD into blinking mode
 
 void lcd_blinking_mode() {
@@ -1295,7 +1293,7 @@ int main( void )
         // Flash the LEDs to prove they work.
         flash();
 
-        lcd_show_first_start_message();
+        lcd_show_start_message();
         sleepforeverandever();
 
         // After first start up, unit must be re-powered to enter normal operation.

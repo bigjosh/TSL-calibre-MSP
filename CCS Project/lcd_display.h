@@ -74,7 +74,7 @@ void lcd_show_load_pin_animation(unsigned int step);
 constexpr unsigned LANCE_ANIMATION_FRAME_COUNT = DIGITPLACE_COUNT+3;          // There really should be a better way to do this.
 
 // Show "First Start"
-void lcd_show_first_start_message();
+void lcd_show_start_message();
 
 // Show the message "Error cOde X" on the lcd.
 void lcd_show_errorcode( byte code  );

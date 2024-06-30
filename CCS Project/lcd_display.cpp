@@ -95,7 +95,7 @@ constexpr glyph_segment_t glyph_lbrac  = {SEG_A_COM_BIT |                       
 
 // All the single digit numbers (up to 0x0f hex) in an array for easy access
 
-constexpr glyph_segment_t digit_segments[0x10] = {
+constexpr glyph_segment_t digit_glyphs[0x10] = {
 
     glyph_0, // "0"
     glyph_1, // "1" (no high pin segments lit in the number 1)
@@ -321,13 +321,13 @@ void fill_lcd_words( word *words , const byte tens_digit_index , const byte ones
 
         // The ` & 0x01` here is normalizing the address in the LCDMEM to be just the offset into the word (hi or low byte)
 
-        word_of_nibbles.set_nibble( lpin_lcdmem_offset( tens_logical_digit.lpin_a_thru_d ) & 0x01 , lpin_nibble( tens_logical_digit.lpin_a_thru_d ) , digit_segments[tens_digit].nibble_a_thru_d );
-        word_of_nibbles.set_nibble( lpin_lcdmem_offset( tens_logical_digit.lpin_e_thru_g ) & 0x01 , lpin_nibble( tens_logical_digit.lpin_e_thru_g ) , digit_segments[tens_digit].nibble_e_thru_g );
+        word_of_nibbles.set_nibble( lpin_lcdmem_offset( tens_logical_digit.lpin_a_thru_d ) & 0x01 , lpin_nibble( tens_logical_digit.lpin_a_thru_d ) , digit_glyphs[tens_digit].nibble_a_thru_d );
+        word_of_nibbles.set_nibble( lpin_lcdmem_offset( tens_logical_digit.lpin_e_thru_g ) & 0x01 , lpin_nibble( tens_logical_digit.lpin_e_thru_g ) , digit_glyphs[tens_digit].nibble_e_thru_g );
 
         for( byte ones_digit = 0; ones_digit < max_ones_digit ; ones_digit ++ ) {
 
-            word_of_nibbles.set_nibble( lpin_lcdmem_offset( ones_logical_digit.lpin_a_thru_d ) & 0x01 , lpin_nibble(ones_logical_digit.lpin_a_thru_d) , digit_segments[ones_digit].nibble_a_thru_d );
-            word_of_nibbles.set_nibble( lpin_lcdmem_offset( ones_logical_digit.lpin_e_thru_g ) & 0x01 , lpin_nibble(ones_logical_digit.lpin_e_thru_g) , digit_segments[ones_digit].nibble_e_thru_g );
+            word_of_nibbles.set_nibble( lpin_lcdmem_offset( ones_logical_digit.lpin_a_thru_d ) & 0x01 , lpin_nibble(ones_logical_digit.lpin_a_thru_d) , digit_glyphs[ones_digit].nibble_a_thru_d );
+            word_of_nibbles.set_nibble( lpin_lcdmem_offset( ones_logical_digit.lpin_e_thru_g ) & 0x01 , lpin_nibble(ones_logical_digit.lpin_e_thru_g) , digit_glyphs[ones_digit].nibble_e_thru_g );
 
             // This next line is where we add the +1 offset to all our tables.
             words[ (((tens_digit * max_ones_digit) + ones_digit) + ( (max_tens_digit*max_ones_digit )-1 )  ) % (max_tens_digit*max_ones_digit )] = word_of_nibbles.as_word;
@@ -375,11 +375,11 @@ void fill_lcd_bytes( byte *bytes , const byte digit_index ) {
 
         if  ( lpin_nibble( logical_digit.lpin_a_thru_d ) == LOWER ) {
             // A-D is low
-            byte_of_nibbles =  digit_segments[digit].nibble_a_thru_d  | ( digit_segments[digit].nibble_e_thru_g  ) << 4;
+            byte_of_nibbles =  digit_glyphs[digit].nibble_a_thru_d  | ( digit_glyphs[digit].nibble_e_thru_g  ) << 4;
 
         } else {
             // A-D is high
-            byte_of_nibbles =  (digit_segments[digit].nibble_a_thru_d << 4)  |  digit_segments[digit].nibble_e_thru_g  ;
+            byte_of_nibbles =  (digit_glyphs[digit].nibble_a_thru_d << 4)  |  digit_glyphs[digit].nibble_e_thru_g  ;
 
         }
 
@@ -509,8 +509,8 @@ void initLCDPrecomputedWordArrays() {
 template <uint8_t pos, uint8_t x>                    // Use template to force everything to compile down to an individualized, optimized function for each pos+x combination
 inline void lcd_show() {
 
-    constexpr uint8_t nibble_a_thru_d =  digit_segments[x].nibble_a_thru_d;         // Look up which segments on the low pin we need to turn on to draw this digit
-    constexpr uint8_t nibble_e_thru_g =  digit_segments[x].nibble_e_thru_g;         // Look up which segments on the low pin we need to turn on to draw this digit
+    constexpr uint8_t nibble_a_thru_d =  digit_glyphs[x].nibble_a_thru_d;         // Look up which segments on the low pin we need to turn on to draw this digit
+    constexpr uint8_t nibble_e_thru_g =  digit_glyphs[x].nibble_e_thru_g;         // Look up which segments on the low pin we need to turn on to draw this digit
 
     constexpr uint8_t lpin_a_thru_d = digitplace_lpins_table[pos].lpin_a_thru_d;     // Look up the L-pin for the low segment bits of this digit
     constexpr uint8_t lpin_e_thru_g = digitplace_lpins_table[pos].lpin_e_thru_g;     // Look up the L-pin for the high bits of this digit
@@ -695,7 +695,7 @@ inline void lcd_show_fast_secs( uint8_t secs ) {
 
 void lcd_show_digit_f( const uint8_t pos, const byte d ) {
 
-    lcd_show_f( pos , digit_segments[ d ] );
+    lcd_show_f( pos , digit_glyphs[ d ] );
 }
 
 
@@ -924,7 +924,7 @@ void lcd_show_load_pin_animation(unsigned int step) {
 }
 
 
-constexpr glyph_segment_t first_start_message[] = {
+constexpr glyph_segment_t start_message[] = {
                                                    glyph_F,
                                                    glyph_i,
                                                    glyph_r,
@@ -940,10 +940,10 @@ constexpr glyph_segment_t first_start_message[] = {
 };
 
 // Show "First Start"
-void lcd_show_first_start_message() {
+void lcd_show_start_message() {
 
     for( byte i=0; i<DIGITPLACE_COUNT; i++ ) {
-        lcd_show_f(  i , first_start_message[ DIGITPLACE_COUNT - 1- i] );        // digit place 12 is rightmost, so reverse order for text
+        lcd_show_f(  i , start_message[ DIGITPLACE_COUNT - 1- i] );        // digit place 12 is rightmost, so reverse order for text
     }
 }
 
