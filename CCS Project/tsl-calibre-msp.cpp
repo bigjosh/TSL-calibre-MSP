@@ -68,12 +68,33 @@ void depower_rv3032() {
 #pragma FUNC_NEVER_RETURNS
 void sleepforeverandever(){
 
-    // These lines enable the LPMx.5 modes
-    PMMCTL0_H = PMMPW_H;                    // Open PMM Registers for write
-    PMMCTL0_L |= PMMREGOFF_L;               // and set PMMREGOFF
 
+    /*
+
+    // Manually disconnect the x.5 regulator switch Note that this does not seem to save any power over leaving automatic on.
+    // Maybe this can save some power to leave the switch open when we are actually running the ISP, as long as we only write to the LCD
+    // once? If we write more than once then we need to close the switch because LCD can only run at 40KHz on the small regulator.
+
+
+    PM5CTL0 = LPM5SM                     // "Manual mode. The LPM3.5 switch is specified by LPM5SW bit setting in software."
+                                         // "0b = LPMx.5 switch disconnected". Now the RTC and LCD are only powered from the tiny LPM3.5 regulator, so you can only Access them slowly (we do not access them at all from now on).
+              | LOCKLPM5;                // Lock I/O pin and other LPMx.5 relevant (for example, RTC) configurations upon
+                                         // entry to or exit from LPMx.5. After the LOCKLPM5 bit is set, it can be cleared
+                                         // only by software or by a power cycle.
+                                         // This bit is reset by a power cycle.
+
+    */
+
+    /*
+    // These enable the LPMx.5 mode
+    PMMCTL0 = PMMPW                    // Open PMM Registers for write
+                                          // We do not include SVSHE so supervisor is off.
+              | PMMREGOFF_L                // Set PMMREGOFF. "Regulator is turned off when going to LPM3 or LPM4. System enters LPM3.5 or LPM4.5, respectively."
+              ;
+*/
     // Make sure no pending interrupts here or else they might wake us!
-    __bis_SR_register(LPM3_bits);     // // Enter LPM4 and sleep forever and ever and ever (no interrupts enabled so we will never get woken up)
+    // Note that there is no power difference between LPM3 and LPM4 here, probably because OSC is already off because we are using VLO for the LCD?
+    __bis_SR_register(LPM4_bits);     // // Enter LPM4 and sleep forever and ever and ever (no interrupts enabled so we will never get woken up)
 
 }
 
@@ -1264,7 +1285,7 @@ int main( void )
     // Disable the Voltage Supervisor (SVS=OFF) to save power since we don't care if the MSP430 goes low voltage
     // This code from LPM_4_5_2.c from TI resources
     PMMCTL0_H = PMMPW_H;                // Open PMM Registers for write
-    PMMCTL0_L &= ~(SVSHE);              // Disable high-side SVS
+    PMMCTL0_L &= ~(SVSHE);              // Disable high-side SVS. There is nothing we can do in a brownout, so don't waste power checking for one.
 
     initGPIO();
     initLCD();
@@ -1461,7 +1482,7 @@ int main( void )
 
     ACTIVATE_RAM_ISRS();
 
-    // Wait for interrupt to fire at next clkout low-to-high change to drive us into the state machine (in either "pin loading" or "time since lanuch" mode)
+    // Wait for interrupt to fire at next clkout low-to-high change to drive us into the state machine (in either "pin loading" or "time since launch" mode)
     // Could also enable the trigger pin change ISR if we are in RTL mode.
     // Note if we use LPM3_bits then we burn 18uA versus <2uA if we use LPM4_bits.
     __bis_SR_register(LPM4_bits | GIE );                // Enter LPM4
