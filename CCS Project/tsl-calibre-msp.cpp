@@ -87,6 +87,10 @@ void sleepforeverandever(){
 
     /*
     // These enable the LPMx.5 mode
+
+    // First start message in LPM3   Mode = 1.25uA
+    // First start message in LPM3.5 Mode = 1.56uA, but takes 350us to wake up compared to 10us.
+
     PMMCTL0 = PMMPW                    // Open PMM Registers for write
                                           // We do not include SVSHE so supervisor is off.
               | PMMREGOFF_L                // Set PMMREGOFF. "Regulator is turned off when going to LPM3 or LPM4. System enters LPM3.5 or LPM4.5, respectively."
@@ -135,7 +139,11 @@ void flash() {
     wiggleFlashQ2();
 }
 
+// Just gets all IO pins into an idle state
+// Powers up the LCD bias voltage generator
+// Powers up the RTC and configures MCU pin RV3032_CLKOUT as interrupt, but does not enable the interrupt.
 // Does not enable interrupts on any pins
+
 
 inline void initGPIO() {
 
@@ -539,6 +547,10 @@ struct __attribute__((__packed__)) persistent_data_t {
     // a two-step commit with a fall back.
     // We do NOT make this volatile since the member values themselves are volatile.
 
+    volatile unsigned update_flag;                           // Set to 1 when an update is in progress (backup values are valid)
+
+
+
     acid_FRAM_record_t<century_counter_t> acid_century_counter;
 
 };
@@ -564,6 +576,9 @@ void lock_persistant_data() {
 // Enables backup capacitor
 // Does not enable any interrupts
 
+// Note that we use CLKOUT at 1Hz rather than using a 1 sec periodic timer because the periodic timer uses *much* more power all the time on the RTC 9not documented!) and slightly more power on the MCU because it is open collector pulling on a pull-up resistor.
+// It would have been slightly nice to set the periodic timer to 2Hz and then interrupt on both edges. :/
+
 void rv3032_init() {
 
     // Give the RV3230 a chance to wake up before we start pounding it.
@@ -588,8 +603,12 @@ void rv3032_init() {
     //uint8_t pmu_reg = 0b01100001;         // CLKOUT off, Level backup switching mode (2v) , no charge pump, 1K OHM trickle resistor, trickle charge Vbackup to Vdd. Predicted to use ~200nA more than disabled because of voltage monitor.
     //uint8_t pmu_reg = 0b01000000;         // CLKOUT off, Other disabled backup switching mode, no charge pump, trickle resistor off, trickle charge Vbackup to Vdd
 
-    uint8_t pmu_reg = 0b00011101;          // CLKOUT ON, Direct backup switching mode, no charge pump, 12K OHM trickle resistor, trickle charge Vbackup to Vdd.
+    //uint8_t pmu_reg = 0b00011101;          // CLKOUT ON, Direct backup switching mode, no charge pump, 12K OHM trickle resistor, trickle charge Vbackup to Vdd.
+
+    uint8_t pmu_reg = 0b00000000;          // CLKOUT ON, backup switching disabled
+
     i2c_write( RV_3032_I2C_ADDR , 0xc0 , &pmu_reg , 1 );
+
 
     uint8_t control1_reg = 0b00000100;      // TE=0 so no periodic timer interrupt, EERD=1 to disable automatic EEPROM refresh (why would you want that?).
     i2c_write( RV_3032_I2C_ADDR , 0x10 , &control1_reg , 1 );
@@ -1317,43 +1336,13 @@ int main( void )
         flash();
 
         lcd_show_first_start_message();
-        sleepforeverandever();
+
+#warning
+        //sleepforeverandever();
 
         // After first start up, unit must be re-powered to enter normal operation.
     }
 
-
-    // Read the state of the RV3032. Returns an error if the chip has lost power since it was set (so the time is invalid) or if bad data from the RTC
-    uint8_t rtcState = RV3032_read_state();
-
-    if (rtcState==2) {
-
-        // We got bad data from the RTC. Could be defective chip or
-        // bad PCB connection, but most likely is that batteries were pulled
-        // and new batteries had lower voltage than old, so RTC stayed in backup mode.
-        // If this does happen, you can just wait a few minutes for the RTC backup voltage to
-        // drop and then remove and reinsert the batteries to restart and it should be fine.
-
-        error_mode( ERROR_BAD_CLOCK );
-
-    }
-
-    if (rtcState==1) {
-
-        // RTC lost power at some point so nothing we can do except show an error message forever.
-
-        if (persistent_data.launch_flag != 0x01) {
-            lcd_show_batt_errorcode( BATT_ERROR_PRELAUNCH );
-        } else {
-            lcd_show_batt_errorcode( BATT_ERROR_POSTLAUNCH );
-        }
-
-        // Mind as well turn it off since we it does not know what time it is
-        blinkforeverandever();
-
-    }
-
-    // If we get here then we know the RTC is good and that it has good clock data (ie it has been continuously powered since it was commissioned at the factory)
 
     // Wait for any clkout transition so we know we have at least 500ms to read out time and activate interrupt before time changes so we dont miss any seconds.
     // This should always take <500ms
@@ -1502,7 +1491,5 @@ int main( void )
     error_mode( ERROR_MAIN_RETURN );                    // This would be very weird if we ever saw it.
 
 }
-
-
 
 
