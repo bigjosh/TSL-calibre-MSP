@@ -19,7 +19,7 @@ Parts U1, U2, L1, & L2 are orienation sensitive. See photos in this directory fo
 rotation.
 
 6. 
-Part C1 is a resistor. The line in the BOM is correct.
+Part C2 is a resistor. The line in the BOM is correct.
 
 7.
 PCB Parameters
