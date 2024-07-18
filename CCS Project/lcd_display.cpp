@@ -50,6 +50,9 @@ struct glyph_segment_t {
     const nibble nibble_e_thru_g;     // The COM bits for the digit's E-G segments
 };
 
+// This line prevents us from getting "declared but never used" warnings on chars that we just happened to not be using right now.
+#pragma diag_suppress 179
+
 constexpr glyph_segment_t glyph_0      = {SEG_A_COM_BIT | SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT                  }; // "0"
 constexpr glyph_segment_t glyph_1      = {                SEG_B_COM_BIT | SEG_C_COM_BIT                 ,                                               0}; // "1" (no high pin segments lit in the number 1)
 constexpr glyph_segment_t glyph_2      = {SEG_A_COM_BIT | SEG_B_COM_BIT |                 SEG_D_COM_BIT , SEG_E_COM_BIT |                 SEG_G_COM_BIT  }; // "2"
@@ -93,6 +96,14 @@ constexpr glyph_segment_t glyph_rbrac  = {SEG_A_COM_BIT | SEG_B_COM_BIT | SEG_C_
 constexpr glyph_segment_t glyph_lbrac  = {SEG_A_COM_BIT |                                 SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT                  }; // "["
 
 
+// These are little jaggy lines going one way and the other way
+constexpr glyph_segment_t left_tick_segments = {  SEG_C_COM_BIT , SEG_F_COM_BIT | SEG_G_COM_BIT };
+constexpr glyph_segment_t right_tick_segments = { SEG_B_COM_BIT , SEG_E_COM_BIT | SEG_G_COM_BIT };
+
+// Go back to showing warning for unused variables.
+#pragma diag_default 179
+
+
 // All the single digit numbers (up to 0x0f hex) in an array for easy access
 
 constexpr glyph_segment_t digit_segments[0x10] = {
@@ -132,10 +143,6 @@ constexpr glyph_segment_t squiggle_segments[SQUIGGLE_SEGMENTS_SIZE] = {
     { 0x00          , SEG_F_COM_BIT  },
 };
 
-
-// These are little jaggy lines going one way and the other way
-constexpr glyph_segment_t left_tick_segments = {  SEG_C_COM_BIT , SEG_F_COM_BIT | SEG_G_COM_BIT };
-constexpr glyph_segment_t right_tick_segments = { SEG_B_COM_BIT , SEG_E_COM_BIT | SEG_G_COM_BIT };
 
 
 // This represents a logical digit that we will use to actually display numbers on the screen
@@ -270,7 +277,6 @@ constexpr byte LCDMEM_WORD_COUNT=16;             // Total number of words in LCD
 // controls the seconds and mins digits on the LCD. We keep these in RAM intentionally for power and latency savings.
 // use fill_lcd_words() to fill these arrays.
 
-#pragma RETAIN
 word secs_lcd_words[SECS_PER_MIN];
 
 // Make sure that the 4 nibbles that make up the 2 seconds digits are all in the same word in LCD memory
@@ -338,10 +344,6 @@ void fill_lcd_words( word *words , const byte tens_digit_index , const byte ones
     }
 
 };
-
-
-// Write a value from the array into this word to update the two digits on the LCD display
-constexpr word *mins_lcdmem_word = &LCDMEMW[ lpin_t<digitplace_lpins_table[MINS_ONES_DIGITPLACE_INDEX].lpin_a_thru_d>::lcdmem_offset() >> 1 ];
 
 byte hours_lcd_bytes[10];
 
