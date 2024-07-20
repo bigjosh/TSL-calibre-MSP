@@ -770,7 +770,7 @@ extern "C" void tsl_new_day() {
         CSCTL4 = SELMS__VLOCLK;
         __delay_cycles(5000UL);
         // Switch the MCU back to DCO clock which uses more power per time, but more than compensates for it by getting even more done per time.
-        CSCTL4 = SELMS__VLOCLK;
+        CSCTL4 = 0;
         lcd_restore_screen(&lcd_screen_save_buffer);
 
     }
