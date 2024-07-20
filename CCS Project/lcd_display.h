@@ -14,6 +14,11 @@
 
 extern "C" {
 
+    constexpr word * LCDMEMW = (word *) LCDMEM;     // Word pointer to the LCD display memory
+
+    constexpr byte LCDMEM_WORD_COUNT=16;             // Total number of words in LCD mem. Note that we do not actually use them all, but our display is spread across it.
+
+
     constexpr uint8_t DIGITPLACE_COUNT=12;
 
     // these arrays hold the pre-computed words that we will write to word in LCD memory that
@@ -100,6 +105,17 @@ extern "C" {
     // Write a value from this array into this word to update the two digits on the LCD display
     extern word *secs_lcdmem_word;
 
+    struct lcd_save_screen_buffer_t {
+        unsigned w[LCDMEM_WORD_COUNT];
+    };
+
+
+    // Save the current LCD display pixels
+    void lcd_save_screen( lcd_save_screen_buffer_t *buffer);
+
+    // Restore the current LCD display pixels
+    void lcd_restore_screen( lcd_save_screen_buffer_t *buffer);
+
 }
 
 #endif /* LCD_DISPLAY_H_ */
@@ -112,3 +128,4 @@ template <uint8_t pos, uint8_t x>                    // Use template to force ev
 inline void lcd_show();
 // Show the digit x at position p
 // where p=0 is the rightmost digit
+

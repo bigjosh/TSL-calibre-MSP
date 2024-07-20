@@ -269,10 +269,6 @@ struct word_of_bytes_of_nibbles_t {
 };
 
 
-constexpr word * LCDMEMW = (word *) LCDMEM;
-
-constexpr byte LCDMEM_WORD_COUNT=16;             // Total number of words in LCD mem. Note that we do not actually use them all, but our display is spread across it.
-
 // these arrays hold the pre-computed words that we will write to word in LCD memory that
 // controls the seconds and mins digits on the LCD. We keep these in RAM intentionally for power and latency savings.
 // use fill_lcd_words() to fill these arrays.
@@ -974,6 +970,31 @@ void lcd_show_arming_message() {
     }
 }
 
+
+constexpr glyph_segment_t centesimus_dies_message[] = {
+    {0x09,0x05},
+    {0x08,0x06},
+    {0x0f,0x00},
+    {0x0b,0x06},
+    {0x0f,0x05},
+    {0x0b,0x06},
+    {0x0f,0x02},
+    {0x00,0x00},
+    {0x0e,0x04},
+    {0x0f,0x05},
+    {0x0d,0x03},
+    {0x06,0x07},
+};
+
+// Refresh day 100's places digits
+void lcd_show_centesimus_dies_message() {
+
+    for( byte i=0; i<DIGITPLACE_COUNT; i++ ) {
+        lcd_show_f(  i , centesimus_dies_message[ DIGITPLACE_COUNT - 1- i] );        // digit place 12 is rightmost, so reverse order for text
+    }
+}
+
+
 // CLOCK GOOd
 
 constexpr glyph_segment_t clock_good_message[] = {
@@ -1027,27 +1048,24 @@ void lcd_show_clock_lost_message() {
 }
 
 
-// Every 100 days
-
-constexpr glyph_segment_t centesimus_dies_message[] = {
-    {0x09,0x05},
-    {0x08,0x06},
-    {0x0f,0x00},
-    {0x0b,0x06},
-    {0x0f,0x05},
-    {0x0b,0x06},
-    {0x0f,0x02},
-    {0x00,0x00},
-    {0x0e,0x04},
-    {0x0f,0x05},
-    {0x0d,0x03},
-    {0x06,0x07},
-};
-
-// Refresh day 100's places digits
-void lcd_show_centesimus_dies_message() {
-
-    for( byte i=0; i<DIGITPLACE_COUNT; i++ ) {
-        lcd_show_f(  i , centesimus_dies_message[ DIGITPLACE_COUNT - 1- i] );        // digit place 12 is rightmost, so reverse order for text
+// Save the current LCD display pixels. Must be in the header because it is a template.
+void lcd_save_screen( lcd_save_screen_buffer_t *buffer) {
+    unsigned *x = buffer->w;
+    for( unsigned i=0; i< LCDMEM_WORD_COUNT ; i++ ) {
+        *(x++) = *(LCDMEMW +i);
     }
+
 }
+
+// Save the current LCD display pixels. Must be in the header because it is a template.
+void lcd_restore_screen( lcd_save_screen_buffer_t *buffer) {
+    unsigned *x = buffer->w;
+    for( unsigned i=0; i< LCDMEM_WORD_COUNT ; i++ ) {
+        *(LCDMEMW +i) = *(x++) ;
+    }
+
+}
+
+
+
+

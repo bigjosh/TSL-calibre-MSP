@@ -56,7 +56,14 @@ TSL_MODE_BEGIN:
 			; the straight value there and then compute everything else each update.
 			; thats OK since hours update only 1/3600th of the time. If we really wanted we could
 			; hand-code this all in ASM and then be able to use all regs, but not worth it.
-			MOV.B		&tsl_hours,R10					;  R10=Hours
+			MOV.B		&tsl_hours,R10				;  R10=Hours
+
+			; Next we need a register to hold the address of the persistent mins counter in FRAM. We do this once a minute, so should be efficient.
+			MOV.W		&persistant_mins_ptr,R11    ; R11=Address of persitent_data.mins counter in FRAM.
+													; Must be saved before calling C!
+
+			MOV.W 		#(PFWP|DFWP),R12			; R12=The constant to write to SYSCFG0 to relock the info FRAM memory. We keep it in a register becuase it is faster than using a constant for this value (0x03)
+													; Must be saved before calling C!
 
 			; Switch to FRAM based interrupt vector table
 			; Since the TSL_MODE_ISR is the default ISR for the CLKOUT pin in the FRAM vector table,
@@ -77,7 +84,6 @@ TSL_MODE_ISR
  	  		MOV.W		@R6+,&(LCDM0W_L+16)			; Read word value from table, increment the pointer, then write the word to the LCDMEM for the Seconds digits
 
 			CMP.W		R6,R5						; Check if we have reached the end of the seconds table (seconds incremented to 60)
-
 			JNE			TSL_DONE					; This takes 2 cycles, branch taken or not
 
 			; Next minute
@@ -85,6 +91,23 @@ TSL_MODE_ISR
 			; Increment the persisant minutes counter in FRAM. Note that if this is the end of the day, this will increment that counter to 1440 (24 hours)
 			; To account for this, (1) the next_day() C code always sets the mins directly back to 0, and (2) the startup code specifically looks for the case where the
 			; mins is 1440 and increments the days if so becuase that means we failed between *here* and when the next_day would have incremented the days.
+
+
+			; TODO: Make this more efficient with registers.
+			; TODO: Is the extra power for lock/unlock worth it?
+
+			; Note that we use MOV to update the SYSCFG0 rather than BIC and BIS because MOV takes 1 fewer cycles.
+			; The only downside to this is that we overwrite whatever is in the other bits, but the program memory should
+			; always be locked in our application.
+
+			; Note that keeping SYSCFG0 in a register would not speed things up since indirect addressing is always implemented as address+register, they just used R0 if you do not specify one.
+			; Is locking/unlock for each update worth it? Well, it only costs about 5 minutes per century: https://www.google.com/search?q=%28100+years%29+*++%286+microsecond%2Fminute%29
+
+			MOV.W		#PFWP,&SYSCFG0			; 3 cycles. Unlock the info section of FRAM, leave program section locked. IN this case, #PFWP is autoaliased to the constant generator register.
+			INC.W		0(R11)					; 4 cycles. Increment the mins counter. Note we do not need to do any overflow checking becuase once a day `tsl_next_day` will run and reset this.
+			MOV.W		R12,&SYSCFG0	        ; 3 cycles. Lock both info section and program section of FRAM. Using a register for #((PFWP|DFWP) saves one cycle becuase it is not a value in the constant generator.
+
+			; Now update the mins on the display
 
 			MOV.W		R4,R6						; Reset the seconds pointer back to the top of the table (which, remember is "01") for next pass. We are currently displaying "00" which is in positon 59 in the table.
 
@@ -98,7 +121,7 @@ TSL_MODE_ISR
 
 			MOV.W		R7,R9						; Reset the mins pointer back to the top of the table (which, remember is "01").
 
-			ADD.B		#1,R10						; Increment hours
+			ADD.B		#1,R10						; Increment hours. TODO: We could use an ADD.B here and then use overlfow flag to avoid the CMP
 
 			CMP			#10,R10
 			JGE			HOURS_GE_10
@@ -144,8 +167,12 @@ HOURS_EQ_24
 			MOV.B		&(hours_lcd_bytes+0),&(LCDM0W_L+10)			; Display "0" in hours 1's digit
 
 
+			PUSH.W		R11											; R11-R14 are not callee saved, so we have to save them before calling C.
+			PUSH.W		R12
 			CALL		#tsl_new_day								; Call the C++ side for a new day. Updates the days digits on the LCD and atomically
 																	; (increments the persistant days and clears the minutes).
+			POP.W		R12											; TODO: We could just reload the orginal values here and save a PUSH/POP.
+			POP.W		R11
 
 TSL_DONE
 ;----------------------------------------------------------------------

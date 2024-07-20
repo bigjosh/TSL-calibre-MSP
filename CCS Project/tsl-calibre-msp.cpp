@@ -11,21 +11,10 @@
 
 #include "tsl_asm.h"
 
-#include "acid_fram_record.hpp"
+//#include "timeblock.h"
+#include "persistent.h"
 
 #define RV_3032_I2C_ADDR (0b01010001)           // Datasheet 6.6
-
-// RV3032 Registers
-
-#define RV3032_HUNDS_REG 0x00    // Hundredths of seconds
-#define RV3032_SECS_REG  0x01
-#define RV3032_MINS_REG  0x02
-#define RV3032_HOURS_REG 0x03
-#define RV3032_DAYS_REG  0x05
-#define RV3032_MONS_REG  0x06
-#define RV3032_YEARS_REG 0x07
-
-// Used to time how long ISRs take with an oscilloscope
 
 /*
 // DEBUG VERSIONS
@@ -36,7 +25,6 @@
 // PRODUCTION VERSIONS
 #define DEBUG_PULSE_ON()     {}
 #define DEBUG_PULSE_OFF()    {}
-
 
 
 // Put the LCD into blinking mode
@@ -358,22 +346,21 @@ void initLCD() {
 
 }
 
-// The of time registers we read from the RTC in a single block using one i2c transaction.
-// This is dependant on the foramt the time is stored inside the RV3032 registers.
-// The python program that generates the files to program a unit depends on this format so it can save the current wall clock time.
 
-struct __attribute__((__packed__)) rv3032_time_block_t {
-    byte sec_bcd;
-    byte min_bcd;
-    byte hour_bcd;
-    byte weekday_bcd;
-    byte date_bcd;
-    byte month_bcd;
-    byte year_bcd;
-};
+// Just to make sure that everything lines up with the actual RV3032 hardware. Note we cannot put thin in the header file because the assembler chokes on it.
 
 static_assert( sizeof( rv3032_time_block_t ) == 7 , "The size of this structure must match the size of the block actually read from the RTC");
 
+
+// RV3032 Registers
+
+#define RV3032_HUNDS_REG 0x00    // Hundredths of seconds
+#define RV3032_SECS_REG  0x01
+#define RV3032_MINS_REG  0x02
+#define RV3032_HOURS_REG 0x03
+#define RV3032_DAYS_REG  0x05
+#define RV3032_MONS_REG  0x06
+#define RV3032_YEARS_REG 0x07
 
 // Read the time regs in one transaction
 
@@ -438,39 +425,15 @@ uint8_t c2bcd( uint8_t c ) {
 
 }
 
-// Here is the persistent data that we store in "information memory" FRAM that survives power cycles
-// and reprogramming.
-
-struct __attribute__((__packed__)) persistent_data_t {
-
-    rv3032_time_block_t programmed_time;       // Calendar time when this unit was Programmed.Used to initialize the RTC on first power up.
-    rv3032_time_block_t launched_time;          // Time when this unit was launched relative to programmed time. Set when trigger pulled, never read.
-
-
-    // State. We have 3 persistent states, (1) first startup fresh from factory programming, (2) ready to launch, (3) launched.
-    // We make these volatile to ensure that the compiler actually writes changes to memory rather than trying to cache in a register
-
-    volatile unsigned initalized_flag;                         // Set to 1 after first time we boot up after programming. At this step, we check for excess current draw when we power down.
-    volatile unsigned commisisoned_flag;                       // Set to 1 after we commission, which involves inserting the batteries and trigger pin.
-    volatile unsigned launched_flag;                           // Set to 1 when the trigger pin is pulled.
-
-    volatile unsigned tsl_powerup_count;                           // How many times have we booted up since we initialized (Max 65535. Should be 1 until first battery change in about 150 years.)
-
-    // Time since launch
-    volatile unsigned mins;             // It would be too much work to update this every second, so once a minute is good. Note that it is possible for this value to end up at `minutes_per_day`, in which case you must normalize it and increment days.
-    volatile unsigned long days;        // Has to be long since 2^16 days is only ~180 years and we plan on working for much longer than that.
-
-    // We need to be able to update the above values atomically so we use an interlock here so we can do the right thing in case we get interrupted exactly in the middle of an update.
-    volatile unsigned update_flag;             // Set to 1 when an update is in progress (backup values are valid)
-    volatile unsigned backup_mins;             // These backup values are captured before we set `update_flag`.
-    volatile unsigned long backup_days;
-
-};
-
-// Tell compiler/linker to put this in "info memory" that we set up in the linker file to live at 0x1900
+// Tell compiler/linker to put this in "info memory" that we set up in the linker file to live at 0x1800
 // This area of memory never gets overwritten, not by power cycle and not by downloading a new binary image into program FRAM.
 persistent_data_t __attribute__(( __section__(".persistant") )) persistent_data;
 
+// Here we pull out the address of the mins counter in the persistent data structure for no other reason than to pass it to the ASM
+// code. We have to do this because the ASM code can not get this address directly since the ASM seems to choke on nested structs.
+volatile unsigned *persistant_mins_ptr = &persistent_data.mins;
+
+// Note that we do *not* need the password here. This fact is hidden in a hard find footnote in 1.16.2.1 in the application manual "These bits have no affect on MSP430FR413x, MSP430FR203x devices."
 inline void unlock_persistant_data() {
     SYSCFG0 &= ~DFWP;                     // 0b = Data (Information) FRAM write enable. Compiles to a single instruction.
 }
@@ -479,12 +442,10 @@ inline void lock_persistant_data() {
     SYSCFG0 |= DFWP;                      // 1b = Data (Information) FRAM write protected (not writable). Compiles to a single instruction.
 }
 
-// Low voltage flag indicates that the RTC has been re-powered and potentially lost its data.
-
 // Initialize RV3032 for the first time
-// Clears the low voltage flag
 // sets clkout to 1Hz
-// Enables backup capacitor
+// disables backup capacitor
+// disabled the automatic refresh of config registers from EEPROM.
 // Does not enable any interrupts
 
 // Note that we use CLKOUT at 1Hz rather than using a 1 sec periodic timer because the periodic timer uses *much* more power all the time on the RTC 9not documented!) and slightly more power on the MCU because it is open collector pulling on a pull-up resistor.
@@ -541,6 +502,9 @@ void rv3032_shutdown() {
 
 // During time-since-launch mode, this is how long we have been counting.
 // These are global so we can easily share them into the ASM code (If we passed via the call convention then we'd have to mess around with the stack).
+// Note that the ASM code only takes a snapshot of these into registers and then uses the registers for canonical storage.
+// Note that there is no `tsl_days` variable, the `days_digits[]` are the canonical storage for the running day count, and these are only ever updated
+// in C inside `tsl_next_day()`
 
 unsigned tsl_secs=0;
 unsigned tsl_mins=0;
@@ -621,7 +585,7 @@ __interrupt void trigger_isr(void) {
 
         i2c_shutdown();
 
-        // Note that the time variables will already be initialized to zero from power up
+        // Note that the tsl_* variables will already be initialized to zero from power up
 
         // We will get the next tick with a rising edge on CLKOUT in 1000ms. Make sure we return from this ISR before then.
 
@@ -715,8 +679,8 @@ __interrupt void startup_isr(void) {
             // Finally we set the persistent flag so we remember that we now have been officially commissioned and are ready to launch.
 
             unlock_persistant_data();
-            persistent_data.commisisoned_flag=0x01;           // Ready for next step in launch sequence
             persistent_data.launched_flag=0xff;
+            persistent_data.commisisoned_flag=0x01;           // Ready for next step in launch sequence
             lock_persistant_data();
 
         } else {
@@ -770,77 +734,102 @@ __interrupt void startup_isr(void) {
 }
 
 
+
 // Spread the 6 day counter digits out to minimize superfluous digit updates and avoid mod and div operations.
 // These are set either when trigger is pulled or on power up after a battery change.
+// day_digits[0] is the ones digit, day_digits[5] is the 100 thousands digit.
 
 unsigned days_digits[6];
+
 
 // Called by the ASM TSL_MODE_ISR when it rolls over from 23:59:59 to 00:00:00
 // Since it is called from ASM, we need the `extern "C"` to keep the name from getting mangled.
 
 extern "C" void tsl_new_day() {
 
-    // TODO: Update persisant day values
-    // TODO: centimus dies message
+    unsigned long days = persistent_data.days;          // Copy to a local variable for faster access (the persistent variable is volatile)
 
-    // Update the actual display to reflect the new day
+    // Update the count in persistent data to reflect that yet another day has passed.
+    unlock_persistant_data();
+    persistent_data.backup_mins=persistent_data.mins;
+    persistent_data.backup_days=days;
+    persistent_data.update_flag = 1;                // BEGIN TRANSACTION
+    persistent_data.mins = 0;                       // We hard set the mins to zero. It should be at 24*60 when we get here.
+    days++;
+    persistent_data.days = days;
+    persistent_data.update_flag = 0;                // END TRANSACTION
+    lock_persistant_data();
 
-    if (days_digits[0] < 9) {
 
-        days_digits[0]++;
+    if ((days &  ~127) == days ) {
 
-        lcd_show_digit_f(  6 , days_digits[0] );
-
-        return;
+        lcd_save_screen_buffer_t lcd_screen_save_buffer;
+        lcd_save_screen(&lcd_screen_save_buffer);
+        lcd_show_centesimus_dies_message();
+        // Switch the MCU over to the very slow ~10KHz VLO clock. Things will take forever, but low power.
+        CSCTL4 = SELMS__VLOCLK;
+        __delay_cycles(5000UL);
+        // Switch the MCU back to DCO clock which uses more power per time, but more than compensates for it by getting even more done per time.
+        CSCTL4 = SELMS__VLOCLK;
+        lcd_restore_screen(&lcd_screen_save_buffer);
 
     }
 
-    days_digits[0]=0x00;
+    // Update the actual display to reflect the new day
+    // We could have done this with meta code in a template, but I think that would have been even uglier! At least this is clear.
 
-    if (days_digits[1] < 9) {
+    days_digits[0]++;
 
-        lcd_show_digit_f( 6 , 0 );
+    if (days_digits[0] == 10 ) {
+
+        days_digits[0]=0x00;
 
         days_digits[1]++;
 
+        if (days_digits[1] == 10 ) {
+
+            days_digits[1]=0x00;
+
+            days_digits[2]++;
+
+            if (days_digits[2] == 10 ) {
+
+                days_digits[2]=0x00;
+
+                days_digits[3]++;
+
+                if (days_digits[3] == 10 ) {
+
+                    days_digits[3]=0x00;
+
+                    days_digits[4]++;
+
+                    if (days_digits[4] == 10 ) {
+
+                        days_digits[4]=0x00;
+
+                        days_digits[5]++;
+
+                        if (days_digits[5] == 10 ) {
+
+                            // If we get here then we just passed 1 million days, so go into long now mode.
+                            lcd_show_long_now();
+                            blinkforeverandever();
+
+                            // unreachable
+
+                        }
+                        lcd_show_digit_f( 11 , days_digits[5] );
+                    }
+                    lcd_show_digit_f( 10 , days_digits[4] );
+                }
+                lcd_show_digit_f(  9 , days_digits[3] );
+            }
+            lcd_show_digit_f(  8 , days_digits[2] );
+        }
         lcd_show_digit_f(  7 , days_digits[1] );
-
-        return;
-
     }
-
-    // If we get here, then the 100 day counter has clicked so we need to do special update
-    // and increment remaining digits for next tick.
-
-    days_digits[1]=0x00;
-
-    if (days_digits[2] < 9) {
-        days_digits[2]++;
-        return;
-    }
-    days_digits[2]=0x00;
-
-    if (days_digits[3] < 9) {
-        days_digits[3]++;
-        return;
-    }
-    days_digits[3]=0x00;
-
-    if (days_digits[4] < 9) {
-        days_digits[4]++;
-        return;
-    }
-    days_digits[4]=0x00;
-
-    if (days_digits[5] < 9) {
-        days_digits[5]++;
-        return;
-    }
-
-    // If we get here then we just passed 1 million days, so go into long now mode.
-    lcd_show_long_now();
-    blinkforeverandever();
-
+    lcd_show_digit_f(  6 , days_digits[0] );
 }
 
 
@@ -914,6 +903,19 @@ unsigned batt_v_x1000() {
 int main( void )
 {
 
+/*
+    #warning
+    unlock_persistant_data();
+    persistent_data.mins=99;
+    persistent_data.days=99;
+    persistent_data.update_flag=0;
+    persistent_data.initalized_flag=0x01;
+    persistent_data.commisisoned_flag=0x01;
+    persistent_data.launched_flag=0x01;
+    lock_persistant_data();
+*/
+
+
     WDTCTL = WDTPW | WDTHOLD | WDTSSEL__VLO;   // Give WD password, Stop watchdog timer, set WD source to VLO
                                                // The thinking is that maybe the watchdog will request the SMCLK even though it is stopped (this is implied by the datasheet flowchart)
                                                // Since we have to have VLO on for LCD anyway, mind as well point the WDT to it.
@@ -976,6 +978,17 @@ int main( void )
         flash();
 
         lcd_show_first_start_message();
+
+
+#warning
+unlock_persistant_data();
+persistent_data.mins=(24*60)-2;
+persistent_data.days=127;
+persistent_data.update_flag=0;
+persistent_data.initalized_flag=0x01;
+persistent_data.commisisoned_flag=0x01;
+persistent_data.launched_flag=0x01;
+lock_persistant_data();
 
         // After first start up, unit must be re-powered to enter normal operation.
 
@@ -1049,6 +1062,8 @@ int main( void )
         unsigned retrieved_mins;
         unsigned long retrieved_days;
 
+        // First check if there was an update in progress when we lost power
+
         if (persistent_data.update_flag) {
 
             // We somehow managed to power down exactly in the middle of an update. This is extremely unlikely, but if something *can* happen, then we have to be ready for it.
@@ -1056,7 +1071,7 @@ int main( void )
             retrieved_mins = persistent_data.backup_mins;
             retrieved_days = persistent_data.backup_days;
 
-            // Commit the in-progress update
+            // roll-back the in-progress update
             unlock_persistant_data();
             persistent_data.mins = retrieved_mins;
             persistent_data.days = retrieved_days;
@@ -1078,7 +1093,7 @@ int main( void )
             unlock_persistant_data();
             persistent_data.backup_mins=retrieved_mins;
             persistent_data.backup_days=retrieved_days;
-            persistent_data.update_flag = 1;
+            persistent_data.update_flag = 1;                // Wep, we have to do this - what if we lost power _right here_??
             persistent_data.mins = retrieved_mins;
             persistent_data.days = retrieved_days;
             persistent_data.update_flag = 0;
@@ -1087,6 +1102,7 @@ int main( void )
 
         // Break out the days into digits for more efficient updating while running.
         // We only do this ONCE per set of batteries so no need for efficiency here.
+        // Note that there is no `tsl_days` variable, the `days_digits[]` are the canonical storage for the running day count.
 
         days_digits[0]= (retrieved_days / 1      ) % 10 ;
         days_digits[1]= (retrieved_days / 10     ) % 10 ;
@@ -1111,7 +1127,7 @@ int main( void )
         tsl_mins = retrieved_mins - ( tsl_hours * minutes_per_hour );
 
         tsl_secs = 0;           // We always fall back to the beginning of the minute. This means we can lose up to 59 secs of count time, but
-                                // that should happen less than once per century so it is worth it since we save power not needing to update the persistant counter every second.
+                                // that should happen less than once per century so it is worth it since we save power not needing to update the persistent counter every second.
 
         lcd_show_digit_f( 4 , tsl_hours % 10  );
         lcd_show_digit_f( 5 , tsl_hours / 10  );

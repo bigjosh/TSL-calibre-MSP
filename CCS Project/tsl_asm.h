@@ -31,9 +31,10 @@ extern unsigned tsl_hours;
 extern unsigned tsl_mins;
 extern unsigned tsl_secs;
 
-extern unsigned *persistant_mins;   // Pointer to the word in FRAM that holds the current number of elapsed minutes.
-                                    // The asm code does not need the days variable because there are only 1440 mins in a day and it calls back
-                                    // to C on each day rollover.
+extern volatile unsigned *persistant_mins_ptr;  // Pointer to the word in FRAM that holds the current number of elapsed minutes.
+                                                // The asm code does not need the days variable because there are only 1440 mins in a day and it calls back
+                                                // to C on each day rollover.
+                                                // Note that we need this extra pointer because the assembler does not seem to be able to deal with nested structs, so we get the address in C and then pass that to ASM. :/
 
 
 // Note that I could not get this function prototype to work with the assembler. It chokes on the etern "C" which unmangles the function name. :/
