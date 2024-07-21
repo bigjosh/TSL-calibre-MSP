@@ -1049,6 +1049,7 @@ void lcd_show_clock_lost_message() {
 
 
 // Save the current LCD display pixels. Must be in the header because it is a template.
+// Do not look at the object code for these two function or you will be very sad. Come on compiler, you had one job and I made it easy for you.
 void lcd_save_screen( lcd_save_screen_buffer_t *buffer) {
     unsigned *x = buffer->w;
     for( unsigned i=0; i< LCDMEM_WORD_COUNT ; i++ ) {

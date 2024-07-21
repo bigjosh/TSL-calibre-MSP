@@ -78,8 +78,6 @@ def parse_persistent_data(byte_array: List[int]) -> PersistentData:
         backup_days=parse_ulong(32)
     )
 
-
-
 def decode_titxt(titxt_data):
 
     #lines = titxt_data.decode('utf-8')    
@@ -147,7 +145,7 @@ def dump():
         
         # Dump the device descirtor data from the MSP430 to a file named `dd.txt` in the temp directory. 
         user_file_name = os.path.join( tempdir , 'user.txt')
-        call_line += [ "-r" , f"[{user_file_name},0x1800-0x181C]" ]
+        call_line += [ "-r" , f"[{user_file_name},0x1800-0x18ff]" ]
                
         # -z [VCC] leaves the device powered up via the EZ-FET programmer VCC pin (You should see the "First Start" message on the LCD display)
         # call_line += ["-z" , "[VCC]"]
@@ -174,7 +172,6 @@ def dump():
             data = decode_titxt(   titxt_data )
 
             print("decoded user data:")            
-            # only parse the first 28 bytes
             print(  parse_persistent_data(data) )
 
             print_dataclass(  parse_persistent_data(data) )

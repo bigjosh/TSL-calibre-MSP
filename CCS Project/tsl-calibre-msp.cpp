@@ -430,7 +430,7 @@ uint8_t c2bcd( uint8_t c ) {
 persistent_data_t __attribute__(( __section__(".persistant") )) persistent_data;
 
 // Here we pull out the address of the mins counter in the persistent data structure for no other reason than to pass it to the ASM
-// code. We have to do this because the ASM code can not get this address directly since the ASM seems to choke on nested structs.
+// code. We have to do this because the ASM code can not get this address directly since the assembler seems to choke on nested structs.
 volatile unsigned *persistant_mins_ptr = &persistent_data.mins;
 
 // Note that we do *not* need the password here. This fact is hidden in a hard find footnote in 1.16.2.1 in the application manual "These bits have no affect on MSP430FR413x, MSP430FR203x devices."
@@ -699,7 +699,7 @@ __interrupt void startup_isr(void) {
 
         if ( TBI( TRIGGER_PIN , TRIGGER_B ) ) {       // Check if trigger has been inserted yet
 
-            // Trigger is in, we can arm now.
+            // Trigger pin is in, we can arm now.
 
             lcd_show_arming_message();
 
@@ -711,7 +711,7 @@ __interrupt void startup_isr(void) {
 
         } else {
 
-            // trigger still out
+            // trigger pin still out
             // Show message so person knows why we are waiting (yes, this is redundant, but heck the pin is out so we are burning fuel against the trigger pull-up anyway
             // We do not display this message in the case where the pin is already in at startup since it would be confusing then.
             lcd_show_load_pin_message();
@@ -959,36 +959,22 @@ int main( void )
 
         // This is the first time we have ever powered up
 
-        // Now remember that we did our start up. From now on, the RTC will run on its own forever.
-        unlock_persistant_data();
-
-        if (persistent_data.tsl_powerup_count< UINT_MAX ) {     // Start at 65535. Do not roll over.
-            persistent_data.tsl_powerup_count=0;
-        }
-
         // Set the RTC with the time when we were programmed, which should be about 1 second ago since this is the first time we are powering up from the reset after programming finished.
-        // It will not have the correct wall clock time until the first battery change in about 150 years. We use the RTC time to copy into `launched_time` when the trigger pin is pulled.
+        // It will have the correct wall clock time until the first battery change in about 150 years. We use the RTC time to copy into `launched_time` when the trigger pin is pulled.
         writeRV3032time(&persistent_data.programmed_time);
 
-        persistent_data.initalized_flag=0x01;             // Remember that we already started up once and never do it again.
+
+        // Now remember that we did our start up. From now on, the RTC will run on its own forever.
+        unlock_persistant_data();
+        persistent_data.tsl_powerup_count=0;
         persistent_data.commisisoned_flag=0xff;           // Ready for next step in setup sequence
+        persistent_data.initalized_flag=0x01;             // Remember that we already started up once and never do it again.
         lock_persistant_data();
 
         // Flash the LEDs to prove they work.
         flash();
 
         lcd_show_first_start_message();
-
-
-#warning
-unlock_persistant_data();
-persistent_data.mins=(24*60)-2;
-persistent_data.days=127;
-persistent_data.update_flag=0;
-persistent_data.initalized_flag=0x01;
-persistent_data.commisisoned_flag=0x01;
-persistent_data.launched_flag=0x01;
-lock_persistant_data();
 
         // After first start up, unit must be re-powered to enter normal operation.
 
@@ -1003,7 +989,9 @@ lock_persistant_data();
     }
 
     unlock_persistant_data();
-    persistent_data.tsl_powerup_count++;            // The body keeps score.
+    if (persistent_data.tsl_powerup_count< UINT_MAX ) {     // Stop at 65535. Do not roll over.
+        persistent_data.tsl_powerup_count++;                // The body keeps score.
+    }
     lock_persistant_data();
 
     // Wait for any clkout transition so we know we have at least 500ms until next transition so we dont miss any seconds.
@@ -1093,7 +1081,7 @@ lock_persistant_data();
             unlock_persistant_data();
             persistent_data.backup_mins=retrieved_mins;
             persistent_data.backup_days=retrieved_days;
-            persistent_data.update_flag = 1;                // Wep, we have to do this - what if we lost power _right here_??
+            persistent_data.update_flag = 1;                // Yep, we have to do this - what if we lost power _right here_??
             persistent_data.mins = retrieved_mins;
             persistent_data.days = retrieved_days;
             persistent_data.update_flag = 0;
@@ -1155,8 +1143,7 @@ lock_persistant_data();
 
     // Activate the RAM-based ISR vector table (rather than the default FRAM based one).
     // We use the RAM-based one so that we do not have to unlock FRAM every time we want to
-    // update an entry. It was also hoped that the RAM-based one would be more power efficient
-    // but this does not seem to matter in practice.
+    // update the CLKOUT ISR entry. This RAM vector was appropriately set in the code above by the time we get here.
 
     ACTIVATE_RAM_ISRS();
 
