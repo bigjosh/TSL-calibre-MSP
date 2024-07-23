@@ -903,19 +903,6 @@ unsigned batt_v_x1000() {
 int main( void )
 {
 
-/*
-    #warning
-    unlock_persistant_data();
-    persistent_data.mins=99;
-    persistent_data.days=99;
-    persistent_data.update_flag=0;
-    persistent_data.initalized_flag=0x01;
-    persistent_data.commisisoned_flag=0x01;
-    persistent_data.launched_flag=0x01;
-    lock_persistant_data();
-*/
-
-
     WDTCTL = WDTPW | WDTHOLD | WDTSSEL__VLO;   // Give WD password, Stop watchdog timer, set WD source to VLO
                                                // The thinking is that maybe the watchdog will request the SMCLK even though it is stopped (this is implied by the datasheet flowchart)
                                                // Since we have to have VLO on for LCD anyway, mind as well point the WDT to it.
@@ -958,11 +945,6 @@ int main( void )
     if (persistent_data.initalized_flag!=0x01) {
 
         // This is the first time we have ever powered up
-
-        // Set the RTC with the time when we were programmed, which should be about 1 second ago since this is the first time we are powering up from the reset after programming finished.
-        // It will have the correct wall clock time until the first battery change in about 150 years. We use the RTC time to copy into `launched_time` when the trigger pin is pulled.
-        writeRV3032time(&persistent_data.programmed_time);
-
 
         // Now remember that we did our start up. From now on, the RTC will run on its own forever.
         unlock_persistant_data();
@@ -1013,7 +995,12 @@ int main( void )
 
         // We just had batteries inserted for the first time ever, so we need to commission ourselves and get ready
 
-        // First we need to make sure that the trigger pin is inserted because
+        // Set the RTC with the time when we were programmed, which should be about 1 second ago since this is the first time we are powering up from the reset after programming finished.
+        // It will have the correct wall clock time until the first battery change in about 150 years. We use the RTC time to copy into `launched_time` when the trigger pin is pulled.
+        writeRV3032time(&persistent_data.programmed_time);
+
+
+        // Make sure that the trigger pin is inserted because
         // we would not want to just launch because the pin was out when batteries were inserted.
         // This also lets us test both trigger positions during commissioning at the factory.
 
@@ -1068,6 +1055,7 @@ int main( void )
 
         } else {
 
+            // No update in progress, so we can directly use the primary (non-backup) values
             retrieved_mins = persistent_data.mins;
             retrieved_days = persistent_data.days;
 
@@ -1079,6 +1067,8 @@ int main( void )
         if ( retrieved_mins == minutes_per_day ) {
             // Commit the normalization update
             unlock_persistant_data();
+            retrieved_days++;
+            retrieved_mins=0;
             persistent_data.backup_mins=retrieved_mins;
             persistent_data.backup_days=retrieved_days;
             persistent_data.update_flag = 1;                // Yep, we have to do this - what if we lost power _right here_??
