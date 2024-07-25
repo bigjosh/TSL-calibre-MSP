@@ -884,21 +884,243 @@ void ready_to_launch_reference() {
 
 // TODO: Wait for Vcc to drop to 3V and then check again some time later to make sure it has not fallen too low which would indicate current draw too high.
 
+
+
 /*
-// Prepare to read the supply voltage Vcc using the internal 1.5V reference
 
-void init_read_batt_v() {
+unsigned int measureVcc(void)
+{
+    // Configure ADC
+    ADCCTL0 |= ADCSHT_2 | ADCON;                // ADCON, S&H=16 ADC clks
+    ADCCTL1 |= ADCSHP;                          // ADCCLK = MODOSC; sampling timer
+    ADCCTL2 |= ADCRES;                          // 10-bit conversion results
+    ADCMCTL0 |= ADCSREF_1 | ADCINCH_1;          // ADC input ch A1 => 1.5V ref
 
+    // Configure internal reference
+    PMMCTL0_H = PMMPW_H;                        // Unlock PMM registers
+    PMMCTL2 |= INTREFEN | REFVSEL_0;            // Enable internal 1.5V reference
 
-}
+    while(!(PMMCTL2 & REFGENRDY));              // Poll till internal reference settles
 
-// Read the current supply voltage times 100 (so 3V = 3000)
+    // Sampling and conversion start
+    ADCCTL0 |= ADCENC | ADCSC;                  // Sampling and conversion start
+    while (!(ADCCTL1 & ADCIFG));                // Wait for conversion to complete
+    unsigned int result = ADCMEM0;              // Read ADC conversion result
 
-unsigned batt_v_x1000() {
+    // Calculate Vcc
+    unsigned long vcc = ((unsigned long)result * 15000) / 1023;
 
+    return (unsigned int)vcc;                   // Return Vcc in millivolts
 }
 
 */
+
+// Read the current supply voltage times 100 (so 3V = 3000)
+// Returns with ADC turned off
+
+
+unsigned batt_v_x1000() {
+
+    // Configure internal reference
+    PMMCTL0_H = PMMPW_H;                 // Unlock the PMM registers
+    PMMCTL2 = INTREFEN ;      // Enable internal reference, set to 1.5V
+
+    while(!(PMMCTL2 & REFGENRDY));       // Wait for reference generator to settle
+
+
+    ADCCTL0 &= ~ADCENC;                     // Disable ADC
+
+    ADCCTL0 |= ADCON ;
+
+    ADCCTL1 = ADCSHP;                       // ADCCLK = MODOSC; sampling timer
+    ADCCTL2 = ADCRES_0;                     // 8-bit conversion results
+
+//    ADCCTL1 = ADCSHS_2;         // Select SMCLOCK because (I think) we already get it because it is derived off the REF clock that the CPU runs off.
+    ADCCTL1 = ADCSHS_2;         // Select SMCLOCK because (I think) we already get it because it is derived off the REF clock that the CPU runs off.
+
+    ADCMCTL0 = ADCSREF_0        // "{VR+ = AVCC and VR– = AVSS }"
+               | ADCINCH_13     // "The 1.5-V reference is internally connected to ADC channel 13."
+    ;
+
+    if ( ADCCTL1 & ADCBUSY ) {
+        lcd_show_digit_f( 7 , 1 );
+    } else {
+        lcd_show_digit_f( 7 , 0 );
+
+    }
+
+    ADCCTL0 |= ADCENC | ADCSC ;       // Turn on the ASDC, enable conversion, start a conversion. "ADCSC and ADCENC may be set together with one instruction."
+
+    if ( ADCCTL1 & ADCBUSY ) {
+        lcd_show_digit_f( 6 , 1 );
+    } else {
+        lcd_show_digit_f( 6 , 0 );
+    }
+
+
+    lcd_show_digit_f( 8 , 8 );
+
+//    while ( (ADCIFG & ADCIFG0) == 0 );               // "The ADCIFG0 is set when an ADC conversion is completed. This bit is reset when the ADCMEM0 get read, or it may be reset by software."
+
+    while ( ADCCTL1 & ADCBUSY );                        // "ADC busy. This bit indicates an active sample or conversion operation."
+
+    lcd_show_digit_f( 9 , 9 );
+
+    unsigned result = ADCMEM0; // 10 bit result.
+
+    // DVCC = (1023 × 1.5 V) ÷ 1.5-V reference ADC result
+
+    ADCCTL0 &= ~ADCON;       // Turn off the ASDC
+
+    return result;
+
+}
+
+
+// Turn on the ADC, set it to measure the 1.5V reference against Vcc voltage with 8 bit result.
+
+void adc_vcc_init()
+{
+
+    // Configure reference module located in the PMM
+    PMMCTL0_H = PMMPW_H;        // Unlock the PMM registers
+    PMMCTL2 = INTREFEN ;        // Enable internal 1.5V reference
+    // Lets do some other work and then we will check to make sure the REF is ready later. This will give it some time to warm up.
+
+    ADCCTL0 &= ~ADCENC;                     // Disable ADC/ "With few exceptions, the ADC control bits can be modified only when ADCENC = 0."
+    ADCCTL0 = ADCSHT_0 | ADCON;             // ADCON, Sample for 4 ADC clks, which is the shortest time available. Short time=less power and seems to be long enough for our purposes.
+//    ADCCTL1 = ADCSHP;                       // ADCCLK = MODOSC; sampling timer
+    ADCCTL1 =
+            ADCSHP              // "1b = SAMPCON signal is sourced from the sampling timer", which is specified by the ADCSHTx bits.
+            | ADCSHS_0          // Select MODCLOCK because SMCLOCK does not work and I do not want to try to figure out why.
+    ;
+
+    ADCCTL2 = ADCRES_0;                     // 8-bit conversion results. We do not need much. Readings on the way down: High threshold 3.3V 115=3.326V 116=3.297V, low threshold 2.3V 166=2.304V 167=2.290V
+
+    ADCMCTL0 = ADCSREF_0        // "{VR+ = AVCC and VR– = AVSS }"
+               | ADCINCH_13     // "The 1.5-V reference is internally connected to ADC channel 13."
+    ;
+
+
+    ADCCTL0 |= ADCENC;                               // Enable ADC
+
+    while(!(PMMCTL2 & REFGENRDY));          // Poll till internal reference settles
+
+
+}
+
+void adc_shutdown()
+{
+
+
+
+    // Configure reference module located in the PMM
+    PMMCTL0_H = PMMPW_H;        // Unlock the PMM registers
+    PMMCTL2 &= ~INTREFEN ;      // Disable internal 1.5V reference
+
+    ADCCTL0 &= ~ADCENC;            // Disable ADC
+    ADCCTL0 &= ~ADCON;             // ADC off
+
+}
+
+// Samples ADC
+
+unsigned int adc_measure()
+{
+
+    ADCCTL0 |= ADCSC;                               // Start conversion.
+
+    while ( ADCCTL1 & ADCBUSY ) {                    // "ADC busy. This bit indicates an active sample or conversion operation."
+#warning
+        lcd_show_digit_f( 0 , 0x0d );
+
+        __delay_cycles(500000);
+
+    }
+
+    unsigned result = ADCMEM0; // 10 bit result.
+
+    return result;
+}
+
+// What would the VccADC result be (in 8 bit mode) for the given number of millivolts?
+constexpr unsigned adc_mv_to_vcc_adc8bit(unsigned mv) {
+    // 255 is the full range 100% reading for the ADC, 1500 is the 1.5V reference voltage we are measuring, expressed in mV
+    return  (255UL * 1500UL) / mv;
+}
+
+// RTC interrupt service routine
+#pragma vector=RTC_VECTOR
+__interrupt void RTC_ISR(void) {
+    // TODO: Could save a cycle here by reading RTCIV and throwing away the result.
+    RTCCTL &= ~RTCIF;           // Clear RTC interrupt flag
+
+    unlock_persistant_data();
+    persistent_data.porsoltCount++;        // Note that this is an atomic update.
+    lock_persistant_data();
+
+    // Go back to sleep.
+}
+
+
+// Indirectly measure how much power this unit uses by measuring how long it takes to use up the energy stored in the decoupling cap.
+// The power supply should be disconnected after this function is called. This function never returns, the number of 0.1s cycles we were
+// able to keep running for is stored into `persistent_data.porsoltCount`.
+// Never returns.
+
+
+void power_rundown_test() {
+
+    // Set up the ADC to indirectly measure the Vcc voltage
+
+    adc_vcc_init();
+
+    // Now wait for the voltage to drop, which indicates that the power supply is disconnected
+
+    while ( adc_measure() <= (adc_mv_to_vcc_adc8bit(3300) +1 ) );    // The MSP-EZ supplies 3.325V, so when we drop below 3.3V then we are starting the slow decline into power death.
+                                                                     // Note that since we are measuring the 1.5V reference against the Vcc voltage that the measurement result will up down as the voltage goes down (as Vcc approaches Vref)
+
+    // When we get here, the Vcc voltage is lower than 3.3V and on the way down.
+    // So now we will count how long we stay alive before dying to measure how much current we are using while we wait to die.
+
+    // Don't need the ADC anymore, and leaving it on would increase poer and shorten our glide time.
+    adc_shutdown();
+
+    // First put all 8's on the display. This will lite every segment so any short on any segment will show up.
+    // This also lets the operator know that we know that we are dying. If the display stays on "First Start" after power is pulled, then we know that a Blotzman Battery has formed in the circuit.
+    lcd_show_all_8s_message();
+
+
+    // Enable the high-side voltage supervisor. This will reliably put us into reset at 1.8V on the way down if we are sleeping when we cross the threshold. Does use slightly more power, but I am not sure we can rely on the BOR or when that kicks in?
+    PMMCTL0 = PMMPW                  // Open PMM Registers for write
+            | SVSHE                  // "1b = SVSH is always enabled."
+        ;
+
+    constexpr unsigned vlo_per_sec = 10000;     // "Internal very-low-power low-frequency oscillator with 10-kHz typical frequency"
+    constexpr unsigned rtc_int_per_sec = 10;    // How many interrupts we want per second as we power down. Trade off - more means better resolution, but each interrupt uses more power so too many and we will die too quickly.
+
+    RTCMOD = vlo_per_sec / rtc_int_per_sec;     // Set RTC modulo value for ~100ms
+
+    unlock_persistant_data();
+    persistent_data.porsoltCount = 0;       // Reset our deathwatch counter. Will be peridocically incremented in the RTC ISR
+    lock_persistant_data();
+
+
+    // Set up the RTC to wakes us up about once every 0.1 seconds. When we wake, we will increment the counter at persistent_data.porsoltCount
+    RTCCTL = RTCSS__VLOCLK | RTCIE;       // Use VLO as clock source, enable RTC interrupt
+
+    RTCCTL |= RTCSR;        // Reset and start RTC. This also loads the MOD value into the shadow register.
+
+    // Note that we keep the RV3032 running here because we want to notice if it is pulling too much power also.
+
+    // Sleep and service RTC interrupts up until our inevitable power death
+
+    __bis_SR_register(LPM4_bits | GIE);  // Enter LPM4 with interrupts enabled
+
+    // unreachable
+
+}
+
 
 int main( void )
 {
@@ -939,8 +1161,44 @@ int main( void )
 
     */
 
+/*
+
+    adc_vcc_init();
+
+    while (1) {
+
+        lcd_show_digit_f( 0 , 0x0a  );
+
+        __delay_cycles(1000000);
+
+        unsigned v= adc_measure();
+
+
+        lcd_show_digit_f( 0 , 0x0b  );
+
+
+        lcd_show_digit_f( 5 , (v / 1000 )% 10  );
+        lcd_show_digit_f( 4 , (v / 1000 )% 10  );
+        lcd_show_digit_f( 3 , (v / 100 ) % 10  );
+        lcd_show_digit_f( 2 , (v / 10 )  % 10  );
+        lcd_show_digit_f( 1 , (v / 1 )   % 10  );
+
+        __delay_cycles(1000000);
+
+    }
+
+
+*/
+
+
     // Initialize the lookup tables we use for efficiently updating the LCD
     initLCDPrecomputedWordArrays();
+
+#warning
+    unlock_persistant_data();
+    persistent_data.initalized_flag=0x00;
+    lock_persistant_data();
+
 
     if (persistent_data.initalized_flag!=0x01) {
 
@@ -958,13 +1216,21 @@ int main( void )
 
         lcd_show_first_start_message();
 
-        // After first start up, unit must be re-powered to enter normal operation.
+#warning
+        unsigned v= persistent_data.porsoltCount;
+        lcd_show_digit_f( 5 , (v / 1000 )% 10  );
+        lcd_show_digit_f( 4 , (v / 1000 )% 10  );
+        lcd_show_digit_f( 3 , (v / 100 ) % 10  );
+        lcd_show_digit_f( 2 , (v / 10 )  % 10  );
+        lcd_show_digit_f( 1 , (v / 1 )   % 10  );
+        lcd_show_digit_f( 0 , 0x0e );
 
-        // TODO: Here we should be running off of the programmer's power supply
-        // We should start checking the Vcc and then check for how quickly it falls when the programmer is disconnected to make sure we do not have excessive power consumption.
+        //while (1);
 
-        sleepforeverandever();
+        // Next we will do a power usage proving test to check to make sure this unit does not draw more current than expected.
+        // We never return form this, but we will be able to check the results in FRAM next time we are powered up.
 
+        power_rundown_test();
 
         // unreachable
 

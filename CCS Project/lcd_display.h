@@ -95,6 +95,10 @@ extern "C" {
     // Fill the screen with 0's
     void lcd_show_zeros();
 
+    // Show "888888888888"
+    void lcd_show_all_8s_message();
+
+
 
     // these arrays hold the pre-computed words that we will write to word in LCD memory that
     // controls the seconds and mins digits on the LCD. We keep these in RAM intentionally for power and latency savings.

@@ -1048,6 +1048,31 @@ void lcd_show_clock_lost_message() {
 }
 
 
+constexpr glyph_segment_t all_8s_message[] = {
+                                                   glyph_8,
+                                                   glyph_8,
+                                                   glyph_8,
+                                                   glyph_8,
+                                                   glyph_8,
+                                                   glyph_8,
+                                                   glyph_8,
+                                                   glyph_8,
+                                                   glyph_8,
+                                                   glyph_8,
+                                                   glyph_8,
+                                                   glyph_8,
+};
+
+// Show "888888888888"
+void lcd_show_all_8s_message() {
+
+    for( byte i=0; i<DIGITPLACE_COUNT; i++ ) {
+        lcd_show_f(  i , all_8s_message[ DIGITPLACE_COUNT - 1- i] );        // digit place 12 is rightmost, so reverse order for text
+    }
+}
+
+
+
 // Save the current LCD display pixels. Must be in the header because it is a template.
 // Do not look at the object code for these two function or you will be very sad. Come on compiler, you had one job and I made it easy for you.
 void lcd_save_screen( lcd_save_screen_buffer_t *buffer) {
@@ -1066,6 +1091,7 @@ void lcd_restore_screen( lcd_save_screen_buffer_t *buffer) {
     }
 
 }
+
 
 
 

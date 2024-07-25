@@ -29,6 +29,8 @@ struct __attribute__((__packed__)) persistent_data_t {
     volatile unsigned commisisoned_flag;                       // Set to 1 after we commission, which involves inserting the batteries and trigger pin.
     volatile unsigned launched_flag;                           // Set to 1 when the trigger pin is pulled.
 
+    volatile unsigned porsoltCount;                            // How many 0.1 seconds did the unit stay alive after power was removed during initialization?
+
     volatile unsigned tsl_powerup_count;                           // How many times have we booted up since we initialized (Max 65535. Should be 1 until first battery change in about 150 years.)
 
     // Time since launch
