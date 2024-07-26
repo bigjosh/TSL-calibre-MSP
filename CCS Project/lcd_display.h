@@ -98,6 +98,12 @@ extern "C" {
     // Show "888888888888"
     void lcd_show_all_8s_message();
 
+    void lcd_show_amps_hi_message( unsigned count );
+
+    void lcd_show_amps_lo_message( unsigned count );
+
+    void lcd_show_lo_volt_message( unsigned count );
+
 
 
     // these arrays hold the pre-computed words that we will write to word in LCD memory that

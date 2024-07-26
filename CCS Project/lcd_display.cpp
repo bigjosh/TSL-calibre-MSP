@@ -86,6 +86,7 @@ constexpr glyph_segment_t glyph_P      = {SEG_A_COM_BIT | SEG_B_COM_BIT         
 constexpr glyph_segment_t glyph_r      = {                                                            0 , SEG_E_COM_BIT |                 SEG_G_COM_BIT  }; // "r"
 constexpr glyph_segment_t glyph_S      = {SEG_A_COM_BIT |                 SEG_C_COM_BIT | SEG_D_COM_BIT ,                 SEG_F_COM_BIT | SEG_G_COM_BIT  };  // S
 constexpr glyph_segment_t glyph_t      = {                                                SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  };  // t
+constexpr glyph_segment_t glyph_u      = {                                SEG_C_COM_BIT | SEG_D_COM_BIT , SEG_E_COM_BIT                                  }; // "u"
 constexpr glyph_segment_t glyph_X      = {SEG_A_COM_BIT | SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  }; // "X"
 constexpr glyph_segment_t glyph_y      = {                SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT ,                 SEG_F_COM_BIT | SEG_G_COM_BIT  };  // y
 
@@ -1068,6 +1069,93 @@ void lcd_show_all_8s_message() {
 
     for( byte i=0; i<DIGITPLACE_COUNT; i++ ) {
         lcd_show_f(  i , all_8s_message[ DIGITPLACE_COUNT - 1- i] );        // digit place 12 is rightmost, so reverse order for text
+    }
+}
+
+
+constexpr glyph_segment_t amps_hi_message[] = {
+                                                   glyph_A,
+                                                   glyph_m1,
+                                                   glyph_m2,
+                                                   glyph_P,
+                                                   glyph_S,
+                                                   glyph_SPACE,
+                                                   glyph_H,
+                                                   glyph_I,
+                                                   glyph_SPACE,
+                                                   glyph_SPACE,
+                                                   glyph_SPACE,
+                                                   glyph_SPACE,
+};
+
+// Show "888888888888"
+void lcd_show_amps_hi_message( unsigned count ) {
+
+    for( byte i=0; i<DIGITPLACE_COUNT; i++ ) {
+        lcd_show_f(  i , amps_hi_message[ DIGITPLACE_COUNT - 1- i] );        // digit place 12 is rightmost, so reverse order for text
+    }
+
+    lcd_show_digit_f( 2 , (count / 100 ) % 10  );
+    lcd_show_digit_f( 1 , (count / 10 )  % 10  );
+    lcd_show_digit_f( 0 , (count / 1 )   % 10  );
+
+}
+
+
+constexpr glyph_segment_t amps_lo_message[] = {
+                                                   glyph_A,
+                                                   glyph_m1,
+                                                   glyph_m2,
+                                                   glyph_P,
+                                                   glyph_S,
+                                                   glyph_SPACE,
+                                                   glyph_H,
+                                                   glyph_I,
+                                                   glyph_SPACE,
+                                                   glyph_X,
+                                                   glyph_X,
+                                                   glyph_X,
+};
+
+void lcd_show_amps_lo_message( unsigned count ) {
+
+    for( byte i=0; i<DIGITPLACE_COUNT; i++ ) {
+        lcd_show_f(  i , amps_lo_message[ DIGITPLACE_COUNT - 1- i] );        // digit place 12 is rightmost, so reverse order for text
+    }
+
+    if (count<1000) {
+        lcd_show_digit_f( 2 , (count / 100 ) % 10  );
+        lcd_show_digit_f( 1 , (count / 10 )  % 10  );
+        lcd_show_digit_f( 0 , (count / 1 )   % 10  );
+    }
+}
+
+constexpr glyph_segment_t lo_volt_message[] = {
+                                                   glyph_L,
+                                                   glyph_o,
+                                                   glyph_SPACE,
+                                                   glyph_u,
+                                                   glyph_o,
+                                                   glyph_L,
+                                                   glyph_t,
+                                                   glyph_SPACE,
+                                                   glyph_X,
+                                                   glyph_X,
+                                                   glyph_X,
+                                                   glyph_X,
+};
+
+void lcd_show_lo_volt_message( unsigned count ) {
+
+    for( byte i=0; i<DIGITPLACE_COUNT; i++ ) {
+        lcd_show_f(  i , lo_volt_message[ DIGITPLACE_COUNT - 1- i] );        // digit place 12 is rightmost, so reverse order for text
+    }
+
+    if (count<10000) {
+        lcd_show_digit_f( 2 , (count / 1000) % 10  );
+        lcd_show_digit_f( 2 , (count / 100 ) % 10  );
+        lcd_show_digit_f( 1 , (count / 10 )  % 10  );
+        lcd_show_digit_f( 0 , (count / 1 )   % 10  );
     }
 }
 

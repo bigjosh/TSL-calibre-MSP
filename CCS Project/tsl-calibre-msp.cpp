@@ -486,6 +486,18 @@ void rv3032_init() {
 
 }
 
+// Switch the CLKOUT from 1Hz to 64Hz
+
+void rv3032_switchto_64Hz() {
+    // Initialize our i2c pins as pull-up
+    i2c_init();
+
+    uint8_t clkout2_reg = 0b01000000;        // CLKOUT XTAL low freq mode, freq=64Hz
+    i2c_write( RV_3032_I2C_ADDR , 0xc3 , &clkout2_reg , 1 );
+
+    i2c_shutdown();
+}
+
 
 // Turn off the RTC to save some power. Only use this if you will NEVER need the RTC again (like if you are going into error mode).
 
@@ -979,8 +991,7 @@ unsigned batt_v_x1000() {
 
 // Turn on the ADC, set it to measure the 1.5V reference against Vcc voltage with 8 bit result.
 
-void adc_vcc_init()
-{
+void adc_vcc_init() {
 
     // Configure reference module located in the PMM
     PMMCTL0_H = PMMPW_H;        // Unlock the PMM registers
@@ -1009,8 +1020,7 @@ void adc_vcc_init()
 
 }
 
-void adc_shutdown()
-{
+void adc_shutdown() {
 
 
 
@@ -1030,13 +1040,7 @@ unsigned int adc_measure()
 
     ADCCTL0 |= ADCSC;                               // Start conversion.
 
-    while ( ADCCTL1 & ADCBUSY ) {                    // "ADC busy. This bit indicates an active sample or conversion operation."
-#warning
-        lcd_show_digit_f( 0 , 0x0d );
-
-        __delay_cycles(500000);
-
-    }
+    while ( ADCCTL1 & ADCBUSY );                    // "ADC busy. This bit indicates an active sample or conversion operation."
 
     unsigned result = ADCMEM0; // 10 bit result.
 
@@ -1049,15 +1053,19 @@ constexpr unsigned adc_mv_to_vcc_adc8bit(unsigned mv) {
     return  (255UL * 1500UL) / mv;
 }
 
-// RTC interrupt service routine
-#pragma vector=RTC_VECTOR
-__interrupt void RTC_ISR(void) {
-    // TODO: Could save a cycle here by reading RTCIV and throwing away the result.
-    RTCCTL &= ~RTCIF;           // Clear RTC interrupt flag
 
+// We keep a RAM copy because update-in-place to FRAM requires two writes and a read. To store a value to FRAM is just a single write.
+static volatile unsigned power_rundown_counter_ram =0;
+
+// Called at 64Hz by the CLKOUT from the RTC while we are powering down to measure how long we can keep running and thus much current we are using.
+__interrupt void POWERDOWN_TEST_ISR(void) {
+
+    power_rundown_counter_ram+=1;
     unlock_persistant_data();
-    persistent_data.porsoltCount++;        // Note that this is an atomic update.
+    persistent_data.porsoltCount=power_rundown_counter_ram;        // Note that this is an atomic update.
     lock_persistant_data();
+
+    CBI( RV3032_CLKOUT_PIFG , RV3032_CLKOUT_B );      // Clear pending interrupt from CLKOUT
 
     // Go back to sleep.
 }
@@ -1075,6 +1083,29 @@ void power_rundown_test() {
 
     adc_vcc_init();
 
+    // Enable the high-side voltage supervisor. This will reliably put us into reset at 1.8V on the way down if we are sleeping when we cross the threshold. Does use slightly more power, but I am not sure we can rely on the BOR or when that kicks in?
+    PMMCTL0 = PMMPW                  // Open PMM Registers for write
+            | SVSHE                  // "1b = SVSH is always enabled."
+        ;
+
+    unlock_persistant_data();
+    persistent_data.porsoltCount = 0;       // Reset our deathwatch counter. Will be peridocically incremented in the RTC ISR
+    lock_persistant_data();
+
+    // Call our ISR when CLKOUT clicks
+    SET_CLKOUT_VECTOR( &POWERDOWN_TEST_ISR );
+    ACTIVATE_RAM_ISRS();
+
+    // Set up the RTC to wake us up at 64Hz and reset the prescaler to the top of the second
+    rv3032_switchto_64Hz();
+
+
+    // First make sure we start with a high enough voltage
+    if ( !( adc_measure() <= (adc_mv_to_vcc_adc8bit(3300) +1 ) ) ) {
+        lcd_show_lo_volt_message( adc_measure()  );
+        blinkforeverandever();
+    };
+
     // Now wait for the voltage to drop, which indicates that the power supply is disconnected
 
     while ( adc_measure() <= (adc_mv_to_vcc_adc8bit(3300) +1 ) );    // The MSP-EZ supplies 3.325V, so when we drop below 3.3V then we are starting the slow decline into power death.
@@ -1083,41 +1114,31 @@ void power_rundown_test() {
     // When we get here, the Vcc voltage is lower than 3.3V and on the way down.
     // So now we will count how long we stay alive before dying to measure how much current we are using while we wait to die.
 
-    // Don't need the ADC anymore, and leaving it on would increase poer and shorten our glide time.
+    // Note that we are not sure where the RV3032 prescaller is when we hit here, so this introduces up to 1/64th of a second of jitter to our reading.
+
+    // Don't need the ADC anymore, and leaving it on would increase power and shorten our glide time.
     adc_shutdown();
 
-    // First put all 8's on the display. This will lite every segment so any short on any segment will show up.
+    // Now we enable the interrupt on the RTC CLKOUT pin. For now on we must remember to
+    // disable it again if we are going to end up in sleepforever mode.
+
+    // Clear any pending interrupts from the RV3032 clkout pin and then enable interrupts for the next falling edge
+    // We we should not get a real one for 500ms so we have time to do our stuff
+
+
+    CBI( RV3032_CLKOUT_PIFG     , RV3032_CLKOUT_B    );
+    SBI( RV3032_CLKOUT_PIE      , RV3032_CLKOUT_B    );
+
+
+    // Put all 8's on the display. This will lite every segment so any short on any segment will show up as power drain.
     // This also lets the operator know that we know that we are dying. If the display stays on "First Start" after power is pulled, then we know that a Blotzman Battery has formed in the circuit.
     lcd_show_all_8s_message();
 
 
-    // Enable the high-side voltage supervisor. This will reliably put us into reset at 1.8V on the way down if we are sleeping when we cross the threshold. Does use slightly more power, but I am not sure we can rely on the BOR or when that kicks in?
-    PMMCTL0 = PMMPW                  // Open PMM Registers for write
-            | SVSHE                  // "1b = SVSH is always enabled."
-        ;
-
-    constexpr unsigned vlo_per_sec = 10000;     // "Internal very-low-power low-frequency oscillator with 10-kHz typical frequency"
-    constexpr unsigned rtc_int_per_sec = 10;    // How many interrupts we want per second as we power down. Trade off - more means better resolution, but each interrupt uses more power so too many and we will die too quickly.
-
-    RTCMOD = vlo_per_sec / rtc_int_per_sec;     // Set RTC modulo value for ~100ms
-
-    unlock_persistant_data();
-    persistent_data.porsoltCount = 0;       // Reset our deathwatch counter. Will be peridocically incremented in the RTC ISR
-    lock_persistant_data();
-
-
-    // Set up the RTC to wakes us up about once every 0.1 seconds. When we wake, we will increment the counter at persistent_data.porsoltCount
-    RTCCTL = RTCSS__VLOCLK | RTCIE;       // Use VLO as clock source, enable RTC interrupt
-
-    RTCCTL |= RTCSR;        // Reset and start RTC. This also loads the MOD value into the shadow register.
-
-    // Note that we keep the RV3032 running here because we want to notice if it is pulling too much power also.
-
-    // Sleep and service RTC interrupts up until our inevitable power death
-
-    __bis_SR_register(LPM4_bits | GIE);  // Enter LPM4 with interrupts enabled
-
-    // unreachable
+    // Wait for RV3032 CLKOUT interrupts to fire on clkout. Our ISR will count how many we see before we run out of juice.
+    // Note if we use LPM3_bits then we burn 18uA versus <2uA if we use LPM4_bits.
+    __bis_SR_register(LPM4_bits | GIE );                // Enter LPM4
+    __no_operation();                                   // For debugger
 
 }
 
@@ -1161,48 +1182,44 @@ int main( void )
 
     */
 
-/*
-
-    adc_vcc_init();
-
-    while (1) {
-
-        lcd_show_digit_f( 0 , 0x0a  );
-
-        __delay_cycles(1000000);
-
-        unsigned v= adc_measure();
-
-
-        lcd_show_digit_f( 0 , 0x0b  );
-
-
-        lcd_show_digit_f( 5 , (v / 1000 )% 10  );
-        lcd_show_digit_f( 4 , (v / 1000 )% 10  );
-        lcd_show_digit_f( 3 , (v / 100 ) % 10  );
-        lcd_show_digit_f( 2 , (v / 10 )  % 10  );
-        lcd_show_digit_f( 1 , (v / 1 )   % 10  );
-
-        __delay_cycles(1000000);
-
-    }
-
-
-*/
-
 
     // Initialize the lookup tables we use for efficiently updating the LCD
     initLCDPrecomputedWordArrays();
 
 #warning
-    unlock_persistant_data();
-    persistent_data.initalized_flag=0x00;
-    lock_persistant_data();
 
+    if (1) {
+        CBI( TRIGGER_PDIR , TRIGGER_B );      // Input
+        SBI( TRIGGER_PREN , TRIGGER_B );      // Enable pull resistor
+        SBI( TRIGGER_POUT , TRIGGER_B );      // Pull up
+
+        __delay_cycles(10000);        // Let pull up fight against pin capacitance.
+
+        if ( TBI(TRIGGER_PIN , TRIGGER_B)) {
+
+            lcd_show_digit_f(0, 0x0a);
+
+            unlock_persistant_data();
+            persistent_data.initalized_flag=0x00;
+            lock_persistant_data();
+
+            while ( TBI(TRIGGER_PIN , TRIGGER_B));
+            lcd_show_digit_f(0, 0x0b);
+
+        }
+
+        CBI( TRIGGER_POUT , TRIGGER_B );      // low
+        SBI( TRIGGER_PDIR , TRIGGER_B );      // drive
+
+    }
 
     if (persistent_data.initalized_flag!=0x01) {
 
         // This is the first time we have ever powered up
+
+        // Flash the LEDs to prove they work.
+        flash();
+
 
         // Now remember that we did our start up. From now on, the RTC will run on its own forever.
         unlock_persistant_data();
@@ -1211,24 +1228,12 @@ int main( void )
         persistent_data.initalized_flag=0x01;             // Remember that we already started up once and never do it again.
         lock_persistant_data();
 
-        // Flash the LEDs to prove they work.
-        flash();
-
         lcd_show_first_start_message();
-
-#warning
-        unsigned v= persistent_data.porsoltCount;
-        lcd_show_digit_f( 5 , (v / 1000 )% 10  );
-        lcd_show_digit_f( 4 , (v / 1000 )% 10  );
-        lcd_show_digit_f( 3 , (v / 100 ) % 10  );
-        lcd_show_digit_f( 2 , (v / 10 )  % 10  );
-        lcd_show_digit_f( 1 , (v / 1 )   % 10  );
-        lcd_show_digit_f( 0 , 0x0e );
-
-        //while (1);
 
         // Next we will do a power usage proving test to check to make sure this unit does not draw more current than expected.
         // We never return form this, but we will be able to check the results in FRAM next time we are powered up.
+
+        __delay_cycles( 250000 );       // Delay 250ms to let the voltage recover after the flash pulled it down.
 
         power_rundown_test();
 
@@ -1258,6 +1263,36 @@ int main( void )
     SBI( RV3032_CLKOUT_PIE      , RV3032_CLKOUT_B    );
 
     if ( persistent_data.commisisoned_flag != 0x01 ) {
+
+        // First lets check how long we stayed alive after the power was pulled when we were first programmed. This helps to weed out any units that
+        // have defects that use too much power.
+
+        // This value represents how many 1/64ths of a second it took for us to go from 3.3V to 1.8V = a drop of 1.5V. This is running off of a 1uF decoupling capacitor.
+
+        unsigned porsoltCount = persistent_data.porsoltCount;
+
+
+        if ( porsoltCount < 40 ) {  // The represents a a drain of 2.4uA with SVS and all LCD segments on. https://www.google.com/search?q=%281+microfarad%29+%2F+%2840%2F64+second%29+*+%281.5+volt%29++in+microamps
+
+            // If we are drawing more than 2.4uA then something is probably wrong, so reject this unit.
+
+            // Show the operator what the count was
+            lcd_show_amps_hi_message(porsoltCount);
+            // ...and abort.
+            blinkforeverandever();
+
+        }
+
+        if ( porsoltCount > 60 ) {  // The represents a a drain of 1.6uA with all LCD segments on. https://www.google.com/search?q=%281+microfarad%29+%2F+%2860%2F64+second%29+*+%281.5+volt%29++in+microamps
+
+            // If we are drawing less than 1.6uA then something is probably wrong, so reject this unit.
+
+            // Show the operator what the count was
+            lcd_show_amps_lo_message(porsoltCount);
+            // ...and abort.
+            blinkforeverandever();
+
+        }
 
         // We just had batteries inserted for the first time ever, so we need to commission ourselves and get ready
 
