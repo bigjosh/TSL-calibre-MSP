@@ -21,11 +21,11 @@
 // We make the battery error codes non-overlapping with other error codes to avoid any confusion.
 
 
-// RTC was reset due to lack of power. Happened before unit was launched.
-#define BATT_ERROR_PRELAUNCH  2
+// We lost power after when we were commissioned and before unit was launched.
+#define BATT_ERROR_PRELAUNCH  1
 
 // RTC was reset due to lack of power. Happened after unit was launched.
-#define BATT_ERROR_POSTLAUNCH   3
+#define BATT_ERROR_POSTLAUNCH   2
 
 
 

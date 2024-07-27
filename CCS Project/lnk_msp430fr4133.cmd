@@ -76,7 +76,7 @@ MEMORY
     RAM_INT57	    		: origin = 0x27FA, length = 0x0002
     RAM_INT58	    		: origin = 0x27FC, length = 0x0002
 
-    INFOA                   : origin = 0x1800, length = 0x0200
+    PERSISTANT				: origin = 0x1800, length = 0x0200
     FRAM                    : origin = 0xC400, length = 0x3B80
     JTAGSIGNATURE           : origin = 0xFF80, length = 0x0004, fill = 0xFFFF
     BSLSIGNATURE            : origin = 0xFF84, length = 0x0004, fill = 0xFFFF
@@ -192,7 +192,7 @@ SECTIONS
     .sysmem     : {} > RAM                /* Dynamic memory allocation area    */
     .stack      : {} > RAM (HIGH)         /* Software system stack             */
 
-    .infoA (NOLOAD) : {} > INFOA              /* MSP430 INFO FRAM  Memory segments */
+    .persistant (NOLOAD) : {} > PERSISTANT              /* MSP430 INFO FRAM Memory segment */
 
     .ram_int45 : {} > RAM_INT45
     .ram_int46 : {} > RAM_INT46

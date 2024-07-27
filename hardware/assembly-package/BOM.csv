@@ -5,7 +5,7 @@ C4,CAP_0603,CAP CER 1UF 16V X7R 0603,Murata,,Possible,0.02,https://www.digikey.c
 C5,CAP_0603,CAP CER 1UF 16V X7R 0603,Murata,,Possible,0.02,https://www.digikey.com/en/products/detail/taiyo-yuden/EMK107C6105KA-T/6563455
 C7,CAP_0603,CAP CER 1UF 16V X7R 0603,Murata,,Possible,0.02,https://www.digikey.com/en/products/detail/taiyo-yuden/EMK107C6105KA-T/6563455
 C8,CAP_0603,CAP CER 1UF 16V X7R 0603,Murata,,Possible,0.02,https://www.digikey.com/en/products/detail/taiyo-yuden/EMK107C6105KA-T/6563455
-C2,CAP_0805,CAP CER 47UF 6.3V X5R 0805,Murata,,Possible,0.07,https://www.digikey.com/en/products/detail/CL21A476MQYNNNG/1276-6467-1-ND/5958095
+C2,RES_0805,RES 10K OHM 0805,Stackpole,,Possible,0.50,https://www.digikey.com/en/products/detail/stackpole-electronics-inc/RMCF0805JT10K0/1757762
 C6,CAP_0805,CAP CER 47UF 6.3V X5R 0805,Murata,DNP,Possible,0,
 C9,CAP_0805,CAP CER 47UF 6.3V X5R 0805,Murata,DNP,Possible,0,
 J1,LCD,30PIN TN Positive 12 Digit 7 Segment,,DNP,,1,na

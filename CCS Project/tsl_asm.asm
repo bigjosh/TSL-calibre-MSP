@@ -2,51 +2,24 @@
 
         	.cdecls C,LIST,"msp430.h"  				; Include device header file
             .cdecls C,LIST,"lcd_display_exp.h"  	; Links to the info we need to update the LCD
+            .cdecls C,LIST,"tsl_asm.h"  			; References to calls and variables shared with the C side
+            .cdecls C,LIST,"ram_isrs.h"  			; We need the addresses for the RAM vector table so we can update from RTL_BEGIN to RTL mode.
+            .cdecls C,LIST,"pins.h"					; We need the specific RAM vector for the CLKOUT pin
 
-            .global RTL_MODE_BEGIN
-            .global TSL_MODE_BEGIN
-            .global TSL_MODE_REFRESH
-
-            ;---- Get these pointers from the C side
-
-            ;.text                           ; Assemble to Flash memory
-            ;.data							;; Put functions into RAM?
-
-            .sect ".TI.ramfunc"				; Put these functions into RAM where they seem to use slightly less power
             .retain                         ; Ensure current section gets linked
             .retainrefs
 
-			;Assumes the symbol `ram_vector_PORT1` is the address of the ISR vector we will take over.
-			.ref		ram_vector_PORT1
+			.ref 		tsl_new_day			; C function called when day rolls over. Sadly I can not figure out how to define this in the tsl_asm.h file. :(
 
-			;tsl_next_day is called each 24 hours in TSL mode to update the day count and display
-			; Note this is the mangled C++ name for `void tsl_next_dayv()`
-			.ref		_Z12tsl_next_dayv
+			.text
 
-;Begin the TSL mode ISR
-;Set the ISR vector to point here to start this mode.
-;On the next tick, it will increment the seconds and display the result.
-
-;Assumes the following symbols:
-;	secs_lcd_words
-; 	secs		   - elapsed seconds
-
-			.ref 	secs_lcd_words			; - table of prerendered values to write to the seconds word in LCDMEM (one entry for each second 0-59)
-			.ref	rtc_secs				; - elapsed seconds starting point, read from the RTC in the startup C code
-
-			.ref 	mins_lcd_words			; - table of prerendered values to write to the minutes word in LCDMEM (one entry for each min 0-59)
-			.ref	rtc_mins				; - elapsed minutes starting point, read from the RTC in the start up C code
-
-			; Unforntunately hours digits can not be on consecutive LPINs and we are out of call-saved registers
-			; anyway so we update the hours digits seporately using these procomuted segment byte arrays
-			.ref 	hours_lcd_bytes
-			.ref	rtc_hours
-
-			; A complicated 2D table of words that we write to LCDMEM for the frames of the ready-to-launch animation
-			.ref 	ready_to_launch_lcd_frame_words
+; Begin the TSL mode ISR
+; Set the RAM ISR vector to point here to start this mode.
+; It will switch the MCU back to to the FRAM interrupt vector.
 
 ; 17us when minutes do not change (!)
 
+			.global 	TSL_MODE_BEGIN				; Publish function address so C can call it.
 TSL_MODE_BEGIN:
 
 	;This ISR initializes the TSL mode and executes the first pass. It, in turn, changes the ISR vector so that the next
@@ -62,11 +35,11 @@ TSL_MODE_BEGIN:
 	;expected to preserve them so they have the same value on return from a function as they had at the point of the
 	;call. We will use these since we call back to C when date count changes and we don't want them to get clobbered.
 
-			MOV.W 		#secs_lcd_words,R4			; R4=Base of the secs table
-			MOV.W		#(secs_lcd_words+2*60),R5	; R5=1 byte past end of the secs table
+			MOV.W 		#secs_lcd_words,R4			; R4=Base of the secs table (so we can reset back to the begining when we get to the end)
+			MOV.W		#(secs_lcd_words+2*60),R5	; R5=1 byte past end of the secs table (so we can test if we got to the end)
 
 			; R6 = compute our location in the table based on current seconds
-			MOV.B		&rtc_secs,R6				; Start with seconds. Note that secs are stored as a byte on the C side.
+			MOV.B		&tsl_secs,R6				; Start with seconds. Note that secs are stored as a byte on the C side.
 			ADD.W		R6,R6						; Double it so it is now a word pointer
 			ADD.W		R4,R6						; R6=Pointer to location of next sec in secs table
 
@@ -75,7 +48,7 @@ TSL_MODE_BEGIN:
 			MOV.W		#(mins_lcd_words+2*60),R8	; R8=1 byte past end of the mins table
 
 			; R9= compute our location in the table based on current minutes
-			MOV.B		&rtc_mins,R9				; Start with mins. Note that these are stored as a byte on the C side.
+			MOV.B		&tsl_mins,R9				; Start with mins. Note that these are stored as a byte on the C side.
 			ADD.W		R9,R9						; Double it so it is now a word pointer
 			ADD.W		R7,R9						; R9=location of next min in mins table
 
@@ -83,10 +56,24 @@ TSL_MODE_BEGIN:
 			; the straight value there and then compute everything else each update.
 			; thats OK since hours update only 1/3600th of the time. If we really wanted we could
 			; hand-code this all in ASM and then be able to use all regs, but not worth it.
-			MOV.B		&rtc_hours,R10					;  R10=Hours
+			MOV.B		&tsl_hours,R10				;  R10=Hours
 
-			; move the vector to point to our actual updater now that all the registers are set
-			mov.w	#TSL_MODE_ISR, &ram_vector_PORT1
+			; Next we need a register to hold the address of the persistent mins counter in FRAM. We do this once a minute, so should be efficient.
+			MOV.W		&persistant_mins_ptr,R11    ; R11=Address of persitent_data.mins counter in FRAM.
+													; Must be saved before calling C!
+
+			MOV.W 		#(PFWP|DFWP),R12			; R12=The constant to write to SYSCFG0 to relock the info FRAM memory. We keep it in a register becuase it is faster than using a constant for this value (0x03)
+													; Must be saved before calling C!
+
+			; Switch to FRAM based interrupt vector table
+			; Since the TSL_MODE_ISR is the default ISR for the CLKOUT pin in the FRAM vector table,
+			; this will swithc us to directly call TSL_MODE_ISR on the next CLKOUT interrupt.
+			; In c: `SYSCTL &= ~SYSRIVECT`
+
+			BIC.W	 	#SYSRIVECT,&SYSCTL
+
+			; Fall through to the actual handler, which will run once now and then will get called direct on each subsequent interrupt.
+
 
 TSL_MODE_ISR
 
@@ -96,14 +83,33 @@ TSL_MODE_ISR
 
  	  		MOV.W		@R6+,&(LCDM0W_L+16)			; Read word value from table, increment the pointer, then write the word to the LCDMEM for the Seconds digits
 
-			CMP.W		R6,R5						;; Check if we have reached the end of the table (seconds incremented to 60)
-
-			JNE			TSL_DONE
+			CMP.W		R6,R5						; Check if we have reached the end of the seconds table (seconds incremented to 60)
+			JNE			TSL_DONE					; This takes 2 cycles, branch taken or not
 
 			; Next minute
 
-			MOV.W		R4,R6						; Reset the seconds pointer back to the top of the table (which, remember is "01").
+			; Increment the persisant minutes counter in FRAM. Note that if this is the end of the day, this will increment that counter to 1440 (24 hours)
+			; To account for this, (1) the next_day() C code always sets the mins directly back to 0, and (2) the startup code specifically looks for the case where the
+			; mins is 1440 and increments the days if so becuase that means we failed between *here* and when the next_day would have incremented the days.
 
+
+			; TODO: Make this more efficient with registers.
+			; TODO: Is the extra power for lock/unlock worth it?
+
+			; Note that we use MOV to update the SYSCFG0 rather than BIC and BIS because MOV takes 1 fewer cycles.
+			; The only downside to this is that we overwrite whatever is in the other bits, but the program memory should
+			; always be locked in our application.
+
+			; Note that keeping SYSCFG0 in a register would not speed things up since indirect addressing is always implemented as address+register, they just used R0 if you do not specify one.
+			; Is locking/unlock for each update worth it? Well, it only costs about 5 minutes per century: https://www.google.com/search?q=%28100+years%29+*++%286+microsecond%2Fminute%29
+
+			MOV.W		#PFWP,&SYSCFG0			; 3 cycles. Unlock the info section of FRAM, leave program section locked. IN this case, #PFWP is autoaliased to the constant generator register.
+			INC.W		0(R11)					; 4 cycles. Increment the mins counter. Note we do not need to do any overflow checking becuase once a day `tsl_next_day` will run and reset this.
+			MOV.W		R12,&SYSCFG0	        ; 3 cycles. Lock both info section and program section of FRAM. Using a register for #((PFWP|DFWP) saves one cycle becuase it is not a value in the constant generator.
+
+			; Now update the mins on the display
+
+			MOV.W		R4,R6						; Reset the seconds pointer back to the top of the table (which, remember is "01") for next pass. We are currently displaying "00" which is in positon 59 in the table.
 
  	  		MOV.W		@R9+,&(LCDM0W_L+14)			; Read word value from table, increment the pointer, then write the word to the LCDMEM for the Mins digits
 
@@ -115,16 +121,16 @@ TSL_MODE_ISR
 
 			MOV.W		R7,R9						; Reset the mins pointer back to the top of the table (which, remember is "01").
 
-			ADD.B		#1,R10						; Increment hours
+			ADD.B		#1,R10						; Increment hours. TODO: We could use an ADD.B here and then use overlfow flag to avoid the CMP
 
 			CMP			#10,R10
 			JGE			HOURS_GE_10
 
 			; If we get here then incremented hours is 1-9
 			; Display the hours 1 digit
-			MOV.B		hours_lcd_bytes(R10),&(LCDM0W_L+13)		; Display hours in the hours ones digit on the LCD
+			MOV.B		hours_lcd_bytes(R10),&(LCDM0W_L+13)		; Display hours in the hours ones digit on the LCD. Remember that the hours table is *not* offset like secs and mins.
 
-			JMP 		TSL_DONE					; This wastes 3 cycles, we could just repeat the ending motif here.
+			JMP 		TSL_DONE					; This wastes 3 cycles every hour, we could just repeat the ending motif here.
 
 HOURS_GE_10
 			CMP			#20,R10
@@ -136,7 +142,7 @@ HOURS_GE_10
 			MOV.B		&(hours_lcd_bytes+1),&(LCDM0W_L+10)			; Display "1" in hours 10's digit
 			MOV.B		(hours_lcd_bytes-10)(R10),&(LCDM0W_L+13)	; Display hours 1's digit in the hours ones digit on the LCD (see what I did there? :) )
 
-			JMP 		TSL_DONE					; This wastes 3 cycles, we could just repeat the ending motif here.
+			JMP 		TSL_DONE					; This wastes 3 cycles every hour, we could just repeat the ending motif here.
 
 HOURS_GE_20
 
@@ -148,7 +154,7 @@ HOURS_GE_20
 			MOV.B		&(hours_lcd_bytes+2),&(LCDM0W_L+10)			; Display "2" in hours 10's digit
 			MOV.B		(hours_lcd_bytes-20)(R10),&(LCDM0W_L+13)	; Display hours 1's digit in the hours ones digit on the LCD (see what I did there? :) )
 
-			JMP 		TSL_DONE					; This wastes 3 cycles, we could just repeat the ending motif here.
+			JMP 		TSL_DONE					; This wastes 3 cycles every hour, we could just repeat the ending motif here.
 
 
 HOURS_EQ_24
@@ -160,8 +166,13 @@ HOURS_EQ_24
 			MOV.B		&(hours_lcd_bytes+0),&(LCDM0W_L+13)			; Display "0" in hours 10's digit
 			MOV.B		&(hours_lcd_bytes+0),&(LCDM0W_L+10)			; Display "0" in hours 1's digit
 
-			CALL		#_Z12tsl_next_dayv							; Call the C++ side to increment day (this is the mangled name for `tsl_next_day()`
 
+			PUSH.W		R11											; R11-R14 are not callee saved, so we have to save them before calling C.
+			PUSH.W		R12
+			CALL		#tsl_new_day								; Call the C++ side for a new day. Updates the days digits on the LCD and atomically
+																	; (increments the persistant days and clears the minutes).
+			POP.W		R12											; TODO: We could just reload the orginal values here and save a PUSH/POP.
+			POP.W		R11
 
 TSL_DONE
 ;----------------------------------------------------------------------
@@ -182,18 +193,11 @@ TSL_DONE
 
             reti							; pops previous sleep mode, so puts us back to sleep
             								; TODO: Replace this IRET with a sleep and save 4 cycles, and then
-            								; just clear 60 PUSHes off the stack every minute wiht a single write to SP.
+            								; just clear 60 PUSHes off the stack every minute with a single write to SP.
 
-            nop
+            .sect   PORT1_VECTOR             ; Vector
+            .short  TSL_MODE_ISR             ;
 
-            ;Has effect of skipping to next second. Should only be called at the top of a day.
-TSL_MODE_REFRESH
-			ADD.W		#2,R6						; Skip to next second
-
-			; move the vector to point back to our actual updater now that seconds are corrected
-			mov.w	#TSL_MODE_ISR, &ram_vector_PORT1
-
-			JMP		TSL_MODE_ISR
 
 ;---- RTL ISR RAMFUNC
 ; 48us
@@ -208,7 +212,10 @@ TSL_MODE_REFRESH
 ;Begin the RTL mode ISR
 ;Set the ISR vector to point here to start this mode.
 ;Assumes the symbol `ready_to_launch_lcd_frames` points to a table of LCD frames for the squiggle animation
-			.ref		ready_to_launch_lcd_frames
+
+		.text								; We need to switch back to text section becuase the above ISR definition chnages to the ISR section. :/
+
+		.global  	RTL_MODE_BEGIN			; Publish function address so C can call it.
 
 RTL_MODE_BEGIN:
 	;This entry point sets up all the registers and changes the PORT_1 vector to point to the optimized ISR, which will get called directly on subsequent interrupts
@@ -235,6 +242,7 @@ RTL_MODE_BEGIN:
 
 ; This is the entry point for the ISR
 ; We leave this mode when the trigger is pulled by the trigger ISR
+
 RTL_MODE_ISR:
 
  	; OR.B      #128,&PAOUT_L+0  ;			// DebugA ON - For profiling
@@ -271,7 +279,5 @@ RTL_MODE_ISR:
 ;           Interrupt Vectors
 ;------------------------------------------------------------------------------
 
-            ;.sect   PORT1_VECTOR              ; Vector
-            ;.short  RTL_MODE_BEGIN              ;
             .end
 

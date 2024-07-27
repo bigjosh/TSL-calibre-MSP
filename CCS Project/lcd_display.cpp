@@ -50,6 +50,9 @@ struct glyph_segment_t {
     const nibble nibble_e_thru_g;     // The COM bits for the digit's E-G segments
 };
 
+// This line prevents us from getting "declared but never used" warnings on chars that we just happened to not be using right now.
+#pragma diag_suppress 179
+
 constexpr glyph_segment_t glyph_0      = {SEG_A_COM_BIT | SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT                  }; // "0"
 constexpr glyph_segment_t glyph_1      = {                SEG_B_COM_BIT | SEG_C_COM_BIT                 ,                                               0}; // "1" (no high pin segments lit in the number 1)
 constexpr glyph_segment_t glyph_2      = {SEG_A_COM_BIT | SEG_B_COM_BIT |                 SEG_D_COM_BIT , SEG_E_COM_BIT |                 SEG_G_COM_BIT  }; // "2"
@@ -83,6 +86,7 @@ constexpr glyph_segment_t glyph_P      = {SEG_A_COM_BIT | SEG_B_COM_BIT         
 constexpr glyph_segment_t glyph_r      = {                                                            0 , SEG_E_COM_BIT |                 SEG_G_COM_BIT  }; // "r"
 constexpr glyph_segment_t glyph_S      = {SEG_A_COM_BIT |                 SEG_C_COM_BIT | SEG_D_COM_BIT ,                 SEG_F_COM_BIT | SEG_G_COM_BIT  };  // S
 constexpr glyph_segment_t glyph_t      = {                                                SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  };  // t
+constexpr glyph_segment_t glyph_u      = {                                SEG_C_COM_BIT | SEG_D_COM_BIT , SEG_E_COM_BIT                                  }; // "u"
 constexpr glyph_segment_t glyph_X      = {SEG_A_COM_BIT | SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT | SEG_G_COM_BIT  }; // "X"
 constexpr glyph_segment_t glyph_y      = {                SEG_B_COM_BIT | SEG_C_COM_BIT | SEG_D_COM_BIT ,                 SEG_F_COM_BIT | SEG_G_COM_BIT  };  // y
 
@@ -93,9 +97,17 @@ constexpr glyph_segment_t glyph_rbrac  = {SEG_A_COM_BIT | SEG_B_COM_BIT | SEG_C_
 constexpr glyph_segment_t glyph_lbrac  = {SEG_A_COM_BIT |                                 SEG_D_COM_BIT , SEG_E_COM_BIT | SEG_F_COM_BIT                  }; // "["
 
 
+// These are little jaggy lines going one way and the other way
+constexpr glyph_segment_t left_tick_segments = {  SEG_C_COM_BIT , SEG_F_COM_BIT | SEG_G_COM_BIT };
+constexpr glyph_segment_t right_tick_segments = { SEG_B_COM_BIT , SEG_E_COM_BIT | SEG_G_COM_BIT };
+
+// Go back to showing warning for unused variables.
+#pragma diag_default 179
+
+
 // All the single digit numbers (up to 0x0f hex) in an array for easy access
 
-constexpr glyph_segment_t digit_glyphs[0x10] = {
+constexpr glyph_segment_t digit_segments[0x10] = {
 
     glyph_0, // "0"
     glyph_1, // "1" (no high pin segments lit in the number 1)
@@ -132,10 +144,6 @@ constexpr glyph_segment_t squiggle_segments[SQUIGGLE_SEGMENTS_SIZE] = {
     { 0x00          , SEG_F_COM_BIT  },
 };
 
-
-// These are little jaggy lines going one way and the other way
-constexpr glyph_segment_t left_tick_segments = {  SEG_C_COM_BIT , SEG_F_COM_BIT | SEG_G_COM_BIT };
-constexpr glyph_segment_t right_tick_segments = { SEG_B_COM_BIT , SEG_E_COM_BIT | SEG_G_COM_BIT };
 
 
 // This represents a logical digit that we will use to actually display numbers on the screen
@@ -262,15 +270,10 @@ struct word_of_bytes_of_nibbles_t {
 };
 
 
-constexpr word * LCDMEMW = (word *) LCDMEM;
-
-constexpr byte LCDMEM_WORD_COUNT=16;             // Total number of words in LCD mem. Note that we do not actually use them all, but our display is spread across it.
-
 // these arrays hold the pre-computed words that we will write to word in LCD memory that
 // controls the seconds and mins digits on the LCD. We keep these in RAM intentionally for power and latency savings.
 // use fill_lcd_words() to fill these arrays.
 
-#pragma RETAIN
 word secs_lcd_words[SECS_PER_MIN];
 
 // Make sure that the 4 nibbles that make up the 2 seconds digits are all in the same word in LCD memory
@@ -321,13 +324,13 @@ void fill_lcd_words( word *words , const byte tens_digit_index , const byte ones
 
         // The ` & 0x01` here is normalizing the address in the LCDMEM to be just the offset into the word (hi or low byte)
 
-        word_of_nibbles.set_nibble( lpin_lcdmem_offset( tens_logical_digit.lpin_a_thru_d ) & 0x01 , lpin_nibble( tens_logical_digit.lpin_a_thru_d ) , digit_glyphs[tens_digit].nibble_a_thru_d );
-        word_of_nibbles.set_nibble( lpin_lcdmem_offset( tens_logical_digit.lpin_e_thru_g ) & 0x01 , lpin_nibble( tens_logical_digit.lpin_e_thru_g ) , digit_glyphs[tens_digit].nibble_e_thru_g );
+        word_of_nibbles.set_nibble( lpin_lcdmem_offset( tens_logical_digit.lpin_a_thru_d ) & 0x01 , lpin_nibble( tens_logical_digit.lpin_a_thru_d ) , digit_segments[tens_digit].nibble_a_thru_d );
+        word_of_nibbles.set_nibble( lpin_lcdmem_offset( tens_logical_digit.lpin_e_thru_g ) & 0x01 , lpin_nibble( tens_logical_digit.lpin_e_thru_g ) , digit_segments[tens_digit].nibble_e_thru_g );
 
         for( byte ones_digit = 0; ones_digit < max_ones_digit ; ones_digit ++ ) {
 
-            word_of_nibbles.set_nibble( lpin_lcdmem_offset( ones_logical_digit.lpin_a_thru_d ) & 0x01 , lpin_nibble(ones_logical_digit.lpin_a_thru_d) , digit_glyphs[ones_digit].nibble_a_thru_d );
-            word_of_nibbles.set_nibble( lpin_lcdmem_offset( ones_logical_digit.lpin_e_thru_g ) & 0x01 , lpin_nibble(ones_logical_digit.lpin_e_thru_g) , digit_glyphs[ones_digit].nibble_e_thru_g );
+            word_of_nibbles.set_nibble( lpin_lcdmem_offset( ones_logical_digit.lpin_a_thru_d ) & 0x01 , lpin_nibble(ones_logical_digit.lpin_a_thru_d) , digit_segments[ones_digit].nibble_a_thru_d );
+            word_of_nibbles.set_nibble( lpin_lcdmem_offset( ones_logical_digit.lpin_e_thru_g ) & 0x01 , lpin_nibble(ones_logical_digit.lpin_e_thru_g) , digit_segments[ones_digit].nibble_e_thru_g );
 
             // This next line is where we add the +1 offset to all our tables.
             words[ (((tens_digit * max_ones_digit) + ones_digit) + ( (max_tens_digit*max_ones_digit )-1 )  ) % (max_tens_digit*max_ones_digit )] = word_of_nibbles.as_word;
@@ -338,10 +341,6 @@ void fill_lcd_words( word *words , const byte tens_digit_index , const byte ones
     }
 
 };
-
-
-// Write a value from the array into this word to update the two digits on the LCD display
-constexpr word *mins_lcdmem_word = &LCDMEMW[ lpin_t<digitplace_lpins_table[MINS_ONES_DIGITPLACE_INDEX].lpin_a_thru_d>::lcdmem_offset() >> 1 ];
 
 byte hours_lcd_bytes[10];
 
@@ -375,11 +374,11 @@ void fill_lcd_bytes( byte *bytes , const byte digit_index ) {
 
         if  ( lpin_nibble( logical_digit.lpin_a_thru_d ) == LOWER ) {
             // A-D is low
-            byte_of_nibbles =  digit_glyphs[digit].nibble_a_thru_d  | ( digit_glyphs[digit].nibble_e_thru_g  ) << 4;
+            byte_of_nibbles =  digit_segments[digit].nibble_a_thru_d  | ( digit_segments[digit].nibble_e_thru_g  ) << 4;
 
         } else {
             // A-D is high
-            byte_of_nibbles =  (digit_glyphs[digit].nibble_a_thru_d << 4)  |  digit_glyphs[digit].nibble_e_thru_g  ;
+            byte_of_nibbles =  (digit_segments[digit].nibble_a_thru_d << 4)  |  digit_segments[digit].nibble_e_thru_g  ;
 
         }
 
@@ -509,8 +508,8 @@ void initLCDPrecomputedWordArrays() {
 template <uint8_t pos, uint8_t x>                    // Use template to force everything to compile down to an individualized, optimized function for each pos+x combination
 inline void lcd_show() {
 
-    constexpr uint8_t nibble_a_thru_d =  digit_glyphs[x].nibble_a_thru_d;         // Look up which segments on the low pin we need to turn on to draw this digit
-    constexpr uint8_t nibble_e_thru_g =  digit_glyphs[x].nibble_e_thru_g;         // Look up which segments on the low pin we need to turn on to draw this digit
+    constexpr uint8_t nibble_a_thru_d =  digit_segments[x].nibble_a_thru_d;         // Look up which segments on the low pin we need to turn on to draw this digit
+    constexpr uint8_t nibble_e_thru_g =  digit_segments[x].nibble_e_thru_g;         // Look up which segments on the low pin we need to turn on to draw this digit
 
     constexpr uint8_t lpin_a_thru_d = digitplace_lpins_table[pos].lpin_a_thru_d;     // Look up the L-pin for the low segment bits of this digit
     constexpr uint8_t lpin_e_thru_g = digitplace_lpins_table[pos].lpin_e_thru_g;     // Look up the L-pin for the high bits of this digit
@@ -695,7 +694,7 @@ inline void lcd_show_fast_secs( uint8_t secs ) {
 
 void lcd_show_digit_f( const uint8_t pos, const byte d ) {
 
-    lcd_show_f( pos , digit_glyphs[ d ] );
+    lcd_show_f( pos , digit_segments[ d ] );
 }
 
 
@@ -924,7 +923,7 @@ void lcd_show_load_pin_animation(unsigned int step) {
 }
 
 
-constexpr glyph_segment_t start_message[] = {
+constexpr glyph_segment_t first_start_message[] = {
                                                    glyph_F,
                                                    glyph_i,
                                                    glyph_r,
@@ -940,10 +939,10 @@ constexpr glyph_segment_t start_message[] = {
 };
 
 // Show "First Start"
-void lcd_show_start_message() {
+void lcd_show_first_start_message() {
 
     for( byte i=0; i<DIGITPLACE_COUNT; i++ ) {
-        lcd_show_f(  i , start_message[ DIGITPLACE_COUNT - 1- i] );        // digit place 12 is rightmost, so reverse order for text
+        lcd_show_f(  i , first_start_message[ DIGITPLACE_COUNT - 1- i] );        // digit place 12 is rightmost, so reverse order for text
     }
 }
 
@@ -971,6 +970,31 @@ void lcd_show_arming_message() {
         lcd_show_f(  i , arming_message[ DIGITPLACE_COUNT - 1- i] );        // digit place 12 is rightmost, so reverse order for text
     }
 }
+
+
+constexpr glyph_segment_t centesimus_dies_message[] = {
+    {0x09,0x05},
+    {0x08,0x06},
+    {0x0f,0x00},
+    {0x0b,0x06},
+    {0x0f,0x05},
+    {0x0b,0x06},
+    {0x0f,0x02},
+    {0x00,0x00},
+    {0x0e,0x04},
+    {0x0f,0x05},
+    {0x0d,0x03},
+    {0x06,0x07},
+};
+
+// Refresh day 100's places digits
+void lcd_show_centesimus_dies_message() {
+
+    for( byte i=0; i<DIGITPLACE_COUNT; i++ ) {
+        lcd_show_f(  i , centesimus_dies_message[ DIGITPLACE_COUNT - 1- i] );        // digit place 12 is rightmost, so reverse order for text
+    }
+}
+
 
 // CLOCK GOOd
 
@@ -1025,27 +1049,138 @@ void lcd_show_clock_lost_message() {
 }
 
 
-// Every 100 days
-
-constexpr glyph_segment_t centesimus_dies_message[] = {
-    {0x09,0x05},
-    {0x08,0x06},
-    {0x0f,0x00},
-    {0x0b,0x06},
-    {0x0f,0x05},
-    {0x0b,0x06},
-    {0x0f,0x02},
-    {0x00,0x00},
-    {0x0e,0x04},
-    {0x0f,0x05},
-    {0x0d,0x03},
-    {0x06,0x07},
+constexpr glyph_segment_t all_8s_message[] = {
+                                                   glyph_8,
+                                                   glyph_8,
+                                                   glyph_8,
+                                                   glyph_8,
+                                                   glyph_8,
+                                                   glyph_8,
+                                                   glyph_8,
+                                                   glyph_8,
+                                                   glyph_8,
+                                                   glyph_8,
+                                                   glyph_8,
+                                                   glyph_8,
 };
 
-// Refresh day 100's places digits
-void lcd_show_centesimus_dies_message() {
+// Show "888888888888"
+void lcd_show_all_8s_message() {
 
     for( byte i=0; i<DIGITPLACE_COUNT; i++ ) {
-        lcd_show_f(  i , centesimus_dies_message[ DIGITPLACE_COUNT - 1- i] );        // digit place 12 is rightmost, so reverse order for text
+        lcd_show_f(  i , all_8s_message[ DIGITPLACE_COUNT - 1- i] );        // digit place 12 is rightmost, so reverse order for text
     }
 }
+
+
+constexpr glyph_segment_t amps_hi_message[] = {
+                                                   glyph_A,
+                                                   glyph_m1,
+                                                   glyph_m2,
+                                                   glyph_P,
+                                                   glyph_S,
+                                                   glyph_SPACE,
+                                                   glyph_H,
+                                                   glyph_I,
+                                                   glyph_SPACE,
+                                                   glyph_SPACE,
+                                                   glyph_SPACE,
+                                                   glyph_SPACE,
+};
+
+// Show "888888888888"
+void lcd_show_amps_hi_message( unsigned count ) {
+
+    for( byte i=0; i<DIGITPLACE_COUNT; i++ ) {
+        lcd_show_f(  i , amps_hi_message[ DIGITPLACE_COUNT - 1- i] );        // digit place 12 is rightmost, so reverse order for text
+    }
+
+    lcd_show_digit_f( 2 , (count / 100 ) % 10  );
+    lcd_show_digit_f( 1 , (count / 10 )  % 10  );
+    lcd_show_digit_f( 0 , (count / 1 )   % 10  );
+
+}
+
+
+constexpr glyph_segment_t amps_lo_message[] = {
+                                                   glyph_A,
+                                                   glyph_m1,
+                                                   glyph_m2,
+                                                   glyph_P,
+                                                   glyph_S,
+                                                   glyph_SPACE,
+                                                   glyph_H,
+                                                   glyph_I,
+                                                   glyph_SPACE,
+                                                   glyph_X,
+                                                   glyph_X,
+                                                   glyph_X,
+};
+
+void lcd_show_amps_lo_message( unsigned count ) {
+
+    for( byte i=0; i<DIGITPLACE_COUNT; i++ ) {
+        lcd_show_f(  i , amps_lo_message[ DIGITPLACE_COUNT - 1- i] );        // digit place 12 is rightmost, so reverse order for text
+    }
+
+    if (count<1000) {
+        lcd_show_digit_f( 2 , (count / 100 ) % 10  );
+        lcd_show_digit_f( 1 , (count / 10 )  % 10  );
+        lcd_show_digit_f( 0 , (count / 1 )   % 10  );
+    }
+}
+
+constexpr glyph_segment_t lo_volt_message[] = {
+                                                   glyph_L,
+                                                   glyph_o,
+                                                   glyph_SPACE,
+                                                   glyph_u,
+                                                   glyph_o,
+                                                   glyph_L,
+                                                   glyph_t,
+                                                   glyph_SPACE,
+                                                   glyph_X,
+                                                   glyph_X,
+                                                   glyph_X,
+                                                   glyph_X,
+};
+
+void lcd_show_lo_volt_message( unsigned count ) {
+
+    for( byte i=0; i<DIGITPLACE_COUNT; i++ ) {
+        lcd_show_f(  i , lo_volt_message[ DIGITPLACE_COUNT - 1- i] );        // digit place 12 is rightmost, so reverse order for text
+    }
+
+    if (count<10000) {
+        lcd_show_digit_f( 2 , (count / 1000) % 10  );
+        lcd_show_digit_f( 2 , (count / 100 ) % 10  );
+        lcd_show_digit_f( 1 , (count / 10 )  % 10  );
+        lcd_show_digit_f( 0 , (count / 1 )   % 10  );
+    }
+}
+
+
+
+// Save the current LCD display pixels. Must be in the header because it is a template.
+// Do not look at the object code for these two function or you will be very sad. Come on compiler, you had one job and I made it easy for you.
+void lcd_save_screen( lcd_save_screen_buffer_t *buffer) {
+    unsigned *x = buffer->w;
+    for( unsigned i=0; i< LCDMEM_WORD_COUNT ; i++ ) {
+        *(x++) = *(LCDMEMW +i);
+    }
+
+}
+
+// Save the current LCD display pixels. Must be in the header because it is a template.
+void lcd_restore_screen( lcd_save_screen_buffer_t *buffer) {
+    unsigned *x = buffer->w;
+    for( unsigned i=0; i< LCDMEM_WORD_COUNT ; i++ ) {
+        *(LCDMEMW +i) = *(x++) ;
+    }
+
+}
+
+
+
+
+
