@@ -1058,6 +1058,9 @@ constexpr unsigned adc_mv_to_vcc_adc8bit(unsigned mv) {
 static volatile unsigned power_rundown_counter_ram =0;
 
 // Called at 64Hz by the CLKOUT from the RTC while we are powering down to measure how long we can keep running and thus much current we are using.
+// 3.93uA@3.3V with all LCD segments lit and ISR running at 64Hz.
+// 3.25uA@1.92V " " "
+// 2.02uA just LCD, no interrupts.
 __interrupt void POWERDOWN_TEST_ISR(void) {
 
     power_rundown_counter_ram+=1;
@@ -1129,7 +1132,6 @@ void power_rundown_test() {
     CBI( RV3032_CLKOUT_PIFG     , RV3032_CLKOUT_B    );
     SBI( RV3032_CLKOUT_PIE      , RV3032_CLKOUT_B    );
 
-
     // Put all 8's on the display. This will lite every segment so any short on any segment will show up as power drain.
     // This also lets the operator know that we know that we are dying. If the display stays on "First Start" after power is pulled, then we know that a Blotzman Battery has formed in the circuit.
     lcd_show_all_8s_message();
@@ -1171,47 +1173,10 @@ int main( void )
     rv3032_init();
 
 
-    /*
-
-        lcd_show_digit_f(0, (test1 >> 0 ) & 0x0f );
-        lcd_show_digit_f(1, (test1 >> 4 ) & 0x0f );
-
-        lcd_show_digit_f(5, (test2 >> 0 ) & 0x0f );
-        lcd_show_digit_f(6, (test2 >> 4 ) & 0x0f );
-        sleepforeverandever();
-
-    */
-
-
     // Initialize the lookup tables we use for efficiently updating the LCD
     initLCDPrecomputedWordArrays();
 
-#warning
-
-    if (1) {
-        CBI( TRIGGER_PDIR , TRIGGER_B );      // Input
-        SBI( TRIGGER_PREN , TRIGGER_B );      // Enable pull resistor
-        SBI( TRIGGER_POUT , TRIGGER_B );      // Pull up
-
-        __delay_cycles(10000);        // Let pull up fight against pin capacitance.
-
-        if ( TBI(TRIGGER_PIN , TRIGGER_B)) {
-
-            lcd_show_digit_f(0, 0x0a);
-
-            unlock_persistant_data();
-            persistent_data.initalized_flag=0x00;
-            lock_persistant_data();
-
-            while ( TBI(TRIGGER_PIN , TRIGGER_B));
-            lcd_show_digit_f(0, 0x0b);
-
-        }
-
-        CBI( TRIGGER_POUT , TRIGGER_B );      // low
-        SBI( TRIGGER_PDIR , TRIGGER_B );      // drive
-
-    }
+    // TEST CODE GOES HERE
 
     if (persistent_data.initalized_flag!=0x01) {
 
@@ -1228,12 +1193,14 @@ int main( void )
         persistent_data.initalized_flag=0x01;             // Remember that we already started up once and never do it again.
         lock_persistant_data();
 
-        lcd_show_first_start_message();
 
         // Next we will do a power usage proving test to check to make sure this unit does not draw more current than expected.
         // We never return form this, but we will be able to check the results in FRAM next time we are powered up.
 
-        __delay_cycles( 250000 );       // Delay 250ms to let the voltage recover after the flash pulled it down.
+        __delay_cycles( 500000 );       // Delay 500ms to let the voltage recover after the flash pulled it down.
+
+        lcd_show_first_start_message();
+
 
         power_rundown_test();
 
@@ -1272,7 +1239,8 @@ int main( void )
         unsigned porsoltCount = persistent_data.porsoltCount;
 
 
-        if ( porsoltCount < 40 ) {  // The represents a a drain of 2.4uA with SVS and all LCD segments on. https://www.google.com/search?q=%281+microfarad%29+%2F+%2840%2F64+second%29+*+%281.5+volt%29++in+microamps
+        if ( porsoltCount < 39 ) {  // Empirically determined that all test units with nominal current draw score 40 or above, so this seems like a good starting point.
+                                    // 40 represents a a drain of 2.4uA with SVS and all LCD segments on. https://www.google.com/search?q=%281+microfarad%29+%2F+%2840%2F64+second%29+*+%281.5+volt%29++in+microamps
 
             // If we are drawing more than 2.4uA then something is probably wrong, so reject this unit.
 
@@ -1283,7 +1251,7 @@ int main( void )
 
         }
 
-        if ( porsoltCount > 60 ) {  // The represents a a drain of 1.6uA with all LCD segments on. https://www.google.com/search?q=%281+microfarad%29+%2F+%2860%2F64+second%29+*+%281.5+volt%29++in+microamps
+        if ( porsoltCount > 60 ) {  // The represents a drain of 1.6uA with all LCD segments on. https://www.google.com/search?q=%281+microfarad%29+%2F+%2860%2F64+second%29+*+%281.5+volt%29++in+microamps
 
             // If we are drawing less than 1.6uA then something is probably wrong, so reject this unit.
 
