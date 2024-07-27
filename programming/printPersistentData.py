@@ -39,6 +39,7 @@ class PersistentData:
     initalized_flag: int
     commisisoned_flag: int
     launched_flag: int
+    porsoltCount: int
     tsl_powerup_count: int
     mins: int
     days: int
@@ -70,12 +71,13 @@ def parse_persistent_data(byte_array: List[int]) -> PersistentData:
         initalized_flag=parse_uint(14),
         commisisoned_flag=parse_uint(16),
         launched_flag=parse_uint(18),
-        tsl_powerup_count=parse_uint(20),
-        mins=parse_uint(22),
-        days=parse_ulong(24),
-        update_flag=parse_uint(28),
-        backup_mins=parse_uint(30),
-        backup_days=parse_ulong(32)
+        porsoltCount=parse_uint(20),
+        tsl_powerup_count=parse_uint(22),
+        mins=parse_uint(24),
+        days=parse_ulong(26),
+        update_flag=parse_uint(30),
+        backup_mins=parse_uint(32),
+        backup_days=parse_ulong(34)
     )
 
 def decode_titxt(titxt_data):
