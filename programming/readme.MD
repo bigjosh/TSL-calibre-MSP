@@ -26,7 +26,7 @@
     | SBWTICK | T |
 
 ## Commissioning Procedure
-2. Run the `program.py` program.
+1. Run the `program.py` program.
 1. Connect a new TSL board without batteries to the programming connector.
 2. Enter the unit's serial number. 
 2. _Confirm_ that the firmware download completes without error.
