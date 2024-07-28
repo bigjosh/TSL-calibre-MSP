@@ -26,22 +26,22 @@
     | SBWTICK | T |
 
 ## Commissioning Procedure
+2. Run the `program.py` program.
 1. Connect a new TSL board without batteries to the programming connector.
-2. Run the `program.py` program and make sure it completes without error.
-3. Confirm that the TSL starts, the two LEDs flash, and the display shows the 'First Start' message.
-4. Disconnect the programming connector. The display should fade out. 
+2. Enter the unit's serial number. 
+2. _Confirm_ that the firmware download completes without error.
+3. _Confirm_ that the TSL starts, the two LEDs flash, and the display shows the 'First Start' message.
+4. Disconnect the programming connector. The display should show all 8's while it fades out. 
 5. Within 1 minute, install the batteries into the TSL.
-6. Confirm that it displays the 'Load Pin' message.
+6. _Confirm_ that the display shows the 'Load Pin' message.
 7. Assemble the TSL into the tube.
-8. Insert the trigger pin and confirm that the display says 'Arming' followed by the dancing dashes animation.
-9. Confirm that the dancing dashes display lights all the LCD segments and that it steps with a steady 1Hz cadence.
-10. Pack it up and ship it out! 
+8. Insert the pull pin.
+9. The display should show 'Arming' followed by the dancing dashes animation.
+9. _Confirm_ that the dancing dashes display lights all the LCD segments and that it updates steadily once per second. 
+10. Pack it up and ship it out!
+
+Reject the unit if it fails any of the _confirm_ steps above.
 
 ## Troubleshooting
 
 Try unplugging the EZFET board from the USB and plugging it back in. Sometimes it gets messed up if the computer goes to sleep.
-
-
-
-
- 
