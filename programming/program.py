@@ -451,9 +451,9 @@ def program_loop():
             image_file_name = os.path.join( tempdir , 'image.txt' )    
             with open( image_file_name ,'wb') as wfd:
             
-                # get the current time
-                t = time.localtime()
-                
+                # get the current GMT time
+                t = time.gmtime()                
+
                 # prepend a time stamp (in TI HEX format)
                 # 1800 is the begining of "information memory" FRAM.
                 wfd.write("@1800\n".encode())
