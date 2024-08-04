@@ -26,6 +26,8 @@
 #define DEBUG_PULSE_ON()     {}
 #define DEBUG_PULSE_OFF()    {}
 
+// Which PCB?
+//#define C2_IS_10K       // For PCBs after 9/2024 which have C2 replaced with a 10K resistor.
 
 // Put the LCD into blinking mode
 
@@ -34,7 +36,7 @@ void lcd_blinking_mode() {
 }
 
 
-// Turn off power to RV3032 (also takes care of making the IO pin not float and disabling the inetrrupt)
+// Turn off power to RV3032 (also takes care of making the IO pin not float and disabling the interrupt)
 void depower_rv3032() {
 
     // Make Vcc pin to RV3032 ground. NOte that the RTC will likely keep running for a while off the backup
@@ -474,9 +476,11 @@ void rv3032_init() {
     //uint8_t pmu_reg = 0b01100001;         // CLKOUT off, Level backup switching mode (2v) , no charge pump, 1K OHM trickle resistor, trickle charge Vbackup to Vdd. Predicted to use ~200nA more than disabled because of voltage monitor.
     //uint8_t pmu_reg = 0b01000000;         // CLKOUT off, Other disabled backup switching mode, no charge pump, trickle resistor off, trickle charge Vbackup to Vdd
 
-    //uint8_t pmu_reg = 0b00011101;          // CLKOUT ON, Direct backup switching mode, no charge pump, 12K OHM trickle resistor, trickle charge Vbackup to Vdd.
-
-    uint8_t pmu_reg = 0b00000000;          // CLKOUT ON, backup switching disabled
+    #ifdef C2_IS_10K
+        uint8_t pmu_reg = 0b00000000;          // CLKOUT ON, backup switching disabled
+    #else
+        uint8_t pmu_reg = 0b00011101;        // CLKOUT ON, Direct backup switching mode, no charge pump, 12K OHM trickle resistor, trickle charge Vbackup to Vdd.
+    #endif
     i2c_write( RV_3032_I2C_ADDR , 0xc0 , &pmu_reg , 1 );
 
     uint8_t control1_reg = 0b00000100;      // TE=0 so no periodic timer interrupt, EERD=1 to disable automatic EEPROM refresh (why would you want that?).
@@ -1231,36 +1235,43 @@ int main( void )
 
     if ( persistent_data.commisisoned_flag != 0x01 ) {
 
-        // First lets check how long we stayed alive after the power was pulled when we were first programmed. This helps to weed out any units that
-        // have defects that use too much power.
 
-        // This value represents how many 1/64ths of a second it took for us to go from 3.3V to 1.8V = a drop of 1.5V. This is running off of a 1uF decoupling capacitor.
-
-        unsigned porsoltCount = persistent_data.porsoltCount;
+        #ifdef C2_IS_10K            // Only check power usage on the new resistor version
 
 
-        if ( porsoltCount < 39 ) {  // Empirically determined that all test units with nominal current draw score 40 or above, so this seems like a good starting point.
-                                    // 40 represents a a drain of 2.4uA with SVS and all LCD segments on. https://www.google.com/search?q=%281+microfarad%29+%2F+%2840%2F64+second%29+*+%281.5+volt%29++in+microamps
 
-            // If we are drawing more than 2.4uA then something is probably wrong, so reject this unit.
+            // First lets check how long we stayed alive after the power was pulled when we were first programmed. This helps to weed out any units that
+            // have defects that use too much power.
 
-            // Show the operator what the count was
-            lcd_show_amps_hi_message(porsoltCount);
-            // ...and abort.
-            blinkforeverandever();
+            // This value represents how many 1/64ths of a second it took for us to go from 3.3V to 1.8V = a drop of 1.5V. This is running off of a 1uF decoupling capacitor.
 
-        }
+            unsigned porsoltCount = persistent_data.porsoltCount;
 
-        if ( porsoltCount > 60 ) {  // The represents a drain of 1.6uA with all LCD segments on. https://www.google.com/search?q=%281+microfarad%29+%2F+%2860%2F64+second%29+*+%281.5+volt%29++in+microamps
 
-            // If we are drawing less than 1.6uA then something is probably wrong, so reject this unit.
+            if ( porsoltCount < 39 ) {  // Empirically determined that all test units with nominal current draw score 40 or above, so this seems like a good starting point.
+                                        // 40 represents a a drain of 2.4uA with SVS and all LCD segments on. https://www.google.com/search?q=%281+microfarad%29+%2F+%2840%2F64+second%29+*+%281.5+volt%29++in+microamps
 
-            // Show the operator what the count was
-            lcd_show_amps_lo_message(porsoltCount);
-            // ...and abort.
-            blinkforeverandever();
+                // If we are drawing more than 2.4uA then something is probably wrong, so reject this unit.
 
-        }
+                // Show the operator what the count was
+                lcd_show_amps_hi_message(porsoltCount);
+                // ...and abort.
+                blinkforeverandever();
+
+            }
+
+            if ( porsoltCount > 60 ) {  // The represents a drain of 1.6uA with all LCD segments on. https://www.google.com/search?q=%281+microfarad%29+%2F+%2860%2F64+second%29+*+%281.5+volt%29++in+microamps
+
+                // If we are drawing less than 1.6uA then something is probably wrong, so reject this unit.
+
+                // Show the operator what the count was
+                lcd_show_amps_lo_message(porsoltCount);
+                // ...and abort.
+                blinkforeverandever();
+
+            }
+
+        #endif
 
         // We just had batteries inserted for the first time ever, so we need to commission ourselves and get ready
 

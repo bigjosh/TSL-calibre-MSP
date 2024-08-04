@@ -47,7 +47,7 @@ def add_to_log(serialno,firmware_hash,device_uuid):
     mac_id =  format( uuid.getnode() , "x")
 
 
-    send_data_to_sheet( [serialno,firmware_hash,device_uuid,mac_id ] )       
+    send_data_to_sheet( [serialno,device_uuid,firmware_hash,mac_id ] )       
 
 if __name__ == "__main__" :
 
