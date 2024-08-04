@@ -12,7 +12,7 @@ def send_data_to_sheet(data):
     # Get the URL of the webapp to post our data to.
     # This is created by entering a webapp into the google spreadsheet.
     # It is then stored it keyring use a command line like...
-    # `keyring get "tsl-programmer" "addrow-url"`
+    # `keyring set "tsl-programmer" "addrow-url"`
     # We keep this in keyring becuase anyone who has this URL can post to
     # our spreadhseet so we keep it a secret.
 
