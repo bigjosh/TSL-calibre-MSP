@@ -40,6 +40,23 @@ This is very inefficient because the compiler generated ISR saves and reloads th
 
 So it seems the only solution is to write directly in asm where we can load the registers up once on starting the mode and then even load them again. 
 
+Here is the oltimate ASM code to update the seconds digit on each tick...
 
+```
+TSL_MODE_ISR
+
+ 	  		;OR.B      	#128,&PAOUT_L+0  			; Set DEBUGA for profiling purposes.
+
+ 	  		; These next 3 lines are where this product spends the *VAST* majority of its life, so we hyper-optimize.
+
+ 	  		MOV.W		@R6+,&(LCDM0W_L+16)			; Read word value from table, increment the pointer, then write the word to the LCDMEM for the Seconds digits
+
+			CMP.W		R6,R5						; Check if we have reached the end of the seconds table (seconds incremented to 60)
+			JNE			TSL_DONE					; This takes 2 cycles, branch taken or not
+
+			; Next minute
+```
+
+We utilize the MSP430's auto address increment mode to load, store, and increment all in a single instruction.
 
 
