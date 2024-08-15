@@ -27,7 +27,7 @@
 #define DEBUG_PULSE_OFF()    {}
 
 // Which PCB?
-//#define C2_IS_10K       // For PCBs after 9/2024 which have C2 replaced with a 10K resistor.
+#define C2_IS_10K       // For PCBs after 9/2024 which have C2 replaced with a 10K resistor.
 
 // Put the LCD into blinking mode
 
@@ -1149,6 +1149,64 @@ void power_rundown_test() {
 }
 
 
+// Displays the current trigger pin state
+
+void trigger_pin_test() {
+
+    unsigned char edgecount[4] = {0,0,0,0};      // 5 digits of count
+    unsigned pin_prev_state = 2;
+
+    CBI( TRIGGER_PDIR , TRIGGER_B );     // Set pin to input
+    SBI( TRIGGER_PREN , TRIGGER_B );     // With pull-up
+    SBI( TRIGGER_POUT , TRIGGER_B );      // Pull up
+
+    __delay_cycles(5000);           // Let pull up overcome the pin capacitance.
+
+    while (1) {
+
+        unsigned pin_next_state = TBI( TRIGGER_PIN , TRIGGER_B ) ? 1 : 0 ;
+
+        if (pin_next_state != pin_prev_state ) {
+
+            lcd_show_digit_f(0, pin_next_state);
+
+            if (++edgecount[0] == 10 ) {
+                edgecount[0] = 0;
+
+                if (++edgecount[1] == 10 ) {
+                    edgecount[1] = 0;
+
+                    if (++edgecount[2] == 10 ) {
+                        edgecount[2] = 0;
+
+                        if (++edgecount[3] == 10 ) {
+                            edgecount[3] = 0;
+                        }
+
+                        lcd_show_digit_f(9, edgecount[3] );
+
+
+                    }
+
+                    lcd_show_digit_f(8, edgecount[2] );
+
+
+                }
+
+                lcd_show_digit_f(7, edgecount[1] );
+
+            }
+
+            lcd_show_digit_f(6, edgecount[0] );
+
+        }
+
+        pin_prev_state = pin_next_state;
+
+    }
+}
+
+
 int main( void )
 {
 
@@ -1171,6 +1229,9 @@ int main( void )
 
     // Power up display with a nice dash pattern
     lcd_show_dashes();
+
+#warning
+    trigger_pin_test();
 
     // Initialize the RV3032 with proper clkout & backup switchover settings. Leaves the i2c connection shutdown.
     // Note that once we get the RTC to give us our ticks then we should never need to touch it again.
