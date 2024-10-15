@@ -1543,3 +1543,1810 @@ Sat Jul 20 23:38:39 2024:	* ----------------------------------------------------
 Sat Jul 20 23:38:39 2024:	* Driver      : closed (No error)
 Sat Jul 20 23:38:39 2024:	* ----------------------------------------------------------------------------
 Sat Jul 20 23:38:39 2024:	*/
+Wed Aug 14 22:27:23 2024:	* -----/|-------------------------------------------------------------------- *
+Wed Aug 14 22:27:23 2024:	*     / |__                                                                   *
+Wed Aug 14 22:27:23 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Wed Aug 14 22:27:23 2024:	*      | /                                                                    *
+Wed Aug 14 22:27:23 2024:	* -----|/-------------------------------------------------------------------- *
+Wed Aug 14 22:27:23 2024:	*
+Wed Aug 14 22:27:23 2024:	* Evaluating triggers...done
+Wed Aug 14 22:27:23 2024:	* Checking for available FET debuggers: 
+Wed Aug 14 22:27:23 2024:	* Couldn't find any connected USB FETs!
+Wed Aug 14 22:27:23 2024:	* Starting target code execution...done
+Wed Aug 14 22:27:23 2024:	* Disconnecting from device...done
+Wed Aug 14 22:27:23 2024:	* 
+Wed Aug 14 22:27:23 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:27:23 2024:	* Driver      : closed (MSP DebugStack not initialized)
+Wed Aug 14 22:27:23 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:27:23 2024:	*/
+Wed Aug 14 22:28:01 2024:	* -----/|-------------------------------------------------------------------- *
+Wed Aug 14 22:28:01 2024:	*     / |__                                                                   *
+Wed Aug 14 22:28:01 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Wed Aug 14 22:28:01 2024:	*      | /                                                                    *
+Wed Aug 14 22:28:01 2024:	* -----|/-------------------------------------------------------------------- *
+Wed Aug 14 22:28:01 2024:	*
+Wed Aug 14 22:28:01 2024:	* Evaluating triggers...done
+Wed Aug 14 22:28:01 2024:	* Checking for available FET debuggers: 
+Wed Aug 14 22:28:01 2024:	* Found USB FET @ COM6 <- Selected
+Wed Aug 14 22:28:01 2024:	* Initializing interface @ COM6...done
+Wed Aug 14 22:28:01 2024:	* Setting FET speed...done
+Wed Aug 14 22:28:01 2024:	* Checking firmware compatibility: 
+Wed Aug 14 22:28:01 2024:	* FET firmware is up to date.
+Wed Aug 14 22:28:01 2024:	* Reading FW version...
+Wed Aug 14 22:28:01 2024:	* Debugger does not support target voltages other than 3000 mV!
+Wed Aug 14 22:28:01 2024:	* Setting VCC to 3000 mV...done
+Wed Aug 14 22:28:04 2024:	* Accessing device...done
+Wed Aug 14 22:28:04 2024:	* Reading device information...done
+Wed Aug 14 22:28:04 2024:	* Dumping memory from 0X1A00-0X1A12 into C:\Users\passp\AppData\Local\Temp\tmpjet_ykij\dd.txt...done
+Wed Aug 14 22:28:04 2024:	* Loading file into device...done
+Wed Aug 14 22:28:08 2024:	* Verifying memory (C:\Users\passp\AppData\Local\Temp\tmpjet_ykij\image.txt)...done
+Wed Aug 14 22:28:10 2024:	* 
+Wed Aug 14 22:28:10 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:28:10 2024:	* Arguments   : -j FAST -r [C:\Users\passp\AppData\Local\Temp\tmpjet_ykij\dd.txt,0x1a00-0x1a12] -e ERASE_MAIN -w C:\Users\passp\AppData\Local\Temp\tmpjet_ykij\image.txt -v -z [VCC] 
+Wed Aug 14 22:28:10 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:28:10 2024:	* Driver      : loaded
+Wed Aug 14 22:28:10 2024:	* Dll Version : 31400000
+Wed Aug 14 22:28:10 2024:	* FwVersion   : 31200000
+Wed Aug 14 22:28:10 2024:	* Interface   : TIUSB
+Wed Aug 14 22:28:10 2024:	* HwVersion   : E 4.0
+Wed Aug 14 22:28:10 2024:	* JTAG Mode   : AUTO
+Wed Aug 14 22:28:10 2024:	* Device      : MSP430FR4133
+Wed Aug 14 22:28:10 2024:	* EEM         : Level 5, ClockCntrl 2
+Wed Aug 14 22:28:10 2024:	* Read File   : C:\Users\passp\AppData\Local\Temp\tmpjet_ykij\dd.txt (memory segment = 0X1A00-0X1A12)
+Wed Aug 14 22:28:10 2024:	* Erase Mode  : ERASE_MAIN
+Wed Aug 14 22:28:10 2024:	* Prog.File   : C:\Users\passp\AppData\Local\Temp\tmpjet_ykij\image.txt
+Wed Aug 14 22:28:10 2024:	* Verified    : TRUE
+Wed Aug 14 22:28:10 2024:	* BSL Unlock  : FALSE
+Wed Aug 14 22:28:10 2024:	* InfoA Access: FALSE
+Wed Aug 14 22:28:10 2024:	* VCC ON      : 3000 mV
+Wed Aug 14 22:28:10 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:28:10 2024:	* Starting target code execution...done
+Wed Aug 14 22:28:11 2024:	* Disconnecting from device...done
+Wed Aug 14 22:28:11 2024:	* 
+Wed Aug 14 22:28:11 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:28:11 2024:	* Driver      : closed (No error)
+Wed Aug 14 22:28:11 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:28:11 2024:	*/
+Wed Aug 14 22:41:46 2024:	* -----/|-------------------------------------------------------------------- *
+Wed Aug 14 22:41:46 2024:	*     / |__                                                                   *
+Wed Aug 14 22:41:46 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Wed Aug 14 22:41:46 2024:	*      | /                                                                    *
+Wed Aug 14 22:41:46 2024:	* -----|/-------------------------------------------------------------------- *
+Wed Aug 14 22:41:46 2024:	*
+Wed Aug 14 22:41:46 2024:	* Evaluating triggers...
+Wed Aug 14 22:41:46 2024:	* ':' option requires an argument -- e
+
+Wed Aug 14 22:41:46 2024:	
+Wed Aug 14 22:41:46 2024:	*******************************************************************************
+Wed Aug 14 22:41:46 2024:	                                                                               
+Wed Aug 14 22:41:46 2024:	 Usage: MSP430Flasher [OPTIONS]                                                
+Wed Aug 14 22:41:46 2024:	                                                                               
+Wed Aug 14 22:41:46 2024:	 -h / -?                     Displays usage information (displays this table   
+Wed Aug 14 22:41:46 2024:	                             of command line switches)                         
+Wed Aug 14 22:41:46 2024:	                                                                               
+Wed Aug 14 22:41:46 2024:	 -x                          Displays available exit specifications            
+Wed Aug 14 22:41:46 2024:	                             (see tigger -z)                                   
+Wed Aug 14 22:41:46 2024:	                                                                               
+Wed Aug 14 22:41:46 2024:	 -i (TI)USB | DETECT |       Communication port for the FET debugger. TIUSB    
+Wed Aug 14 22:41:46 2024:	    COMn (Win) |             (or USB) is the default. Use COMn (for example,   
+Wed Aug 14 22:41:46 2024:	    ttyACMn (Linux) |        COM15) on Windows or ttyACMn(for example,         
+Wed Aug 14 22:41:46 2024:	    usbmodem* (OSX) |        ttyACM15) on Linux or usbmodemn (for example,     
+Wed Aug 14 22:41:46 2024:	    HIDn:COMn                usbmodem1421) on OS X to choose a debugger        
+Wed Aug 14 22:41:46 2024:	                             connected to COM port n. Use HIDn:COMn for        
+Wed Aug 14 22:41:46 2024:	                             specific eZ430 tools on Windows. Use -i DETECT to 
+Wed Aug 14 22:41:46 2024:	                             execute a FET detection sweep, to display         
+Wed Aug 14 22:41:46 2024:	                             detailed information about all connected debug    
+Wed Aug 14 22:41:46 2024:	                             tools, and to prompt to select a FET.             
+Wed Aug 14 22:41:46 2024:	                                                                               
+Wed Aug 14 22:41:46 2024:	 -j fast | medium | slow     Configures the MSP Debug Stack to increase or     
+Wed Aug 14 22:41:46 2024:	                             decrease the JTAG or SBW frequency of the FET.    
+Wed Aug 14 22:41:46 2024:	                             Default = medium                                  
+Wed Aug 14 22:41:46 2024:	                                                                               
+Wed Aug 14 22:41:46 2024:	 -n DEVICE_NAME | NO_TARGET  (optional for MSP430, required for MSP432)        
+Wed Aug 14 22:41:46 2024:	                             The name of the device being accessed (prompt     
+Wed Aug 14 22:41:46 2024:	                             if mismatch between found and selected device).   
+Wed Aug 14 22:41:46 2024:	                             -n NO_TARGET executes MSP Flasher without         
+Wed Aug 14 22:41:46 2024:	                             attempting to connect to a target device          
+Wed Aug 14 22:41:46 2024:	                             Choose this option to detect if a certain FET     
+Wed Aug 14 22:41:46 2024:	                             is connected or when the FET firmware should be   
+Wed Aug 14 22:41:46 2024:	                             updated only.                                     
+Wed Aug 14 22:41:46 2024:	                                                                               
+Wed Aug 14 22:41:46 2024:	 -r [filenname,mem_sect]     Triggers a read operation in target device        
+Wed Aug 14 22:41:46 2024:	                             memory section specified by mem_section. The      
+Wed Aug 14 22:41:46 2024:	                             memory content is written to a file specified     
+Wed Aug 14 22:41:46 2024:	                             by Filename. Available memory sections are:       
+Wed Aug 14 22:41:46 2024:	                             - MAIN = the main memory of the device            
+Wed Aug 14 22:41:46 2024:	                             - INFO = info memory (see trigger –u)             
+Wed Aug 14 22:41:46 2024:	                             - BSL = bootloader memory (see trigger –b)        
+Wed Aug 14 22:41:46 2024:	                             - RAM = random access memory                      
+Wed Aug 14 22:41:46 2024:	                             - 0x****-0x**** = custom memory section           
+Wed Aug 14 22:41:46 2024:	                             Specify .txt as the extension for Filename to     
+Wed Aug 14 22:41:46 2024:	                             write data in TI-TXT format, or specify .a43      
+Wed Aug 14 22:41:46 2024:	                             (or .hex) to write data in Intel-Hex format.      
+Wed Aug 14 22:41:46 2024:	                                                                               
+Wed Aug 14 22:41:46 2024:	 -w filenname                Triggers a memory write operation. The accepted   
+Wed Aug 14 22:41:46 2024:	                             formats are txt (TI-txt) or a43/hex (Intel-hex).  
+Wed Aug 14 22:41:46 2024:	                                                                               
+Wed Aug 14 22:41:46 2024:	 -v filename (optional)      Triggers verification of the target memory against
+Wed Aug 14 22:41:46 2024:	                             a target code file. If -w is used, no argument is 
+Wed Aug 14 22:41:46 2024:	                             required. For a stand-alone verify, provide the   
+Wed Aug 14 22:41:46 2024:	                             path to a target code file as an argument.        
+Wed Aug 14 22:41:46 2024:	                                                                               
+Wed Aug 14 22:41:46 2024:	 -u                          Unlocks protected InfoA memory for writing        
+Wed Aug 14 22:41:46 2024:	                             (use only with -w switch)                         
+Wed Aug 14 22:41:46 2024:	                                                                               
+Wed Aug 14 22:41:46 2024:	 -b                          Unlocks protected BSL memory for writing          
+Wed Aug 14 22:41:46 2024:	                             (use only with -w switch)                         
+Wed Aug 14 22:41:46 2024:	 -e ERASE_ALL |              Erase memory. Default: ERASE_ALL (INFO & MAIN)    
+Wed Aug 14 22:41:46 2024:	    ERASE_MAIN |             ERASE_MAIN: erase MAIN memory only                
+Wed Aug 14 22:41:46 2024:	    ERASE_SEGMENT |          ERASE_SEGMENT: erase segment to be programmed only
+Wed Aug 14 22:41:46 2024:	    ERASE_TOTAL |            ERASE_TOTAL: applicable for FR5xx/FR6xx only!     
+Wed Aug 14 22:41:46 2024:	    ERASE_USER_CODE |        ERASE_USER_CODE: applicable for FR4xx only!       
+Wed Aug 14 22:41:46 2024:	    NO_ERASE                 NO_ERASE: use only with -w switch                 
+Wed Aug 14 22:41:46 2024:	                                                                               
+Wed Aug 14 22:41:46 2024:	 -p JTAG PASSWORD            Specifies the JTAG password that should be used   
+Wed Aug 14 22:41:46 2024:	                             to open a password protected target device        
+Wed Aug 14 22:41:46 2024:	                             (supported on FRAM devices only). The user is     
+Wed Aug 14 22:41:46 2024:	                             prompted if the password is incompatible with     
+Wed Aug 14 22:41:46 2024:	                             the password length deteced by MSP Flasher.       
+Wed Aug 14 22:41:46 2024:	                                                                               
+Wed Aug 14 22:41:46 2024:	 -o L | C                    Operating mode for L092 and RF430FR152H family    
+Wed Aug 14 22:41:46 2024:	                             devices. L = L092 mode (normal mode)              
+Wed Aug 14 22:41:46 2024:	                                      C = C092 mode (ROM development mode)     
+Wed Aug 14 22:41:46 2024:	                                                                               
+Wed Aug 14 22:41:46 2024:	 -f                          Permanently secures JTAG access to the target MSP.
+Wed Aug 14 22:41:46 2024:	                             Caution: The device will no longer be accessible  
+Wed Aug 14 22:41:46 2024:	                                      through JTAG or Spy-Bi-Wire. This action 
+Wed Aug 14 22:41:46 2024:	                                      is irreversible.                         
+Wed Aug 14 22:41:46 2024:	                                                                               
+Wed Aug 14 22:41:46 2024:	 -g                          Disables the logging mechanism.                   
+Wed Aug 14 22:41:46 2024:	                                                                               
+Wed Aug 14 22:41:46 2024:	 -a                          Causes a nonintrusive target connection: use      
+Wed Aug 14 22:41:46 2024:	                             this switch if no reset should be applied to      
+Wed Aug 14 22:41:46 2024:	                             the target device on start up. Correct target     
+Wed Aug 14 22:41:46 2024:	                             device name must be specified using the -n switch.
+Wed Aug 14 22:41:46 2024:	                                                                               
+Wed Aug 14 22:41:46 2024:	 -s                          Suppresses the FET firmware update prompt.        
+Wed Aug 14 22:41:46 2024:	                             In case of a mismatch between MSP Debug Stack     
+Wed Aug 14 22:41:46 2024:	                             and FET firmware, an update is forced.            
+Wed Aug 14 22:41:46 2024:	                                                                               
+Wed Aug 14 22:41:46 2024:	 -q                          QUIET mode: No system messages will be displayed  
+Wed Aug 14 22:41:46 2024:	                                         (except for errors and user prompts)  
+Wed Aug 14 22:41:46 2024:	                                                                               
+Wed Aug 14 22:41:46 2024:	 -z [exit_spec,...]          Specifies the state of the device after           
+Wed Aug 14 22:41:46 2024:	                             programming. View available 'exit_spec's using    
+Wed Aug 14 22:41:46 2024:	                             -x switch). Use ", " as a delimiter.            
+Wed Aug 14 22:41:46 2024:	                                                                               
+Wed Aug 14 22:41:46 2024:	 For a GUI-based alternative, check out UniFlash: http://ti.com/tool/uniflash  
+Wed Aug 14 22:41:46 2024:	*******************************************************************************
+Wed Aug 14 22:41:46 2024:	Press ENTER to continue.
+Wed Aug 14 22:41:59 2024:	* -----/|-------------------------------------------------------------------- *
+Wed Aug 14 22:41:59 2024:	*     / |__                                                                   *
+Wed Aug 14 22:41:59 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Wed Aug 14 22:41:59 2024:	*      | /                                                                    *
+Wed Aug 14 22:41:59 2024:	* -----|/-------------------------------------------------------------------- *
+Wed Aug 14 22:41:59 2024:	*
+Wed Aug 14 22:41:59 2024:	* Evaluating triggers...
+Wed Aug 14 22:41:59 2024:	* ':' option requires an argument -- e
+
+Wed Aug 14 22:41:59 2024:	
+Wed Aug 14 22:41:59 2024:	*******************************************************************************
+Wed Aug 14 22:41:59 2024:	                                                                               
+Wed Aug 14 22:41:59 2024:	 Usage: MSP430Flasher [OPTIONS]                                                
+Wed Aug 14 22:41:59 2024:	                                                                               
+Wed Aug 14 22:41:59 2024:	 -h / -?                     Displays usage information (displays this table   
+Wed Aug 14 22:41:59 2024:	                             of command line switches)                         
+Wed Aug 14 22:41:59 2024:	                                                                               
+Wed Aug 14 22:41:59 2024:	 -x                          Displays available exit specifications            
+Wed Aug 14 22:41:59 2024:	                             (see tigger -z)                                   
+Wed Aug 14 22:41:59 2024:	                                                                               
+Wed Aug 14 22:41:59 2024:	 -i (TI)USB | DETECT |       Communication port for the FET debugger. TIUSB    
+Wed Aug 14 22:41:59 2024:	    COMn (Win) |             (or USB) is the default. Use COMn (for example,   
+Wed Aug 14 22:41:59 2024:	    ttyACMn (Linux) |        COM15) on Windows or ttyACMn(for example,         
+Wed Aug 14 22:41:59 2024:	    usbmodem* (OSX) |        ttyACM15) on Linux or usbmodemn (for example,     
+Wed Aug 14 22:41:59 2024:	    HIDn:COMn                usbmodem1421) on OS X to choose a debugger        
+Wed Aug 14 22:41:59 2024:	                             connected to COM port n. Use HIDn:COMn for        
+Wed Aug 14 22:41:59 2024:	                             specific eZ430 tools on Windows. Use -i DETECT to 
+Wed Aug 14 22:41:59 2024:	                             execute a FET detection sweep, to display         
+Wed Aug 14 22:41:59 2024:	                             detailed information about all connected debug    
+Wed Aug 14 22:41:59 2024:	                             tools, and to prompt to select a FET.             
+Wed Aug 14 22:41:59 2024:	                                                                               
+Wed Aug 14 22:41:59 2024:	 -j fast | medium | slow     Configures the MSP Debug Stack to increase or     
+Wed Aug 14 22:41:59 2024:	                             decrease the JTAG or SBW frequency of the FET.    
+Wed Aug 14 22:41:59 2024:	                             Default = medium                                  
+Wed Aug 14 22:41:59 2024:	                                                                               
+Wed Aug 14 22:41:59 2024:	 -n DEVICE_NAME | NO_TARGET  (optional for MSP430, required for MSP432)        
+Wed Aug 14 22:41:59 2024:	                             The name of the device being accessed (prompt     
+Wed Aug 14 22:41:59 2024:	                             if mismatch between found and selected device).   
+Wed Aug 14 22:41:59 2024:	                             -n NO_TARGET executes MSP Flasher without         
+Wed Aug 14 22:41:59 2024:	                             attempting to connect to a target device          
+Wed Aug 14 22:41:59 2024:	                             Choose this option to detect if a certain FET     
+Wed Aug 14 22:41:59 2024:	                             is connected or when the FET firmware should be   
+Wed Aug 14 22:41:59 2024:	                             updated only.                                     
+Wed Aug 14 22:41:59 2024:	                                                                               
+Wed Aug 14 22:41:59 2024:	 -r [filenname,mem_sect]     Triggers a read operation in target device        
+Wed Aug 14 22:41:59 2024:	                             memory section specified by mem_section. The      
+Wed Aug 14 22:41:59 2024:	                             memory content is written to a file specified     
+Wed Aug 14 22:41:59 2024:	                             by Filename. Available memory sections are:       
+Wed Aug 14 22:41:59 2024:	                             - MAIN = the main memory of the device            
+Wed Aug 14 22:41:59 2024:	                             - INFO = info memory (see trigger –u)             
+Wed Aug 14 22:41:59 2024:	                             - BSL = bootloader memory (see trigger –b)        
+Wed Aug 14 22:41:59 2024:	                             - RAM = random access memory                      
+Wed Aug 14 22:41:59 2024:	                             - 0x****-0x**** = custom memory section           
+Wed Aug 14 22:41:59 2024:	                             Specify .txt as the extension for Filename to     
+Wed Aug 14 22:41:59 2024:	                             write data in TI-TXT format, or specify .a43      
+Wed Aug 14 22:41:59 2024:	                             (or .hex) to write data in Intel-Hex format.      
+Wed Aug 14 22:41:59 2024:	                                                                               
+Wed Aug 14 22:41:59 2024:	 -w filenname                Triggers a memory write operation. The accepted   
+Wed Aug 14 22:41:59 2024:	                             formats are txt (TI-txt) or a43/hex (Intel-hex).  
+Wed Aug 14 22:41:59 2024:	                                                                               
+Wed Aug 14 22:41:59 2024:	 -v filename (optional)      Triggers verification of the target memory against
+Wed Aug 14 22:41:59 2024:	                             a target code file. If -w is used, no argument is 
+Wed Aug 14 22:41:59 2024:	                             required. For a stand-alone verify, provide the   
+Wed Aug 14 22:41:59 2024:	                             path to a target code file as an argument.        
+Wed Aug 14 22:41:59 2024:	                                                                               
+Wed Aug 14 22:41:59 2024:	 -u                          Unlocks protected InfoA memory for writing        
+Wed Aug 14 22:41:59 2024:	                             (use only with -w switch)                         
+Wed Aug 14 22:41:59 2024:	                                                                               
+Wed Aug 14 22:41:59 2024:	 -b                          Unlocks protected BSL memory for writing          
+Wed Aug 14 22:41:59 2024:	                             (use only with -w switch)                         
+Wed Aug 14 22:41:59 2024:	 -e ERASE_ALL |              Erase memory. Default: ERASE_ALL (INFO & MAIN)    
+Wed Aug 14 22:41:59 2024:	    ERASE_MAIN |             ERASE_MAIN: erase MAIN memory only                
+Wed Aug 14 22:41:59 2024:	    ERASE_SEGMENT |          ERASE_SEGMENT: erase segment to be programmed only
+Wed Aug 14 22:41:59 2024:	    ERASE_TOTAL |            ERASE_TOTAL: applicable for FR5xx/FR6xx only!     
+Wed Aug 14 22:41:59 2024:	    ERASE_USER_CODE |        ERASE_USER_CODE: applicable for FR4xx only!       
+Wed Aug 14 22:41:59 2024:	    NO_ERASE                 NO_ERASE: use only with -w switch                 
+Wed Aug 14 22:41:59 2024:	                                                                               
+Wed Aug 14 22:41:59 2024:	 -p JTAG PASSWORD            Specifies the JTAG password that should be used   
+Wed Aug 14 22:41:59 2024:	                             to open a password protected target device        
+Wed Aug 14 22:41:59 2024:	                             (supported on FRAM devices only). The user is     
+Wed Aug 14 22:41:59 2024:	                             prompted if the password is incompatible with     
+Wed Aug 14 22:41:59 2024:	                             the password length deteced by MSP Flasher.       
+Wed Aug 14 22:41:59 2024:	                                                                               
+Wed Aug 14 22:41:59 2024:	 -o L | C                    Operating mode for L092 and RF430FR152H family    
+Wed Aug 14 22:41:59 2024:	                             devices. L = L092 mode (normal mode)              
+Wed Aug 14 22:41:59 2024:	                                      C = C092 mode (ROM development mode)     
+Wed Aug 14 22:41:59 2024:	                                                                               
+Wed Aug 14 22:41:59 2024:	 -f                          Permanently secures JTAG access to the target MSP.
+Wed Aug 14 22:41:59 2024:	                             Caution: The device will no longer be accessible  
+Wed Aug 14 22:41:59 2024:	                                      through JTAG or Spy-Bi-Wire. This action 
+Wed Aug 14 22:41:59 2024:	                                      is irreversible.                         
+Wed Aug 14 22:41:59 2024:	                                                                               
+Wed Aug 14 22:41:59 2024:	 -g                          Disables the logging mechanism.                   
+Wed Aug 14 22:41:59 2024:	                                                                               
+Wed Aug 14 22:41:59 2024:	 -a                          Causes a nonintrusive target connection: use      
+Wed Aug 14 22:41:59 2024:	                             this switch if no reset should be applied to      
+Wed Aug 14 22:41:59 2024:	                             the target device on start up. Correct target     
+Wed Aug 14 22:41:59 2024:	                             device name must be specified using the -n switch.
+Wed Aug 14 22:41:59 2024:	                                                                               
+Wed Aug 14 22:41:59 2024:	 -s                          Suppresses the FET firmware update prompt.        
+Wed Aug 14 22:41:59 2024:	                             In case of a mismatch between MSP Debug Stack     
+Wed Aug 14 22:41:59 2024:	                             and FET firmware, an update is forced.            
+Wed Aug 14 22:41:59 2024:	                                                                               
+Wed Aug 14 22:41:59 2024:	 -q                          QUIET mode: No system messages will be displayed  
+Wed Aug 14 22:41:59 2024:	                                         (except for errors and user prompts)  
+Wed Aug 14 22:41:59 2024:	                                                                               
+Wed Aug 14 22:41:59 2024:	 -z [exit_spec,...]          Specifies the state of the device after           
+Wed Aug 14 22:41:59 2024:	                             programming. View available 'exit_spec's using    
+Wed Aug 14 22:41:59 2024:	                             -x switch). Use ", " as a delimiter.            
+Wed Aug 14 22:41:59 2024:	                                                                               
+Wed Aug 14 22:41:59 2024:	 For a GUI-based alternative, check out UniFlash: http://ti.com/tool/uniflash  
+Wed Aug 14 22:41:59 2024:	*******************************************************************************
+Wed Aug 14 22:41:59 2024:	Press ENTER to continue.
+Wed Aug 14 22:42:20 2024:	* -----/|-------------------------------------------------------------------- *
+Wed Aug 14 22:42:20 2024:	*     / |__                                                                   *
+Wed Aug 14 22:42:20 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Wed Aug 14 22:42:20 2024:	*      | /                                                                    *
+Wed Aug 14 22:42:20 2024:	* -----|/-------------------------------------------------------------------- *
+Wed Aug 14 22:42:20 2024:	*
+Wed Aug 14 22:42:20 2024:	* Evaluating triggers...
+Wed Aug 14 22:42:20 2024:	* ':' option requires an argument -- e
+
+Wed Aug 14 22:42:20 2024:	
+Wed Aug 14 22:42:20 2024:	*******************************************************************************
+Wed Aug 14 22:42:20 2024:	                                                                               
+Wed Aug 14 22:42:20 2024:	 Usage: MSP430Flasher [OPTIONS]                                                
+Wed Aug 14 22:42:20 2024:	                                                                               
+Wed Aug 14 22:42:20 2024:	 -h / -?                     Displays usage information (displays this table   
+Wed Aug 14 22:42:20 2024:	                             of command line switches)                         
+Wed Aug 14 22:42:20 2024:	                                                                               
+Wed Aug 14 22:42:20 2024:	 -x                          Displays available exit specifications            
+Wed Aug 14 22:42:20 2024:	                             (see tigger -z)                                   
+Wed Aug 14 22:42:20 2024:	                                                                               
+Wed Aug 14 22:42:20 2024:	 -i (TI)USB | DETECT |       Communication port for the FET debugger. TIUSB    
+Wed Aug 14 22:42:20 2024:	    COMn (Win) |             (or USB) is the default. Use COMn (for example,   
+Wed Aug 14 22:42:20 2024:	    ttyACMn (Linux) |        COM15) on Windows or ttyACMn(for example,         
+Wed Aug 14 22:42:20 2024:	    usbmodem* (OSX) |        ttyACM15) on Linux or usbmodemn (for example,     
+Wed Aug 14 22:42:20 2024:	    HIDn:COMn                usbmodem1421) on OS X to choose a debugger        
+Wed Aug 14 22:42:20 2024:	                             connected to COM port n. Use HIDn:COMn for        
+Wed Aug 14 22:42:20 2024:	                             specific eZ430 tools on Windows. Use -i DETECT to 
+Wed Aug 14 22:42:20 2024:	                             execute a FET detection sweep, to display         
+Wed Aug 14 22:42:20 2024:	                             detailed information about all connected debug    
+Wed Aug 14 22:42:20 2024:	                             tools, and to prompt to select a FET.             
+Wed Aug 14 22:42:20 2024:	                                                                               
+Wed Aug 14 22:42:20 2024:	 -j fast | medium | slow     Configures the MSP Debug Stack to increase or     
+Wed Aug 14 22:42:20 2024:	                             decrease the JTAG or SBW frequency of the FET.    
+Wed Aug 14 22:42:20 2024:	                             Default = medium                                  
+Wed Aug 14 22:42:20 2024:	                                                                               
+Wed Aug 14 22:42:20 2024:	 -n DEVICE_NAME | NO_TARGET  (optional for MSP430, required for MSP432)        
+Wed Aug 14 22:42:20 2024:	                             The name of the device being accessed (prompt     
+Wed Aug 14 22:42:20 2024:	                             if mismatch between found and selected device).   
+Wed Aug 14 22:42:20 2024:	                             -n NO_TARGET executes MSP Flasher without         
+Wed Aug 14 22:42:20 2024:	                             attempting to connect to a target device          
+Wed Aug 14 22:42:20 2024:	                             Choose this option to detect if a certain FET     
+Wed Aug 14 22:42:20 2024:	                             is connected or when the FET firmware should be   
+Wed Aug 14 22:42:20 2024:	                             updated only.                                     
+Wed Aug 14 22:42:20 2024:	                                                                               
+Wed Aug 14 22:42:20 2024:	 -r [filenname,mem_sect]     Triggers a read operation in target device        
+Wed Aug 14 22:42:20 2024:	                             memory section specified by mem_section. The      
+Wed Aug 14 22:42:20 2024:	                             memory content is written to a file specified     
+Wed Aug 14 22:42:20 2024:	                             by Filename. Available memory sections are:       
+Wed Aug 14 22:42:20 2024:	                             - MAIN = the main memory of the device            
+Wed Aug 14 22:42:20 2024:	                             - INFO = info memory (see trigger –u)             
+Wed Aug 14 22:42:20 2024:	                             - BSL = bootloader memory (see trigger –b)        
+Wed Aug 14 22:42:20 2024:	                             - RAM = random access memory                      
+Wed Aug 14 22:42:20 2024:	                             - 0x****-0x**** = custom memory section           
+Wed Aug 14 22:42:20 2024:	                             Specify .txt as the extension for Filename to     
+Wed Aug 14 22:42:20 2024:	                             write data in TI-TXT format, or specify .a43      
+Wed Aug 14 22:42:20 2024:	                             (or .hex) to write data in Intel-Hex format.      
+Wed Aug 14 22:42:20 2024:	                                                                               
+Wed Aug 14 22:42:20 2024:	 -w filenname                Triggers a memory write operation. The accepted   
+Wed Aug 14 22:42:20 2024:	                             formats are txt (TI-txt) or a43/hex (Intel-hex).  
+Wed Aug 14 22:42:20 2024:	                                                                               
+Wed Aug 14 22:42:20 2024:	 -v filename (optional)      Triggers verification of the target memory against
+Wed Aug 14 22:42:20 2024:	                             a target code file. If -w is used, no argument is 
+Wed Aug 14 22:42:20 2024:	                             required. For a stand-alone verify, provide the   
+Wed Aug 14 22:42:20 2024:	                             path to a target code file as an argument.        
+Wed Aug 14 22:42:20 2024:	                                                                               
+Wed Aug 14 22:42:20 2024:	 -u                          Unlocks protected InfoA memory for writing        
+Wed Aug 14 22:42:20 2024:	                             (use only with -w switch)                         
+Wed Aug 14 22:42:20 2024:	                                                                               
+Wed Aug 14 22:42:20 2024:	 -b                          Unlocks protected BSL memory for writing          
+Wed Aug 14 22:42:20 2024:	                             (use only with -w switch)                         
+Wed Aug 14 22:42:20 2024:	 -e ERASE_ALL |              Erase memory. Default: ERASE_ALL (INFO & MAIN)    
+Wed Aug 14 22:42:20 2024:	    ERASE_MAIN |             ERASE_MAIN: erase MAIN memory only                
+Wed Aug 14 22:42:20 2024:	    ERASE_SEGMENT |          ERASE_SEGMENT: erase segment to be programmed only
+Wed Aug 14 22:42:20 2024:	    ERASE_TOTAL |            ERASE_TOTAL: applicable for FR5xx/FR6xx only!     
+Wed Aug 14 22:42:20 2024:	    ERASE_USER_CODE |        ERASE_USER_CODE: applicable for FR4xx only!       
+Wed Aug 14 22:42:20 2024:	    NO_ERASE                 NO_ERASE: use only with -w switch                 
+Wed Aug 14 22:42:20 2024:	                                                                               
+Wed Aug 14 22:42:20 2024:	 -p JTAG PASSWORD            Specifies the JTAG password that should be used   
+Wed Aug 14 22:42:20 2024:	                             to open a password protected target device        
+Wed Aug 14 22:42:20 2024:	                             (supported on FRAM devices only). The user is     
+Wed Aug 14 22:42:20 2024:	                             prompted if the password is incompatible with     
+Wed Aug 14 22:42:20 2024:	                             the password length deteced by MSP Flasher.       
+Wed Aug 14 22:42:20 2024:	                                                                               
+Wed Aug 14 22:42:20 2024:	 -o L | C                    Operating mode for L092 and RF430FR152H family    
+Wed Aug 14 22:42:20 2024:	                             devices. L = L092 mode (normal mode)              
+Wed Aug 14 22:42:20 2024:	                                      C = C092 mode (ROM development mode)     
+Wed Aug 14 22:42:20 2024:	                                                                               
+Wed Aug 14 22:42:20 2024:	 -f                          Permanently secures JTAG access to the target MSP.
+Wed Aug 14 22:42:20 2024:	                             Caution: The device will no longer be accessible  
+Wed Aug 14 22:42:20 2024:	                                      through JTAG or Spy-Bi-Wire. This action 
+Wed Aug 14 22:42:20 2024:	                                      is irreversible.                         
+Wed Aug 14 22:42:21 2024:	                                                                               
+Wed Aug 14 22:42:21 2024:	 -g                          Disables the logging mechanism.                   
+Wed Aug 14 22:42:21 2024:	                                                                               
+Wed Aug 14 22:42:21 2024:	 -a                          Causes a nonintrusive target connection: use      
+Wed Aug 14 22:42:21 2024:	                             this switch if no reset should be applied to      
+Wed Aug 14 22:42:21 2024:	                             the target device on start up. Correct target     
+Wed Aug 14 22:42:21 2024:	                             device name must be specified using the -n switch.
+Wed Aug 14 22:42:21 2024:	                                                                               
+Wed Aug 14 22:42:21 2024:	 -s                          Suppresses the FET firmware update prompt.        
+Wed Aug 14 22:42:21 2024:	                             In case of a mismatch between MSP Debug Stack     
+Wed Aug 14 22:42:21 2024:	                             and FET firmware, an update is forced.            
+Wed Aug 14 22:42:21 2024:	                                                                               
+Wed Aug 14 22:42:21 2024:	 -q                          QUIET mode: No system messages will be displayed  
+Wed Aug 14 22:42:21 2024:	                                         (except for errors and user prompts)  
+Wed Aug 14 22:42:21 2024:	                                                                               
+Wed Aug 14 22:42:21 2024:	 -z [exit_spec,...]          Specifies the state of the device after           
+Wed Aug 14 22:42:21 2024:	                             programming. View available 'exit_spec's using    
+Wed Aug 14 22:42:21 2024:	                             -x switch). Use ", " as a delimiter.            
+Wed Aug 14 22:42:21 2024:	                                                                               
+Wed Aug 14 22:42:21 2024:	 For a GUI-based alternative, check out UniFlash: http://ti.com/tool/uniflash  
+Wed Aug 14 22:42:21 2024:	*******************************************************************************
+Wed Aug 14 22:42:21 2024:	Press ENTER to continue.
+Wed Aug 14 22:42:29 2024:	* -----/|-------------------------------------------------------------------- *
+Wed Aug 14 22:42:29 2024:	*     / |__                                                                   *
+Wed Aug 14 22:42:29 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Wed Aug 14 22:42:29 2024:	*      | /                                                                    *
+Wed Aug 14 22:42:29 2024:	* -----|/-------------------------------------------------------------------- *
+Wed Aug 14 22:42:29 2024:	*
+Wed Aug 14 22:42:29 2024:	* Evaluating triggers...
+Wed Aug 14 22:42:29 2024:	* Invalid argument for -e trigger. Default used (ERASE_ALL).
+Wed Aug 14 22:42:29 2024:	* Checking for available FET debuggers: 
+Wed Aug 14 22:42:29 2024:	* Found USB FET @ COM6 <- Selected
+Wed Aug 14 22:42:29 2024:	* Initializing interface @ COM6...done
+Wed Aug 14 22:42:30 2024:	* Setting FET speed...done
+Wed Aug 14 22:42:30 2024:	* Checking firmware compatibility: 
+Wed Aug 14 22:42:30 2024:	* FET firmware is up to date.
+Wed Aug 14 22:42:30 2024:	* Reading FW version...done
+Wed Aug 14 22:42:30 2024:	* Setting VCC to 3000 mV...done
+Wed Aug 14 22:42:32 2024:	* Accessing device...done
+Wed Aug 14 22:42:32 2024:	* Reading device information...done
+Wed Aug 14 22:42:32 2024:	* Erasing device memory...done
+Wed Aug 14 22:42:34 2024:	* 
+Wed Aug 14 22:42:34 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:42:34 2024:	* Arguments   : -j SLOW -e ALL 
+Wed Aug 14 22:42:34 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:42:34 2024:	* Driver      : loaded
+Wed Aug 14 22:42:34 2024:	* Dll Version : 31400000
+Wed Aug 14 22:42:34 2024:	* FwVersion   : 31200000
+Wed Aug 14 22:42:34 2024:	* Interface   : TIUSB
+Wed Aug 14 22:42:34 2024:	* HwVersion   : E 4.0
+Wed Aug 14 22:42:34 2024:	* JTAG Mode   : AUTO
+Wed Aug 14 22:42:34 2024:	* Device      : MSP430FR4133
+Wed Aug 14 22:42:34 2024:	* EEM         : Level 5, ClockCntrl 2
+Wed Aug 14 22:42:34 2024:	* Erase Mode  : ERASE_ALL
+Wed Aug 14 22:42:34 2024:	* VCC OFF
+Wed Aug 14 22:42:34 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:42:34 2024:	* Powering down...done
+Wed Aug 14 22:42:34 2024:	* Disconnecting from device...done
+Wed Aug 14 22:42:34 2024:	* 
+Wed Aug 14 22:42:34 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:42:34 2024:	* Driver      : closed (No error)
+Wed Aug 14 22:42:34 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:42:34 2024:	*/
+Wed Aug 14 22:42:42 2024:	* -----/|-------------------------------------------------------------------- *
+Wed Aug 14 22:42:42 2024:	*     / |__                                                                   *
+Wed Aug 14 22:42:42 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Wed Aug 14 22:42:42 2024:	*      | /                                                                    *
+Wed Aug 14 22:42:42 2024:	* -----|/-------------------------------------------------------------------- *
+Wed Aug 14 22:42:42 2024:	*
+Wed Aug 14 22:42:42 2024:	* Evaluating triggers...done
+Wed Aug 14 22:42:42 2024:	* Checking for available FET debuggers: 
+Wed Aug 14 22:42:42 2024:	* Found USB FET @ COM6 <- Selected
+Wed Aug 14 22:42:42 2024:	* Initializing interface @ COM6...done
+Wed Aug 14 22:42:43 2024:	* Setting FET speed...done
+Wed Aug 14 22:42:43 2024:	* Checking firmware compatibility: 
+Wed Aug 14 22:42:43 2024:	* FET firmware is up to date.
+Wed Aug 14 22:42:43 2024:	* Reading FW version...
+Wed Aug 14 22:42:43 2024:	* Debugger does not support target voltages other than 3000 mV!
+Wed Aug 14 22:42:43 2024:	* Setting VCC to 3000 mV...done
+Wed Aug 14 22:42:43 2024:	* Accessing device...done
+Wed Aug 14 22:42:43 2024:	* Reading device information...done
+Wed Aug 14 22:42:43 2024:	* Dumping memory from 0X1A00-0X1A12 into C:\Users\passp\AppData\Local\Temp\tmpf88j6ybc\dd.txt...done
+Wed Aug 14 22:42:43 2024:	* Loading file into device...done
+Wed Aug 14 22:42:48 2024:	* Verifying memory (C:\Users\passp\AppData\Local\Temp\tmpf88j6ybc\image.txt)...done
+Wed Aug 14 22:42:50 2024:	* 
+Wed Aug 14 22:42:50 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:42:50 2024:	* Arguments   : -j FAST -r [C:\Users\passp\AppData\Local\Temp\tmpf88j6ybc\dd.txt,0x1a00-0x1a12] -e ERASE_MAIN -w C:\Users\passp\AppData\Local\Temp\tmpf88j6ybc\image.txt -v -z [VCC] 
+Wed Aug 14 22:42:50 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:42:50 2024:	* Driver      : loaded
+Wed Aug 14 22:42:50 2024:	* Dll Version : 31400000
+Wed Aug 14 22:42:50 2024:	* FwVersion   : 31200000
+Wed Aug 14 22:42:50 2024:	* Interface   : TIUSB
+Wed Aug 14 22:42:50 2024:	* HwVersion   : E 4.0
+Wed Aug 14 22:42:50 2024:	* JTAG Mode   : AUTO
+Wed Aug 14 22:42:50 2024:	* Device      : MSP430FR4133
+Wed Aug 14 22:42:50 2024:	* EEM         : Level 5, ClockCntrl 2
+Wed Aug 14 22:42:50 2024:	* Read File   : C:\Users\passp\AppData\Local\Temp\tmpf88j6ybc\dd.txt (memory segment = 0X1A00-0X1A12)
+Wed Aug 14 22:42:50 2024:	* Erase Mode  : ERASE_MAIN
+Wed Aug 14 22:42:50 2024:	* Prog.File   : C:\Users\passp\AppData\Local\Temp\tmpf88j6ybc\image.txt
+Wed Aug 14 22:42:50 2024:	* Verified    : TRUE
+Wed Aug 14 22:42:50 2024:	* BSL Unlock  : FALSE
+Wed Aug 14 22:42:50 2024:	* InfoA Access: FALSE
+Wed Aug 14 22:42:50 2024:	* VCC ON      : 3000 mV
+Wed Aug 14 22:42:50 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:42:50 2024:	* Starting target code execution...done
+Wed Aug 14 22:42:50 2024:	* Disconnecting from device...done
+Wed Aug 14 22:42:50 2024:	* 
+Wed Aug 14 22:42:50 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:42:50 2024:	* Driver      : closed (No error)
+Wed Aug 14 22:42:50 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:42:50 2024:	*/
+Wed Aug 14 22:45:30 2024:	* -----/|-------------------------------------------------------------------- *
+Wed Aug 14 22:45:30 2024:	*     / |__                                                                   *
+Wed Aug 14 22:45:30 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Wed Aug 14 22:45:30 2024:	*      | /                                                                    *
+Wed Aug 14 22:45:30 2024:	* -----|/-------------------------------------------------------------------- *
+Wed Aug 14 22:45:30 2024:	*
+Wed Aug 14 22:45:30 2024:	* Evaluating triggers...
+Wed Aug 14 22:45:30 2024:	* ':' option requires an argument -- e
+
+Wed Aug 14 22:45:30 2024:	
+Wed Aug 14 22:45:30 2024:	*******************************************************************************
+Wed Aug 14 22:45:30 2024:	                                                                               
+Wed Aug 14 22:45:30 2024:	 Usage: MSP430Flasher [OPTIONS]                                                
+Wed Aug 14 22:45:30 2024:	                                                                               
+Wed Aug 14 22:45:30 2024:	 -h / -?                     Displays usage information (displays this table   
+Wed Aug 14 22:45:30 2024:	                             of command line switches)                         
+Wed Aug 14 22:45:30 2024:	                                                                               
+Wed Aug 14 22:45:30 2024:	 -x                          Displays available exit specifications            
+Wed Aug 14 22:45:30 2024:	                             (see tigger -z)                                   
+Wed Aug 14 22:45:30 2024:	                                                                               
+Wed Aug 14 22:45:30 2024:	 -i (TI)USB | DETECT |       Communication port for the FET debugger. TIUSB    
+Wed Aug 14 22:45:30 2024:	    COMn (Win) |             (or USB) is the default. Use COMn (for example,   
+Wed Aug 14 22:45:30 2024:	    ttyACMn (Linux) |        COM15) on Windows or ttyACMn(for example,         
+Wed Aug 14 22:45:30 2024:	    usbmodem* (OSX) |        ttyACM15) on Linux or usbmodemn (for example,     
+Wed Aug 14 22:45:30 2024:	    HIDn:COMn                usbmodem1421) on OS X to choose a debugger        
+Wed Aug 14 22:45:30 2024:	                             connected to COM port n. Use HIDn:COMn for        
+Wed Aug 14 22:45:30 2024:	                             specific eZ430 tools on Windows. Use -i DETECT to 
+Wed Aug 14 22:45:30 2024:	                             execute a FET detection sweep, to display         
+Wed Aug 14 22:45:30 2024:	                             detailed information about all connected debug    
+Wed Aug 14 22:45:30 2024:	                             tools, and to prompt to select a FET.             
+Wed Aug 14 22:45:30 2024:	                                                                               
+Wed Aug 14 22:45:30 2024:	 -j fast | medium | slow     Configures the MSP Debug Stack to increase or     
+Wed Aug 14 22:45:30 2024:	                             decrease the JTAG or SBW frequency of the FET.    
+Wed Aug 14 22:45:30 2024:	                             Default = medium                                  
+Wed Aug 14 22:45:30 2024:	                                                                               
+Wed Aug 14 22:45:30 2024:	 -n DEVICE_NAME | NO_TARGET  (optional for MSP430, required for MSP432)        
+Wed Aug 14 22:45:30 2024:	                             The name of the device being accessed (prompt     
+Wed Aug 14 22:45:30 2024:	                             if mismatch between found and selected device).   
+Wed Aug 14 22:45:30 2024:	                             -n NO_TARGET executes MSP Flasher without         
+Wed Aug 14 22:45:30 2024:	                             attempting to connect to a target device          
+Wed Aug 14 22:45:30 2024:	                             Choose this option to detect if a certain FET     
+Wed Aug 14 22:45:30 2024:	                             is connected or when the FET firmware should be   
+Wed Aug 14 22:45:30 2024:	                             updated only.                                     
+Wed Aug 14 22:45:30 2024:	                                                                               
+Wed Aug 14 22:45:30 2024:	 -r [filenname,mem_sect]     Triggers a read operation in target device        
+Wed Aug 14 22:45:30 2024:	                             memory section specified by mem_section. The      
+Wed Aug 14 22:45:30 2024:	                             memory content is written to a file specified     
+Wed Aug 14 22:45:30 2024:	                             by Filename. Available memory sections are:       
+Wed Aug 14 22:45:30 2024:	                             - MAIN = the main memory of the device            
+Wed Aug 14 22:45:30 2024:	                             - INFO = info memory (see trigger –u)             
+Wed Aug 14 22:45:30 2024:	                             - BSL = bootloader memory (see trigger –b)        
+Wed Aug 14 22:45:30 2024:	                             - RAM = random access memory                      
+Wed Aug 14 22:45:30 2024:	                             - 0x****-0x**** = custom memory section           
+Wed Aug 14 22:45:30 2024:	                             Specify .txt as the extension for Filename to     
+Wed Aug 14 22:45:30 2024:	                             write data in TI-TXT format, or specify .a43      
+Wed Aug 14 22:45:30 2024:	                             (or .hex) to write data in Intel-Hex format.      
+Wed Aug 14 22:45:30 2024:	                                                                               
+Wed Aug 14 22:45:30 2024:	 -w filenname                Triggers a memory write operation. The accepted   
+Wed Aug 14 22:45:30 2024:	                             formats are txt (TI-txt) or a43/hex (Intel-hex).  
+Wed Aug 14 22:45:30 2024:	                                                                               
+Wed Aug 14 22:45:30 2024:	 -v filename (optional)      Triggers verification of the target memory against
+Wed Aug 14 22:45:30 2024:	                             a target code file. If -w is used, no argument is 
+Wed Aug 14 22:45:30 2024:	                             required. For a stand-alone verify, provide the   
+Wed Aug 14 22:45:30 2024:	                             path to a target code file as an argument.        
+Wed Aug 14 22:45:30 2024:	                                                                               
+Wed Aug 14 22:45:30 2024:	 -u                          Unlocks protected InfoA memory for writing        
+Wed Aug 14 22:45:30 2024:	                             (use only with -w switch)                         
+Wed Aug 14 22:45:30 2024:	                                                                               
+Wed Aug 14 22:45:30 2024:	 -b                          Unlocks protected BSL memory for writing          
+Wed Aug 14 22:45:30 2024:	                             (use only with -w switch)                         
+Wed Aug 14 22:45:30 2024:	 -e ERASE_ALL |              Erase memory. Default: ERASE_ALL (INFO & MAIN)    
+Wed Aug 14 22:45:30 2024:	    ERASE_MAIN |             ERASE_MAIN: erase MAIN memory only                
+Wed Aug 14 22:45:30 2024:	    ERASE_SEGMENT |          ERASE_SEGMENT: erase segment to be programmed only
+Wed Aug 14 22:45:30 2024:	    ERASE_TOTAL |            ERASE_TOTAL: applicable for FR5xx/FR6xx only!     
+Wed Aug 14 22:45:30 2024:	    ERASE_USER_CODE |        ERASE_USER_CODE: applicable for FR4xx only!       
+Wed Aug 14 22:45:30 2024:	    NO_ERASE                 NO_ERASE: use only with -w switch                 
+Wed Aug 14 22:45:30 2024:	                                                                               
+Wed Aug 14 22:45:30 2024:	 -p JTAG PASSWORD            Specifies the JTAG password that should be used   
+Wed Aug 14 22:45:30 2024:	                             to open a password protected target device        
+Wed Aug 14 22:45:30 2024:	                             (supported on FRAM devices only). The user is     
+Wed Aug 14 22:45:30 2024:	                             prompted if the password is incompatible with     
+Wed Aug 14 22:45:30 2024:	                             the password length deteced by MSP Flasher.       
+Wed Aug 14 22:45:30 2024:	                                                                               
+Wed Aug 14 22:45:30 2024:	 -o L | C                    Operating mode for L092 and RF430FR152H family    
+Wed Aug 14 22:45:30 2024:	                             devices. L = L092 mode (normal mode)              
+Wed Aug 14 22:45:30 2024:	                                      C = C092 mode (ROM development mode)     
+Wed Aug 14 22:45:30 2024:	                                                                               
+Wed Aug 14 22:45:30 2024:	 -f                          Permanently secures JTAG access to the target MSP.
+Wed Aug 14 22:45:30 2024:	                             Caution: The device will no longer be accessible  
+Wed Aug 14 22:45:30 2024:	                                      through JTAG or Spy-Bi-Wire. This action 
+Wed Aug 14 22:45:30 2024:	                                      is irreversible.                         
+Wed Aug 14 22:45:30 2024:	                                                                               
+Wed Aug 14 22:45:30 2024:	 -g                          Disables the logging mechanism.                   
+Wed Aug 14 22:45:30 2024:	                                                                               
+Wed Aug 14 22:45:30 2024:	 -a                          Causes a nonintrusive target connection: use      
+Wed Aug 14 22:45:30 2024:	                             this switch if no reset should be applied to      
+Wed Aug 14 22:45:30 2024:	                             the target device on start up. Correct target     
+Wed Aug 14 22:45:30 2024:	                             device name must be specified using the -n switch.
+Wed Aug 14 22:45:30 2024:	                                                                               
+Wed Aug 14 22:45:30 2024:	 -s                          Suppresses the FET firmware update prompt.        
+Wed Aug 14 22:45:30 2024:	                             In case of a mismatch between MSP Debug Stack     
+Wed Aug 14 22:45:30 2024:	                             and FET firmware, an update is forced.            
+Wed Aug 14 22:45:30 2024:	                                                                               
+Wed Aug 14 22:45:30 2024:	 -q                          QUIET mode: No system messages will be displayed  
+Wed Aug 14 22:45:30 2024:	                                         (except for errors and user prompts)  
+Wed Aug 14 22:45:30 2024:	                                                                               
+Wed Aug 14 22:45:30 2024:	 -z [exit_spec,...]          Specifies the state of the device after           
+Wed Aug 14 22:45:30 2024:	                             programming. View available 'exit_spec's using    
+Wed Aug 14 22:45:30 2024:	                             -x switch). Use ", " as a delimiter.            
+Wed Aug 14 22:45:30 2024:	                                                                               
+Wed Aug 14 22:45:30 2024:	 For a GUI-based alternative, check out UniFlash: http://ti.com/tool/uniflash  
+Wed Aug 14 22:45:30 2024:	*******************************************************************************
+Wed Aug 14 22:45:30 2024:	Press ENTER to continue.
+Wed Aug 14 22:45:34 2024:	* -----/|-------------------------------------------------------------------- *
+Wed Aug 14 22:45:34 2024:	*     / |__                                                                   *
+Wed Aug 14 22:45:34 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Wed Aug 14 22:45:34 2024:	*      | /                                                                    *
+Wed Aug 14 22:45:34 2024:	* -----|/-------------------------------------------------------------------- *
+Wed Aug 14 22:45:34 2024:	*
+Wed Aug 14 22:45:34 2024:	* Evaluating triggers...
+Wed Aug 14 22:45:34 2024:	* Invalid argument for -e trigger. Default used (ERASE_ALL).
+Wed Aug 14 22:45:34 2024:	* Checking for available FET debuggers: 
+Wed Aug 14 22:45:34 2024:	* Found USB FET @ COM6 <- Selected
+Wed Aug 14 22:45:34 2024:	* Initializing interface @ COM6...done
+Wed Aug 14 22:45:34 2024:	* Setting FET speed...done
+Wed Aug 14 22:45:34 2024:	* Checking firmware compatibility: 
+Wed Aug 14 22:45:34 2024:	* FET firmware is up to date.
+Wed Aug 14 22:45:34 2024:	* Reading FW version...done
+Wed Aug 14 22:45:34 2024:	* Setting VCC to 3000 mV...done
+Wed Aug 14 22:45:35 2024:	* Accessing device...done
+Wed Aug 14 22:45:35 2024:	* Reading device information...done
+Wed Aug 14 22:45:35 2024:	* Erasing device memory...done
+Wed Aug 14 22:45:36 2024:	* 
+Wed Aug 14 22:45:36 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:45:36 2024:	* Arguments   : -j SLOW -e ALL 
+Wed Aug 14 22:45:36 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:45:36 2024:	* Driver      : loaded
+Wed Aug 14 22:45:36 2024:	* Dll Version : 31400000
+Wed Aug 14 22:45:36 2024:	* FwVersion   : 31200000
+Wed Aug 14 22:45:36 2024:	* Interface   : TIUSB
+Wed Aug 14 22:45:36 2024:	* HwVersion   : E 4.0
+Wed Aug 14 22:45:36 2024:	* JTAG Mode   : AUTO
+Wed Aug 14 22:45:36 2024:	* Device      : MSP430FR4133
+Wed Aug 14 22:45:36 2024:	* EEM         : Level 5, ClockCntrl 2
+Wed Aug 14 22:45:36 2024:	* Erase Mode  : ERASE_ALL
+Wed Aug 14 22:45:36 2024:	* VCC OFF
+Wed Aug 14 22:45:36 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:45:36 2024:	* Powering down...done
+Wed Aug 14 22:45:36 2024:	* Disconnecting from device...done
+Wed Aug 14 22:45:36 2024:	* 
+Wed Aug 14 22:45:36 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:45:36 2024:	* Driver      : closed (No error)
+Wed Aug 14 22:45:36 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:45:36 2024:	*/
+Wed Aug 14 22:45:41 2024:	* -----/|-------------------------------------------------------------------- *
+Wed Aug 14 22:45:41 2024:	*     / |__                                                                   *
+Wed Aug 14 22:45:41 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Wed Aug 14 22:45:41 2024:	*      | /                                                                    *
+Wed Aug 14 22:45:41 2024:	* -----|/-------------------------------------------------------------------- *
+Wed Aug 14 22:45:41 2024:	*
+Wed Aug 14 22:45:41 2024:	* Evaluating triggers...done
+Wed Aug 14 22:45:41 2024:	* Checking for available FET debuggers: 
+Wed Aug 14 22:45:41 2024:	* Found USB FET @ COM6 <- Selected
+Wed Aug 14 22:45:41 2024:	* Initializing interface @ COM6...done
+Wed Aug 14 22:45:41 2024:	* Setting FET speed...done
+Wed Aug 14 22:45:41 2024:	* Checking firmware compatibility: 
+Wed Aug 14 22:45:41 2024:	* FET firmware is up to date.
+Wed Aug 14 22:45:41 2024:	* Reading FW version...
+Wed Aug 14 22:45:41 2024:	* Debugger does not support target voltages other than 3000 mV!
+Wed Aug 14 22:45:41 2024:	* Setting VCC to 3000 mV...done
+Wed Aug 14 22:45:42 2024:	* Accessing device...done
+Wed Aug 14 22:45:42 2024:	* Reading device information...done
+Wed Aug 14 22:45:42 2024:	* Dumping memory from 0X1A00-0X1A12 into C:\Users\passp\AppData\Local\Temp\tmp9roact4h\dd.txt...done
+Wed Aug 14 22:45:42 2024:	* Loading file into device...done
+Wed Aug 14 22:45:47 2024:	* Verifying memory (C:\Users\passp\AppData\Local\Temp\tmp9roact4h\image.txt)...done
+Wed Aug 14 22:45:48 2024:	* 
+Wed Aug 14 22:45:48 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:45:48 2024:	* Arguments   : -j FAST -r [C:\Users\passp\AppData\Local\Temp\tmp9roact4h\dd.txt,0x1a00-0x1a12] -e ERASE_MAIN -w C:\Users\passp\AppData\Local\Temp\tmp9roact4h\image.txt -v -z [VCC] 
+Wed Aug 14 22:45:48 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:45:48 2024:	* Driver      : loaded
+Wed Aug 14 22:45:48 2024:	* Dll Version : 31400000
+Wed Aug 14 22:45:48 2024:	* FwVersion   : 31200000
+Wed Aug 14 22:45:48 2024:	* Interface   : TIUSB
+Wed Aug 14 22:45:48 2024:	* HwVersion   : E 4.0
+Wed Aug 14 22:45:48 2024:	* JTAG Mode   : AUTO
+Wed Aug 14 22:45:48 2024:	* Device      : MSP430FR4133
+Wed Aug 14 22:45:48 2024:	* EEM         : Level 5, ClockCntrl 2
+Wed Aug 14 22:45:48 2024:	* Read File   : C:\Users\passp\AppData\Local\Temp\tmp9roact4h\dd.txt (memory segment = 0X1A00-0X1A12)
+Wed Aug 14 22:45:48 2024:	* Erase Mode  : ERASE_MAIN
+Wed Aug 14 22:45:48 2024:	* Prog.File   : C:\Users\passp\AppData\Local\Temp\tmp9roact4h\image.txt
+Wed Aug 14 22:45:48 2024:	* Verified    : TRUE
+Wed Aug 14 22:45:48 2024:	* BSL Unlock  : FALSE
+Wed Aug 14 22:45:48 2024:	* InfoA Access: FALSE
+Wed Aug 14 22:45:48 2024:	* VCC ON      : 3000 mV
+Wed Aug 14 22:45:48 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:45:48 2024:	* Starting target code execution...done
+Wed Aug 14 22:45:49 2024:	* Disconnecting from device...done
+Wed Aug 14 22:45:49 2024:	* 
+Wed Aug 14 22:45:49 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:45:49 2024:	* Driver      : closed (No error)
+Wed Aug 14 22:45:49 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:45:49 2024:	*/
+Wed Aug 14 22:47:41 2024:	* -----/|-------------------------------------------------------------------- *
+Wed Aug 14 22:47:41 2024:	*     / |__                                                                   *
+Wed Aug 14 22:47:41 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Wed Aug 14 22:47:41 2024:	*      | /                                                                    *
+Wed Aug 14 22:47:41 2024:	* -----|/-------------------------------------------------------------------- *
+Wed Aug 14 22:47:41 2024:	*
+Wed Aug 14 22:47:41 2024:	* Evaluating triggers...
+Wed Aug 14 22:47:41 2024:	* Invalid argument for -e trigger. Default used (ERASE_ALL).
+Wed Aug 14 22:47:41 2024:	* Checking for available FET debuggers: 
+Wed Aug 14 22:47:41 2024:	* Found USB FET @ COM6 <- Selected
+Wed Aug 14 22:47:41 2024:	* Initializing interface @ COM6...done
+Wed Aug 14 22:47:41 2024:	* Setting FET speed...done
+Wed Aug 14 22:47:41 2024:	* Checking firmware compatibility: 
+Wed Aug 14 22:47:41 2024:	* FET firmware is up to date.
+Wed Aug 14 22:47:41 2024:	* Reading FW version...done
+Wed Aug 14 22:47:41 2024:	* Setting VCC to 3000 mV...done
+Wed Aug 14 22:47:42 2024:	* Accessing device...done
+Wed Aug 14 22:47:42 2024:	* Reading device information...done
+Wed Aug 14 22:47:42 2024:	* Erasing device memory...done
+Wed Aug 14 22:47:43 2024:	* 
+Wed Aug 14 22:47:43 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:47:43 2024:	* Arguments   : -j SLOW -e ALL 
+Wed Aug 14 22:47:43 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:47:43 2024:	* Driver      : loaded
+Wed Aug 14 22:47:43 2024:	* Dll Version : 31400000
+Wed Aug 14 22:47:43 2024:	* FwVersion   : 31200000
+Wed Aug 14 22:47:43 2024:	* Interface   : TIUSB
+Wed Aug 14 22:47:43 2024:	* HwVersion   : E 4.0
+Wed Aug 14 22:47:43 2024:	* JTAG Mode   : AUTO
+Wed Aug 14 22:47:43 2024:	* Device      : MSP430FR4133
+Wed Aug 14 22:47:43 2024:	* EEM         : Level 5, ClockCntrl 2
+Wed Aug 14 22:47:43 2024:	* Erase Mode  : ERASE_ALL
+Wed Aug 14 22:47:43 2024:	* VCC OFF
+Wed Aug 14 22:47:43 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:47:43 2024:	* Powering down...done
+Wed Aug 14 22:47:43 2024:	* Disconnecting from device...done
+Wed Aug 14 22:47:43 2024:	* 
+Wed Aug 14 22:47:43 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:47:43 2024:	* Driver      : closed (No error)
+Wed Aug 14 22:47:43 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:47:43 2024:	*/
+Wed Aug 14 22:47:52 2024:	* -----/|-------------------------------------------------------------------- *
+Wed Aug 14 22:47:52 2024:	*     / |__                                                                   *
+Wed Aug 14 22:47:52 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Wed Aug 14 22:47:52 2024:	*      | /                                                                    *
+Wed Aug 14 22:47:52 2024:	* -----|/-------------------------------------------------------------------- *
+Wed Aug 14 22:47:52 2024:	*
+Wed Aug 14 22:47:52 2024:	* Evaluating triggers...done
+Wed Aug 14 22:47:52 2024:	* Checking for available FET debuggers: 
+Wed Aug 14 22:47:53 2024:	* Found USB FET @ COM6 <- Selected
+Wed Aug 14 22:47:53 2024:	* Initializing interface @ COM6...done
+Wed Aug 14 22:47:53 2024:	* Setting FET speed...done
+Wed Aug 14 22:47:53 2024:	* Checking firmware compatibility: 
+Wed Aug 14 22:47:53 2024:	* FET firmware is up to date.
+Wed Aug 14 22:47:53 2024:	* Reading FW version...
+Wed Aug 14 22:47:53 2024:	* Debugger does not support target voltages other than 3000 mV!
+Wed Aug 14 22:47:53 2024:	* Setting VCC to 3000 mV...done
+Wed Aug 14 22:47:53 2024:	* Accessing device...done
+Wed Aug 14 22:47:54 2024:	* Reading device information...done
+Wed Aug 14 22:47:54 2024:	* Dumping memory from 0X1A00-0X1A12 into C:\Users\passp\AppData\Local\Temp\tmp1gbj0q0p\dd.txt...done
+Wed Aug 14 22:47:54 2024:	* Loading file into device...done
+Wed Aug 14 22:47:58 2024:	* Verifying memory (C:\Users\passp\AppData\Local\Temp\tmp1gbj0q0p\image.txt)...done
+Wed Aug 14 22:48:00 2024:	* 
+Wed Aug 14 22:48:00 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:48:00 2024:	* Arguments   : -j FAST -r [C:\Users\passp\AppData\Local\Temp\tmp1gbj0q0p\dd.txt,0x1a00-0x1a12] -e ERASE_MAIN -w C:\Users\passp\AppData\Local\Temp\tmp1gbj0q0p\image.txt -v -z [VCC] 
+Wed Aug 14 22:48:00 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:48:00 2024:	* Driver      : loaded
+Wed Aug 14 22:48:00 2024:	* Dll Version : 31400000
+Wed Aug 14 22:48:00 2024:	* FwVersion   : 31200000
+Wed Aug 14 22:48:00 2024:	* Interface   : TIUSB
+Wed Aug 14 22:48:00 2024:	* HwVersion   : E 4.0
+Wed Aug 14 22:48:00 2024:	* JTAG Mode   : AUTO
+Wed Aug 14 22:48:00 2024:	* Device      : MSP430FR4133
+Wed Aug 14 22:48:00 2024:	* EEM         : Level 5, ClockCntrl 2
+Wed Aug 14 22:48:00 2024:	* Read File   : C:\Users\passp\AppData\Local\Temp\tmp1gbj0q0p\dd.txt (memory segment = 0X1A00-0X1A12)
+Wed Aug 14 22:48:00 2024:	* Erase Mode  : ERASE_MAIN
+Wed Aug 14 22:48:00 2024:	* Prog.File   : C:\Users\passp\AppData\Local\Temp\tmp1gbj0q0p\image.txt
+Wed Aug 14 22:48:00 2024:	* Verified    : TRUE
+Wed Aug 14 22:48:00 2024:	* BSL Unlock  : FALSE
+Wed Aug 14 22:48:00 2024:	* InfoA Access: FALSE
+Wed Aug 14 22:48:00 2024:	* VCC ON      : 3000 mV
+Wed Aug 14 22:48:00 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:48:00 2024:	* Starting target code execution...done
+Wed Aug 14 22:48:01 2024:	* Disconnecting from device...done
+Wed Aug 14 22:48:01 2024:	* 
+Wed Aug 14 22:48:01 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:48:01 2024:	* Driver      : closed (No error)
+Wed Aug 14 22:48:01 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 22:48:01 2024:	*/
+Wed Aug 14 23:08:27 2024:	* -----/|-------------------------------------------------------------------- *
+Wed Aug 14 23:08:27 2024:	*     / |__                                                                   *
+Wed Aug 14 23:08:27 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Wed Aug 14 23:08:27 2024:	*      | /                                                                    *
+Wed Aug 14 23:08:27 2024:	* -----|/-------------------------------------------------------------------- *
+Wed Aug 14 23:08:27 2024:	*
+Wed Aug 14 23:08:27 2024:	* Evaluating triggers...done
+Wed Aug 14 23:08:27 2024:	* Checking for available FET debuggers: 
+Wed Aug 14 23:08:27 2024:	* Found USB FET @ COM6 <- Selected
+Wed Aug 14 23:08:27 2024:	* Initializing interface @ COM6...done
+Wed Aug 14 23:08:27 2024:	* Setting FET speed...done
+Wed Aug 14 23:08:27 2024:	* Checking firmware compatibility: 
+Wed Aug 14 23:08:27 2024:	* FET firmware is up to date.
+Wed Aug 14 23:08:27 2024:	* Reading FW version...
+Wed Aug 14 23:08:27 2024:	* Debugger does not support target voltages other than 3000 mV!
+Wed Aug 14 23:08:27 2024:	* Setting VCC to 3000 mV...done
+Wed Aug 14 23:08:28 2024:	* Accessing device...done
+Wed Aug 14 23:08:28 2024:	* Reading device information...done
+Wed Aug 14 23:08:28 2024:	* Dumping memory from 0X1A00-0X1A12 into C:\Users\passp\AppData\Local\Temp\tmpc6g1kyyc\dd.txt...done
+Wed Aug 14 23:08:28 2024:	* Loading file into device...done
+Wed Aug 14 23:08:32 2024:	* Verifying memory (C:\Users\passp\AppData\Local\Temp\tmpc6g1kyyc\image.txt)...done
+Wed Aug 14 23:08:34 2024:	* 
+Wed Aug 14 23:08:34 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 23:08:34 2024:	* Arguments   : -j FAST -r [C:\Users\passp\AppData\Local\Temp\tmpc6g1kyyc\dd.txt,0x1a00-0x1a12] -e ERASE_MAIN -w C:\Users\passp\AppData\Local\Temp\tmpc6g1kyyc\image.txt -v -z [VCC] 
+Wed Aug 14 23:08:34 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 23:08:34 2024:	* Driver      : loaded
+Wed Aug 14 23:08:34 2024:	* Dll Version : 31400000
+Wed Aug 14 23:08:34 2024:	* FwVersion   : 31200000
+Wed Aug 14 23:08:34 2024:	* Interface   : TIUSB
+Wed Aug 14 23:08:34 2024:	* HwVersion   : E 4.0
+Wed Aug 14 23:08:34 2024:	* JTAG Mode   : AUTO
+Wed Aug 14 23:08:34 2024:	* Device      : MSP430FR4133
+Wed Aug 14 23:08:34 2024:	* EEM         : Level 5, ClockCntrl 2
+Wed Aug 14 23:08:34 2024:	* Read File   : C:\Users\passp\AppData\Local\Temp\tmpc6g1kyyc\dd.txt (memory segment = 0X1A00-0X1A12)
+Wed Aug 14 23:08:34 2024:	* Erase Mode  : ERASE_MAIN
+Wed Aug 14 23:08:34 2024:	* Prog.File   : C:\Users\passp\AppData\Local\Temp\tmpc6g1kyyc\image.txt
+Wed Aug 14 23:08:34 2024:	* Verified    : TRUE
+Wed Aug 14 23:08:34 2024:	* BSL Unlock  : FALSE
+Wed Aug 14 23:08:34 2024:	* InfoA Access: FALSE
+Wed Aug 14 23:08:34 2024:	* VCC ON      : 3000 mV
+Wed Aug 14 23:08:34 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 23:08:34 2024:	* Starting target code execution...done
+Wed Aug 14 23:08:35 2024:	* Disconnecting from device...done
+Wed Aug 14 23:08:35 2024:	* 
+Wed Aug 14 23:08:35 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 23:08:35 2024:	* Driver      : closed (No error)
+Wed Aug 14 23:08:35 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 23:08:35 2024:	*/
+Wed Aug 14 23:09:40 2024:	* -----/|-------------------------------------------------------------------- *
+Wed Aug 14 23:09:40 2024:	*     / |__                                                                   *
+Wed Aug 14 23:09:40 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Wed Aug 14 23:09:40 2024:	*      | /                                                                    *
+Wed Aug 14 23:09:40 2024:	* -----|/-------------------------------------------------------------------- *
+Wed Aug 14 23:09:40 2024:	*
+Wed Aug 14 23:09:40 2024:	* Evaluating triggers...done
+Wed Aug 14 23:09:40 2024:	* Checking for available FET debuggers: 
+Wed Aug 14 23:09:41 2024:	* Found USB FET @ COM6 <- Selected
+Wed Aug 14 23:09:41 2024:	* Initializing interface @ COM6...done
+Wed Aug 14 23:09:41 2024:	* Setting FET speed...done
+Wed Aug 14 23:09:41 2024:	* Checking firmware compatibility: 
+Wed Aug 14 23:09:41 2024:	* FET firmware is up to date.
+Wed Aug 14 23:09:41 2024:	* Reading FW version...
+Wed Aug 14 23:09:41 2024:	* Debugger does not support target voltages other than 3000 mV!
+Wed Aug 14 23:09:41 2024:	* Setting VCC to 3000 mV...done
+Wed Aug 14 23:09:41 2024:	* Accessing device...done
+Wed Aug 14 23:09:42 2024:	* Reading device information...done
+Wed Aug 14 23:09:42 2024:	* Dumping memory from 0X1A00-0X1A12 into C:\Users\passp\AppData\Local\Temp\tmprs1o2b58\dd.txt...done
+Wed Aug 14 23:09:42 2024:	* Loading file into device...done
+Wed Aug 14 23:09:46 2024:	* Verifying memory (C:\Users\passp\AppData\Local\Temp\tmprs1o2b58\image.txt)...done
+Wed Aug 14 23:09:48 2024:	* 
+Wed Aug 14 23:09:48 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 23:09:48 2024:	* Arguments   : -j FAST -r [C:\Users\passp\AppData\Local\Temp\tmprs1o2b58\dd.txt,0x1a00-0x1a12] -e ERASE_MAIN -w C:\Users\passp\AppData\Local\Temp\tmprs1o2b58\image.txt -v -z [VCC] 
+Wed Aug 14 23:09:48 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 23:09:48 2024:	* Driver      : loaded
+Wed Aug 14 23:09:48 2024:	* Dll Version : 31400000
+Wed Aug 14 23:09:48 2024:	* FwVersion   : 31200000
+Wed Aug 14 23:09:48 2024:	* Interface   : TIUSB
+Wed Aug 14 23:09:48 2024:	* HwVersion   : E 4.0
+Wed Aug 14 23:09:48 2024:	* JTAG Mode   : AUTO
+Wed Aug 14 23:09:48 2024:	* Device      : MSP430FR4133
+Wed Aug 14 23:09:48 2024:	* EEM         : Level 5, ClockCntrl 2
+Wed Aug 14 23:09:48 2024:	* Read File   : C:\Users\passp\AppData\Local\Temp\tmprs1o2b58\dd.txt (memory segment = 0X1A00-0X1A12)
+Wed Aug 14 23:09:48 2024:	* Erase Mode  : ERASE_MAIN
+Wed Aug 14 23:09:48 2024:	* Prog.File   : C:\Users\passp\AppData\Local\Temp\tmprs1o2b58\image.txt
+Wed Aug 14 23:09:48 2024:	* Verified    : TRUE
+Wed Aug 14 23:09:48 2024:	* BSL Unlock  : FALSE
+Wed Aug 14 23:09:48 2024:	* InfoA Access: FALSE
+Wed Aug 14 23:09:48 2024:	* VCC ON      : 3000 mV
+Wed Aug 14 23:09:48 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 23:09:48 2024:	* Starting target code execution...done
+Wed Aug 14 23:09:49 2024:	* Disconnecting from device...done
+Wed Aug 14 23:09:49 2024:	* 
+Wed Aug 14 23:09:49 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 23:09:49 2024:	* Driver      : closed (No error)
+Wed Aug 14 23:09:49 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 23:09:49 2024:	*/
+Wed Aug 14 23:11:48 2024:	* -----/|-------------------------------------------------------------------- *
+Wed Aug 14 23:11:48 2024:	*     / |__                                                                   *
+Wed Aug 14 23:11:48 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Wed Aug 14 23:11:48 2024:	*      | /                                                                    *
+Wed Aug 14 23:11:48 2024:	* -----|/-------------------------------------------------------------------- *
+Wed Aug 14 23:11:48 2024:	*
+Wed Aug 14 23:11:48 2024:	* Evaluating triggers...done
+Wed Aug 14 23:11:48 2024:	* Checking for available FET debuggers: 
+Wed Aug 14 23:11:48 2024:	* Found USB FET @ COM6 <- Selected
+Wed Aug 14 23:11:48 2024:	* Initializing interface @ COM6...done
+Wed Aug 14 23:11:48 2024:	* Setting FET speed...done
+Wed Aug 14 23:11:48 2024:	* Checking firmware compatibility: 
+Wed Aug 14 23:11:48 2024:	* FET firmware is up to date.
+Wed Aug 14 23:11:48 2024:	* Reading FW version...
+Wed Aug 14 23:11:48 2024:	* Debugger does not support target voltages other than 3000 mV!
+Wed Aug 14 23:11:48 2024:	* Setting VCC to 3000 mV...done
+Wed Aug 14 23:11:49 2024:	* Accessing device...done
+Wed Aug 14 23:11:49 2024:	* Reading device information...done
+Wed Aug 14 23:11:49 2024:	* Dumping memory from 0X1A00-0X1A12 into C:\Users\passp\AppData\Local\Temp\tmpfhcqfkzl\dd.txt...done
+Wed Aug 14 23:11:49 2024:	* Loading file into device...done
+Wed Aug 14 23:11:53 2024:	* Verifying memory (C:\Users\passp\AppData\Local\Temp\tmpfhcqfkzl\image.txt)...done
+Wed Aug 14 23:11:55 2024:	* 
+Wed Aug 14 23:11:55 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 23:11:55 2024:	* Arguments   : -j FAST -r [C:\Users\passp\AppData\Local\Temp\tmpfhcqfkzl\dd.txt,0x1a00-0x1a12] -e ERASE_MAIN -w C:\Users\passp\AppData\Local\Temp\tmpfhcqfkzl\image.txt -v -z [VCC] 
+Wed Aug 14 23:11:55 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 23:11:55 2024:	* Driver      : loaded
+Wed Aug 14 23:11:55 2024:	* Dll Version : 31400000
+Wed Aug 14 23:11:55 2024:	* FwVersion   : 31200000
+Wed Aug 14 23:11:55 2024:	* Interface   : TIUSB
+Wed Aug 14 23:11:55 2024:	* HwVersion   : E 4.0
+Wed Aug 14 23:11:55 2024:	* JTAG Mode   : AUTO
+Wed Aug 14 23:11:55 2024:	* Device      : MSP430FR4133
+Wed Aug 14 23:11:55 2024:	* EEM         : Level 5, ClockCntrl 2
+Wed Aug 14 23:11:55 2024:	* Read File   : C:\Users\passp\AppData\Local\Temp\tmpfhcqfkzl\dd.txt (memory segment = 0X1A00-0X1A12)
+Wed Aug 14 23:11:55 2024:	* Erase Mode  : ERASE_MAIN
+Wed Aug 14 23:11:55 2024:	* Prog.File   : C:\Users\passp\AppData\Local\Temp\tmpfhcqfkzl\image.txt
+Wed Aug 14 23:11:55 2024:	* Verified    : TRUE
+Wed Aug 14 23:11:55 2024:	* BSL Unlock  : FALSE
+Wed Aug 14 23:11:55 2024:	* InfoA Access: FALSE
+Wed Aug 14 23:11:55 2024:	* VCC ON      : 3000 mV
+Wed Aug 14 23:11:55 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 23:11:55 2024:	* Starting target code execution...done
+Wed Aug 14 23:11:56 2024:	* Disconnecting from device...done
+Wed Aug 14 23:11:56 2024:	* 
+Wed Aug 14 23:11:56 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 23:11:56 2024:	* Driver      : closed (No error)
+Wed Aug 14 23:11:56 2024:	* ----------------------------------------------------------------------------
+Wed Aug 14 23:11:56 2024:	*/
+Tue Sep  3 17:12:52 2024:	* -----/|-------------------------------------------------------------------- *
+Tue Sep  3 17:12:52 2024:	*     / |__                                                                   *
+Tue Sep  3 17:12:52 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Tue Sep  3 17:12:52 2024:	*      | /                                                                    *
+Tue Sep  3 17:12:52 2024:	* -----|/-------------------------------------------------------------------- *
+Tue Sep  3 17:12:52 2024:	*
+Tue Sep  3 17:12:52 2024:	* Evaluating triggers...done
+Tue Sep  3 17:12:52 2024:	* Checking for available FET debuggers: 
+Tue Sep  3 17:12:53 2024:	* Found USB FET @ COM6 <- Selected
+Tue Sep  3 17:12:53 2024:	* Initializing interface @ COM6...done
+Tue Sep  3 17:12:53 2024:	* Setting FET speed...done
+Tue Sep  3 17:12:53 2024:	* Checking firmware compatibility: 
+Tue Sep  3 17:12:53 2024:	* FET firmware is up to date.
+Tue Sep  3 17:12:53 2024:	* Reading FW version...
+Tue Sep  3 17:12:53 2024:	* Debugger does not support target voltages other than 3000 mV!
+Tue Sep  3 17:12:53 2024:	* Setting VCC to 3000 mV...done
+Tue Sep  3 17:12:53 2024:	* Accessing device...done
+Tue Sep  3 17:12:53 2024:	* Reading device information...done
+Tue Sep  3 17:12:53 2024:	* Dumping memory from 0X1A00-0X1A12 into C:\Users\passp\AppData\Local\Temp\tmp154ii6ff\dd.txt...done
+Tue Sep  3 17:12:53 2024:	* Loading file into device...done
+Tue Sep  3 17:12:58 2024:	* Verifying memory (C:\Users\passp\AppData\Local\Temp\tmp154ii6ff\image.txt)...done
+Tue Sep  3 17:13:00 2024:	* 
+Tue Sep  3 17:13:00 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:13:00 2024:	* Arguments   : -j FAST -r [C:\Users\passp\AppData\Local\Temp\tmp154ii6ff\dd.txt,0x1a00-0x1a12] -e ERASE_MAIN -w C:\Users\passp\AppData\Local\Temp\tmp154ii6ff\image.txt -v -z [VCC] 
+Tue Sep  3 17:13:00 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:13:00 2024:	* Driver      : loaded
+Tue Sep  3 17:13:00 2024:	* Dll Version : 31400000
+Tue Sep  3 17:13:00 2024:	* FwVersion   : 31200000
+Tue Sep  3 17:13:00 2024:	* Interface   : TIUSB
+Tue Sep  3 17:13:00 2024:	* HwVersion   : E 4.0
+Tue Sep  3 17:13:00 2024:	* JTAG Mode   : AUTO
+Tue Sep  3 17:13:00 2024:	* Device      : MSP430FR4133
+Tue Sep  3 17:13:00 2024:	* EEM         : Level 5, ClockCntrl 2
+Tue Sep  3 17:13:00 2024:	* Read File   : C:\Users\passp\AppData\Local\Temp\tmp154ii6ff\dd.txt (memory segment = 0X1A00-0X1A12)
+Tue Sep  3 17:13:00 2024:	* Erase Mode  : ERASE_MAIN
+Tue Sep  3 17:13:00 2024:	* Prog.File   : C:\Users\passp\AppData\Local\Temp\tmp154ii6ff\image.txt
+Tue Sep  3 17:13:00 2024:	* Verified    : TRUE
+Tue Sep  3 17:13:00 2024:	* BSL Unlock  : FALSE
+Tue Sep  3 17:13:00 2024:	* InfoA Access: FALSE
+Tue Sep  3 17:13:00 2024:	* VCC ON      : 3000 mV
+Tue Sep  3 17:13:00 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:13:00 2024:	* Starting target code execution...done
+Tue Sep  3 17:13:01 2024:	* Disconnecting from device...done
+Tue Sep  3 17:13:01 2024:	* 
+Tue Sep  3 17:13:01 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:13:01 2024:	* Driver      : closed (No error)
+Tue Sep  3 17:13:01 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:13:01 2024:	*/
+Tue Sep  3 17:18:48 2024:	* -----/|-------------------------------------------------------------------- *
+Tue Sep  3 17:18:48 2024:	*     / |__                                                                   *
+Tue Sep  3 17:18:48 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Tue Sep  3 17:18:48 2024:	*      | /                                                                    *
+Tue Sep  3 17:18:48 2024:	* -----|/-------------------------------------------------------------------- *
+Tue Sep  3 17:18:48 2024:	*
+Tue Sep  3 17:18:48 2024:	* Evaluating triggers...done
+Tue Sep  3 17:18:48 2024:	* Checking for available FET debuggers: 
+Tue Sep  3 17:18:48 2024:	* Found USB FET @ COM6 <- Selected
+Tue Sep  3 17:18:48 2024:	* Initializing interface @ COM6...done
+Tue Sep  3 17:18:48 2024:	* Setting FET speed...done
+Tue Sep  3 17:18:48 2024:	* Checking firmware compatibility: 
+Tue Sep  3 17:18:48 2024:	* FET firmware is up to date.
+Tue Sep  3 17:18:48 2024:	* Reading FW version...
+Tue Sep  3 17:18:48 2024:	* Debugger does not support target voltages other than 3000 mV!
+Tue Sep  3 17:18:48 2024:	* Setting VCC to 3000 mV...done
+Tue Sep  3 17:18:49 2024:	* Accessing device...done
+Tue Sep  3 17:18:49 2024:	* Reading device information...done
+Tue Sep  3 17:18:49 2024:	* Dumping memory from 0X1A00-0X1A12 into C:\Users\passp\AppData\Local\Temp\tmp_2bcem5y\dd.txt...done
+Tue Sep  3 17:18:49 2024:	* Loading file into device...done
+Tue Sep  3 17:18:54 2024:	* Verifying memory (C:\Users\passp\AppData\Local\Temp\tmp_2bcem5y\image.txt)...done
+Tue Sep  3 17:18:55 2024:	* 
+Tue Sep  3 17:18:55 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:18:55 2024:	* Arguments   : -j FAST -r [C:\Users\passp\AppData\Local\Temp\tmp_2bcem5y\dd.txt,0x1a00-0x1a12] -e ERASE_MAIN -w C:\Users\passp\AppData\Local\Temp\tmp_2bcem5y\image.txt -v -z [VCC] 
+Tue Sep  3 17:18:55 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:18:55 2024:	* Driver      : loaded
+Tue Sep  3 17:18:55 2024:	* Dll Version : 31400000
+Tue Sep  3 17:18:55 2024:	* FwVersion   : 31200000
+Tue Sep  3 17:18:55 2024:	* Interface   : TIUSB
+Tue Sep  3 17:18:55 2024:	* HwVersion   : E 4.0
+Tue Sep  3 17:18:55 2024:	* JTAG Mode   : AUTO
+Tue Sep  3 17:18:55 2024:	* Device      : MSP430FR4133
+Tue Sep  3 17:18:55 2024:	* EEM         : Level 5, ClockCntrl 2
+Tue Sep  3 17:18:55 2024:	* Read File   : C:\Users\passp\AppData\Local\Temp\tmp_2bcem5y\dd.txt (memory segment = 0X1A00-0X1A12)
+Tue Sep  3 17:18:55 2024:	* Erase Mode  : ERASE_MAIN
+Tue Sep  3 17:18:55 2024:	* Prog.File   : C:\Users\passp\AppData\Local\Temp\tmp_2bcem5y\image.txt
+Tue Sep  3 17:18:55 2024:	* Verified    : TRUE
+Tue Sep  3 17:18:55 2024:	* BSL Unlock  : FALSE
+Tue Sep  3 17:18:55 2024:	* InfoA Access: FALSE
+Tue Sep  3 17:18:55 2024:	* VCC ON      : 3000 mV
+Tue Sep  3 17:18:55 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:18:55 2024:	* Starting target code execution...done
+Tue Sep  3 17:18:56 2024:	* Disconnecting from device...done
+Tue Sep  3 17:18:56 2024:	* 
+Tue Sep  3 17:18:56 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:18:56 2024:	* Driver      : closed (No error)
+Tue Sep  3 17:18:56 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:18:56 2024:	*/
+Tue Sep  3 17:21:06 2024:	* -----/|-------------------------------------------------------------------- *
+Tue Sep  3 17:21:06 2024:	*     / |__                                                                   *
+Tue Sep  3 17:21:06 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Tue Sep  3 17:21:06 2024:	*      | /                                                                    *
+Tue Sep  3 17:21:06 2024:	* -----|/-------------------------------------------------------------------- *
+Tue Sep  3 17:21:06 2024:	*
+Tue Sep  3 17:21:06 2024:	* Evaluating triggers...done
+Tue Sep  3 17:21:06 2024:	* Checking for available FET debuggers: 
+Tue Sep  3 17:21:06 2024:	* Found USB FET @ COM6 <- Selected
+Tue Sep  3 17:21:06 2024:	* Initializing interface @ COM6...done
+Tue Sep  3 17:21:06 2024:	* Setting FET speed...done
+Tue Sep  3 17:21:06 2024:	* Checking firmware compatibility: 
+Tue Sep  3 17:21:06 2024:	* FET firmware is up to date.
+Tue Sep  3 17:21:06 2024:	* Reading FW version...
+Tue Sep  3 17:21:06 2024:	* Debugger does not support target voltages other than 3000 mV!
+Tue Sep  3 17:21:06 2024:	* Setting VCC to 3000 mV...done
+Tue Sep  3 17:21:07 2024:	* Accessing device...done
+Tue Sep  3 17:21:07 2024:	* Reading device information...done
+Tue Sep  3 17:21:07 2024:	* Dumping memory from 0X1A00-0X1A12 into C:\Users\passp\AppData\Local\Temp\tmpyyofba3d\dd.txt...done
+Tue Sep  3 17:21:07 2024:	* Loading file into device...done
+Tue Sep  3 17:21:12 2024:	* Verifying memory (C:\Users\passp\AppData\Local\Temp\tmpyyofba3d\image.txt)...done
+Tue Sep  3 17:21:13 2024:	* 
+Tue Sep  3 17:21:13 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:21:13 2024:	* Arguments   : -j FAST -r [C:\Users\passp\AppData\Local\Temp\tmpyyofba3d\dd.txt,0x1a00-0x1a12] -e ERASE_MAIN -w C:\Users\passp\AppData\Local\Temp\tmpyyofba3d\image.txt -v -z [VCC] 
+Tue Sep  3 17:21:13 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:21:13 2024:	* Driver      : loaded
+Tue Sep  3 17:21:13 2024:	* Dll Version : 31400000
+Tue Sep  3 17:21:13 2024:	* FwVersion   : 31200000
+Tue Sep  3 17:21:13 2024:	* Interface   : TIUSB
+Tue Sep  3 17:21:13 2024:	* HwVersion   : E 4.0
+Tue Sep  3 17:21:13 2024:	* JTAG Mode   : AUTO
+Tue Sep  3 17:21:13 2024:	* Device      : MSP430FR4133
+Tue Sep  3 17:21:13 2024:	* EEM         : Level 5, ClockCntrl 2
+Tue Sep  3 17:21:13 2024:	* Read File   : C:\Users\passp\AppData\Local\Temp\tmpyyofba3d\dd.txt (memory segment = 0X1A00-0X1A12)
+Tue Sep  3 17:21:13 2024:	* Erase Mode  : ERASE_MAIN
+Tue Sep  3 17:21:13 2024:	* Prog.File   : C:\Users\passp\AppData\Local\Temp\tmpyyofba3d\image.txt
+Tue Sep  3 17:21:13 2024:	* Verified    : TRUE
+Tue Sep  3 17:21:13 2024:	* BSL Unlock  : FALSE
+Tue Sep  3 17:21:13 2024:	* InfoA Access: FALSE
+Tue Sep  3 17:21:13 2024:	* VCC ON      : 3000 mV
+Tue Sep  3 17:21:13 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:21:13 2024:	* Starting target code execution...done
+Tue Sep  3 17:21:14 2024:	* Disconnecting from device...done
+Tue Sep  3 17:21:14 2024:	* 
+Tue Sep  3 17:21:14 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:21:14 2024:	* Driver      : closed (No error)
+Tue Sep  3 17:21:14 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:21:14 2024:	*/
+Tue Sep  3 17:21:30 2024:	* -----/|-------------------------------------------------------------------- *
+Tue Sep  3 17:21:30 2024:	*     / |__                                                                   *
+Tue Sep  3 17:21:30 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Tue Sep  3 17:21:30 2024:	*      | /                                                                    *
+Tue Sep  3 17:21:30 2024:	* -----|/-------------------------------------------------------------------- *
+Tue Sep  3 17:21:30 2024:	*
+Tue Sep  3 17:21:30 2024:	* Evaluating triggers...done
+Tue Sep  3 17:21:30 2024:	* Checking for available FET debuggers: 
+Tue Sep  3 17:21:30 2024:	* Found USB FET @ COM6 <- Selected
+Tue Sep  3 17:21:30 2024:	* Initializing interface @ COM6...done
+Tue Sep  3 17:21:30 2024:	* Setting FET speed...done
+Tue Sep  3 17:21:30 2024:	* Checking firmware compatibility: 
+Tue Sep  3 17:21:30 2024:	* FET firmware is up to date.
+Tue Sep  3 17:21:30 2024:	* Reading FW version...
+Tue Sep  3 17:21:30 2024:	* Debugger does not support target voltages other than 3000 mV!
+Tue Sep  3 17:21:30 2024:	* Setting VCC to 3000 mV...done
+Tue Sep  3 17:21:31 2024:	* Accessing device...done
+Tue Sep  3 17:21:31 2024:	* Reading device information...done
+Tue Sep  3 17:21:31 2024:	* Dumping memory from 0X1A00-0X1A12 into C:\Users\passp\AppData\Local\Temp\tmpm0x_tcf2\dd.txt...done
+Tue Sep  3 17:21:31 2024:	* Loading file into device...done
+Tue Sep  3 17:21:35 2024:	* Verifying memory (C:\Users\passp\AppData\Local\Temp\tmpm0x_tcf2\image.txt)...done
+Tue Sep  3 17:21:37 2024:	* 
+Tue Sep  3 17:21:37 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:21:37 2024:	* Arguments   : -j FAST -r [C:\Users\passp\AppData\Local\Temp\tmpm0x_tcf2\dd.txt,0x1a00-0x1a12] -e ERASE_MAIN -w C:\Users\passp\AppData\Local\Temp\tmpm0x_tcf2\image.txt -v -z [VCC] 
+Tue Sep  3 17:21:37 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:21:37 2024:	* Driver      : loaded
+Tue Sep  3 17:21:37 2024:	* Dll Version : 31400000
+Tue Sep  3 17:21:37 2024:	* FwVersion   : 31200000
+Tue Sep  3 17:21:37 2024:	* Interface   : TIUSB
+Tue Sep  3 17:21:37 2024:	* HwVersion   : E 4.0
+Tue Sep  3 17:21:37 2024:	* JTAG Mode   : AUTO
+Tue Sep  3 17:21:37 2024:	* Device      : MSP430FR4133
+Tue Sep  3 17:21:37 2024:	* EEM         : Level 5, ClockCntrl 2
+Tue Sep  3 17:21:37 2024:	* Read File   : C:\Users\passp\AppData\Local\Temp\tmpm0x_tcf2\dd.txt (memory segment = 0X1A00-0X1A12)
+Tue Sep  3 17:21:37 2024:	* Erase Mode  : ERASE_MAIN
+Tue Sep  3 17:21:37 2024:	* Prog.File   : C:\Users\passp\AppData\Local\Temp\tmpm0x_tcf2\image.txt
+Tue Sep  3 17:21:37 2024:	* Verified    : TRUE
+Tue Sep  3 17:21:37 2024:	* BSL Unlock  : FALSE
+Tue Sep  3 17:21:37 2024:	* InfoA Access: FALSE
+Tue Sep  3 17:21:37 2024:	* VCC ON      : 3000 mV
+Tue Sep  3 17:21:37 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:21:37 2024:	* Starting target code execution...done
+Tue Sep  3 17:21:38 2024:	* Disconnecting from device...done
+Tue Sep  3 17:21:38 2024:	* 
+Tue Sep  3 17:21:38 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:21:38 2024:	* Driver      : closed (No error)
+Tue Sep  3 17:21:38 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:21:38 2024:	*/
+Tue Sep  3 17:22:03 2024:	* -----/|-------------------------------------------------------------------- *
+Tue Sep  3 17:22:03 2024:	*     / |__                                                                   *
+Tue Sep  3 17:22:03 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Tue Sep  3 17:22:03 2024:	*      | /                                                                    *
+Tue Sep  3 17:22:03 2024:	* -----|/-------------------------------------------------------------------- *
+Tue Sep  3 17:22:03 2024:	*
+Tue Sep  3 17:22:03 2024:	* Evaluating triggers...done
+Tue Sep  3 17:22:03 2024:	* Checking for available FET debuggers: 
+Tue Sep  3 17:22:03 2024:	* Found USB FET @ COM6 <- Selected
+Tue Sep  3 17:22:03 2024:	* Initializing interface @ COM6...done
+Tue Sep  3 17:22:04 2024:	* Setting FET speed...done
+Tue Sep  3 17:22:04 2024:	* Checking firmware compatibility: 
+Tue Sep  3 17:22:04 2024:	* FET firmware is up to date.
+Tue Sep  3 17:22:04 2024:	* Reading FW version...
+Tue Sep  3 17:22:04 2024:	* Debugger does not support target voltages other than 3000 mV!
+Tue Sep  3 17:22:04 2024:	* Setting VCC to 3000 mV...done
+Tue Sep  3 17:22:04 2024:	* Accessing device...
+Tue Sep  3 17:22:05 2024:	# Exit: 16
+Tue Sep  3 17:22:05 2024:	# ERROR: Unknown device
+Tue Sep  3 17:22:05 2024:	* Starting target code execution...done
+Tue Sep  3 17:22:05 2024:	* Disconnecting from device...done
+Tue Sep  3 17:22:05 2024:	* 
+Tue Sep  3 17:22:05 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:22:05 2024:	* Driver      : closed (Internal error)
+Tue Sep  3 17:22:05 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:22:05 2024:	*/
+Tue Sep  3 17:22:15 2024:	* -----/|-------------------------------------------------------------------- *
+Tue Sep  3 17:22:15 2024:	*     / |__                                                                   *
+Tue Sep  3 17:22:15 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Tue Sep  3 17:22:15 2024:	*      | /                                                                    *
+Tue Sep  3 17:22:15 2024:	* -----|/-------------------------------------------------------------------- *
+Tue Sep  3 17:22:15 2024:	*
+Tue Sep  3 17:22:15 2024:	* Evaluating triggers...done
+Tue Sep  3 17:22:15 2024:	* Checking for available FET debuggers: 
+Tue Sep  3 17:22:15 2024:	* Found USB FET @ COM6 <- Selected
+Tue Sep  3 17:22:15 2024:	* Initializing interface @ COM6...done
+Tue Sep  3 17:22:15 2024:	* Setting FET speed...done
+Tue Sep  3 17:22:15 2024:	* Checking firmware compatibility: 
+Tue Sep  3 17:22:15 2024:	* FET firmware is up to date.
+Tue Sep  3 17:22:15 2024:	* Reading FW version...
+Tue Sep  3 17:22:15 2024:	* Debugger does not support target voltages other than 3000 mV!
+Tue Sep  3 17:22:15 2024:	* Setting VCC to 3000 mV...done
+Tue Sep  3 17:22:16 2024:	* Accessing device...done
+Tue Sep  3 17:22:16 2024:	* Reading device information...done
+Tue Sep  3 17:22:16 2024:	* Dumping memory from 0X1A00-0X1A12 into C:\Users\passp\AppData\Local\Temp\tmpa433bq10\dd.txt...done
+Tue Sep  3 17:22:16 2024:	* Loading file into device...done
+Tue Sep  3 17:22:21 2024:	* Verifying memory (C:\Users\passp\AppData\Local\Temp\tmpa433bq10\image.txt)...done
+Tue Sep  3 17:22:22 2024:	* 
+Tue Sep  3 17:22:22 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:22:22 2024:	* Arguments   : -j FAST -r [C:\Users\passp\AppData\Local\Temp\tmpa433bq10\dd.txt,0x1a00-0x1a12] -e ERASE_MAIN -w C:\Users\passp\AppData\Local\Temp\tmpa433bq10\image.txt -v -z [VCC] 
+Tue Sep  3 17:22:22 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:22:22 2024:	* Driver      : loaded
+Tue Sep  3 17:22:22 2024:	* Dll Version : 31400000
+Tue Sep  3 17:22:22 2024:	* FwVersion   : 31200000
+Tue Sep  3 17:22:22 2024:	* Interface   : TIUSB
+Tue Sep  3 17:22:22 2024:	* HwVersion   : E 4.0
+Tue Sep  3 17:22:22 2024:	* JTAG Mode   : AUTO
+Tue Sep  3 17:22:22 2024:	* Device      : MSP430FR4133
+Tue Sep  3 17:22:22 2024:	* EEM         : Level 5, ClockCntrl 2
+Tue Sep  3 17:22:22 2024:	* Read File   : C:\Users\passp\AppData\Local\Temp\tmpa433bq10\dd.txt (memory segment = 0X1A00-0X1A12)
+Tue Sep  3 17:22:22 2024:	* Erase Mode  : ERASE_MAIN
+Tue Sep  3 17:22:22 2024:	* Prog.File   : C:\Users\passp\AppData\Local\Temp\tmpa433bq10\image.txt
+Tue Sep  3 17:22:22 2024:	* Verified    : TRUE
+Tue Sep  3 17:22:22 2024:	* BSL Unlock  : FALSE
+Tue Sep  3 17:22:22 2024:	* InfoA Access: FALSE
+Tue Sep  3 17:22:22 2024:	* VCC ON      : 3000 mV
+Tue Sep  3 17:22:22 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:22:22 2024:	* Starting target code execution...done
+Tue Sep  3 17:22:23 2024:	* Disconnecting from device...done
+Tue Sep  3 17:22:23 2024:	* 
+Tue Sep  3 17:22:23 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:22:23 2024:	* Driver      : closed (No error)
+Tue Sep  3 17:22:23 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:22:23 2024:	*/
+Tue Sep  3 17:22:40 2024:	* -----/|-------------------------------------------------------------------- *
+Tue Sep  3 17:22:40 2024:	*     / |__                                                                   *
+Tue Sep  3 17:22:40 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Tue Sep  3 17:22:40 2024:	*      | /                                                                    *
+Tue Sep  3 17:22:40 2024:	* -----|/-------------------------------------------------------------------- *
+Tue Sep  3 17:22:40 2024:	*
+Tue Sep  3 17:22:40 2024:	* Evaluating triggers...done
+Tue Sep  3 17:22:40 2024:	* Checking for available FET debuggers: 
+Tue Sep  3 17:22:40 2024:	* Found USB FET @ COM6 <- Selected
+Tue Sep  3 17:22:40 2024:	* Initializing interface @ COM6...done
+Tue Sep  3 17:22:40 2024:	* Setting FET speed...done
+Tue Sep  3 17:22:40 2024:	* Checking firmware compatibility: 
+Tue Sep  3 17:22:40 2024:	* FET firmware is up to date.
+Tue Sep  3 17:22:40 2024:	* Reading FW version...
+Tue Sep  3 17:22:40 2024:	* Debugger does not support target voltages other than 3000 mV!
+Tue Sep  3 17:22:40 2024:	* Setting VCC to 3000 mV...done
+Tue Sep  3 17:22:41 2024:	* Accessing device...
+Tue Sep  3 17:22:42 2024:	# Exit: 16
+Tue Sep  3 17:22:42 2024:	# ERROR: Unknown device
+Tue Sep  3 17:22:42 2024:	* Starting target code execution...done
+Tue Sep  3 17:22:42 2024:	* Disconnecting from device...done
+Tue Sep  3 17:22:42 2024:	* 
+Tue Sep  3 17:22:42 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:22:42 2024:	* Driver      : closed (Internal error)
+Tue Sep  3 17:22:42 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:22:42 2024:	*/
+Tue Sep  3 17:22:50 2024:	* -----/|-------------------------------------------------------------------- *
+Tue Sep  3 17:22:50 2024:	*     / |__                                                                   *
+Tue Sep  3 17:22:50 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Tue Sep  3 17:22:50 2024:	*      | /                                                                    *
+Tue Sep  3 17:22:50 2024:	* -----|/-------------------------------------------------------------------- *
+Tue Sep  3 17:22:50 2024:	*
+Tue Sep  3 17:22:50 2024:	* Evaluating triggers...done
+Tue Sep  3 17:22:50 2024:	* Checking for available FET debuggers: 
+Tue Sep  3 17:22:51 2024:	* Found USB FET @ COM6 <- Selected
+Tue Sep  3 17:22:51 2024:	* Initializing interface @ COM6...done
+Tue Sep  3 17:22:51 2024:	* Setting FET speed...done
+Tue Sep  3 17:22:51 2024:	* Checking firmware compatibility: 
+Tue Sep  3 17:22:51 2024:	* FET firmware is up to date.
+Tue Sep  3 17:22:51 2024:	* Reading FW version...
+Tue Sep  3 17:22:51 2024:	* Debugger does not support target voltages other than 3000 mV!
+Tue Sep  3 17:22:51 2024:	* Setting VCC to 3000 mV...done
+Tue Sep  3 17:22:53 2024:	* Accessing device...
+Tue Sep  3 17:22:54 2024:	# Exit: 16
+Tue Sep  3 17:22:54 2024:	# ERROR: Unknown device
+Tue Sep  3 17:22:54 2024:	* Starting target code execution...done
+Tue Sep  3 17:22:54 2024:	* Disconnecting from device...done
+Tue Sep  3 17:22:54 2024:	* 
+Tue Sep  3 17:22:54 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:22:54 2024:	* Driver      : closed (Internal error)
+Tue Sep  3 17:22:54 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:22:54 2024:	*/
+Tue Sep  3 17:23:04 2024:	* -----/|-------------------------------------------------------------------- *
+Tue Sep  3 17:23:04 2024:	*     / |__                                                                   *
+Tue Sep  3 17:23:04 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Tue Sep  3 17:23:04 2024:	*      | /                                                                    *
+Tue Sep  3 17:23:04 2024:	* -----|/-------------------------------------------------------------------- *
+Tue Sep  3 17:23:04 2024:	*
+Tue Sep  3 17:23:04 2024:	* Evaluating triggers...done
+Tue Sep  3 17:23:04 2024:	* Checking for available FET debuggers: 
+Tue Sep  3 17:23:05 2024:	* Found USB FET @ COM6 <- Selected
+Tue Sep  3 17:23:05 2024:	* Initializing interface @ COM6...done
+Tue Sep  3 17:23:05 2024:	* Setting FET speed...done
+Tue Sep  3 17:23:05 2024:	* Checking firmware compatibility: 
+Tue Sep  3 17:23:05 2024:	* FET firmware is up to date.
+Tue Sep  3 17:23:05 2024:	* Reading FW version...
+Tue Sep  3 17:23:05 2024:	* Debugger does not support target voltages other than 3000 mV!
+Tue Sep  3 17:23:05 2024:	* Setting VCC to 3000 mV...done
+Tue Sep  3 17:23:05 2024:	* Accessing device...
+Tue Sep  3 17:23:06 2024:	# Exit: 16
+Tue Sep  3 17:23:06 2024:	# ERROR: Unknown device
+Tue Sep  3 17:23:06 2024:	* Starting target code execution...done
+Tue Sep  3 17:23:06 2024:	* Disconnecting from device...done
+Tue Sep  3 17:23:06 2024:	* 
+Tue Sep  3 17:23:06 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:23:06 2024:	* Driver      : closed (Internal error)
+Tue Sep  3 17:23:06 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:23:06 2024:	*/
+Tue Sep  3 17:23:13 2024:	* -----/|-------------------------------------------------------------------- *
+Tue Sep  3 17:23:13 2024:	*     / |__                                                                   *
+Tue Sep  3 17:23:13 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Tue Sep  3 17:23:13 2024:	*      | /                                                                    *
+Tue Sep  3 17:23:13 2024:	* -----|/-------------------------------------------------------------------- *
+Tue Sep  3 17:23:13 2024:	*
+Tue Sep  3 17:23:13 2024:	* Evaluating triggers...done
+Tue Sep  3 17:23:13 2024:	* Checking for available FET debuggers: 
+Tue Sep  3 17:23:13 2024:	* Found USB FET @ COM6 <- Selected
+Tue Sep  3 17:23:13 2024:	* Initializing interface @ COM6...done
+Tue Sep  3 17:23:13 2024:	* Setting FET speed...done
+Tue Sep  3 17:23:13 2024:	* Checking firmware compatibility: 
+Tue Sep  3 17:23:13 2024:	* FET firmware is up to date.
+Tue Sep  3 17:23:13 2024:	* Reading FW version...
+Tue Sep  3 17:23:13 2024:	* Debugger does not support target voltages other than 3000 mV!
+Tue Sep  3 17:23:13 2024:	* Setting VCC to 3000 mV...done
+Tue Sep  3 17:23:15 2024:	* Accessing device...
+Tue Sep  3 17:23:16 2024:	# Exit: 16
+Tue Sep  3 17:23:16 2024:	# ERROR: Unknown device
+Tue Sep  3 17:23:16 2024:	* Starting target code execution...done
+Tue Sep  3 17:23:16 2024:	* Disconnecting from device...done
+Tue Sep  3 17:23:16 2024:	* 
+Tue Sep  3 17:23:16 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:23:16 2024:	* Driver      : closed (Internal error)
+Tue Sep  3 17:23:16 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:23:16 2024:	*/
+Tue Sep  3 17:23:25 2024:	* -----/|-------------------------------------------------------------------- *
+Tue Sep  3 17:23:25 2024:	*     / |__                                                                   *
+Tue Sep  3 17:23:25 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Tue Sep  3 17:23:25 2024:	*      | /                                                                    *
+Tue Sep  3 17:23:25 2024:	* -----|/-------------------------------------------------------------------- *
+Tue Sep  3 17:23:25 2024:	*
+Tue Sep  3 17:23:25 2024:	* Evaluating triggers...done
+Tue Sep  3 17:23:25 2024:	* Checking for available FET debuggers: 
+Tue Sep  3 17:23:25 2024:	* Found USB FET @ COM6 <- Selected
+Tue Sep  3 17:23:25 2024:	* Initializing interface @ COM6...done
+Tue Sep  3 17:23:26 2024:	* Setting FET speed...done
+Tue Sep  3 17:23:26 2024:	* Checking firmware compatibility: 
+Tue Sep  3 17:23:26 2024:	* FET firmware is up to date.
+Tue Sep  3 17:23:26 2024:	* Reading FW version...
+Tue Sep  3 17:23:26 2024:	* Debugger does not support target voltages other than 3000 mV!
+Tue Sep  3 17:23:26 2024:	* Setting VCC to 3000 mV...done
+Tue Sep  3 17:23:26 2024:	* Accessing device...done
+Tue Sep  3 17:23:26 2024:	* Reading device information...done
+Tue Sep  3 17:23:26 2024:	* Dumping memory from 0X1A00-0X1A12 into C:\Users\passp\AppData\Local\Temp\tmpr6p44kqd\dd.txt...done
+Tue Sep  3 17:23:26 2024:	* Loading file into device...done
+Tue Sep  3 17:23:31 2024:	* Verifying memory (C:\Users\passp\AppData\Local\Temp\tmpr6p44kqd\image.txt)...done
+Tue Sep  3 17:23:33 2024:	* 
+Tue Sep  3 17:23:33 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:23:33 2024:	* Arguments   : -j FAST -r [C:\Users\passp\AppData\Local\Temp\tmpr6p44kqd\dd.txt,0x1a00-0x1a12] -e ERASE_MAIN -w C:\Users\passp\AppData\Local\Temp\tmpr6p44kqd\image.txt -v -z [VCC] 
+Tue Sep  3 17:23:33 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:23:33 2024:	* Driver      : loaded
+Tue Sep  3 17:23:33 2024:	* Dll Version : 31400000
+Tue Sep  3 17:23:33 2024:	* FwVersion   : 31200000
+Tue Sep  3 17:23:33 2024:	* Interface   : TIUSB
+Tue Sep  3 17:23:33 2024:	* HwVersion   : E 4.0
+Tue Sep  3 17:23:33 2024:	* JTAG Mode   : AUTO
+Tue Sep  3 17:23:33 2024:	* Device      : MSP430FR4133
+Tue Sep  3 17:23:33 2024:	* EEM         : Level 5, ClockCntrl 2
+Tue Sep  3 17:23:33 2024:	* Read File   : C:\Users\passp\AppData\Local\Temp\tmpr6p44kqd\dd.txt (memory segment = 0X1A00-0X1A12)
+Tue Sep  3 17:23:33 2024:	* Erase Mode  : ERASE_MAIN
+Tue Sep  3 17:23:33 2024:	* Prog.File   : C:\Users\passp\AppData\Local\Temp\tmpr6p44kqd\image.txt
+Tue Sep  3 17:23:33 2024:	* Verified    : TRUE
+Tue Sep  3 17:23:33 2024:	* BSL Unlock  : FALSE
+Tue Sep  3 17:23:33 2024:	* InfoA Access: FALSE
+Tue Sep  3 17:23:33 2024:	* VCC ON      : 3000 mV
+Tue Sep  3 17:23:33 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:23:33 2024:	* Starting target code execution...done
+Tue Sep  3 17:23:33 2024:	* Disconnecting from device...done
+Tue Sep  3 17:23:33 2024:	* 
+Tue Sep  3 17:23:33 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:23:33 2024:	* Driver      : closed (No error)
+Tue Sep  3 17:23:33 2024:	* ----------------------------------------------------------------------------
+Tue Sep  3 17:23:33 2024:	*/
+Tue Sep 10 15:37:37 2024:	* -----/|-------------------------------------------------------------------- *
+Tue Sep 10 15:37:37 2024:	*     / |__                                                                   *
+Tue Sep 10 15:37:37 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Tue Sep 10 15:37:37 2024:	*      | /                                                                    *
+Tue Sep 10 15:37:37 2024:	* -----|/-------------------------------------------------------------------- *
+Tue Sep 10 15:37:37 2024:	*
+Tue Sep 10 15:37:37 2024:	* Evaluating triggers...done
+Tue Sep 10 15:37:37 2024:	* Checking for available FET debuggers: 
+Tue Sep 10 15:37:37 2024:	* Found USB FET @ COM6 <- Selected
+Tue Sep 10 15:37:37 2024:	* Initializing interface @ COM6...done
+Tue Sep 10 15:37:37 2024:	* Setting FET speed...done
+Tue Sep 10 15:37:37 2024:	* Checking firmware compatibility: 
+Tue Sep 10 15:37:37 2024:	* FET firmware is up to date.
+Tue Sep 10 15:37:37 2024:	* Reading FW version...
+Tue Sep 10 15:37:37 2024:	* Debugger does not support target voltages other than 3000 mV!
+Tue Sep 10 15:37:37 2024:	* Setting VCC to 3000 mV...done
+Tue Sep 10 15:37:38 2024:	* Accessing device...done
+Tue Sep 10 15:37:38 2024:	* Reading device information...done
+Tue Sep 10 15:37:38 2024:	* Dumping memory from 0X1A00-0X1A12 into C:\Users\passp\AppData\Local\Temp\tmpv2udw90q\dd.txt...done
+Tue Sep 10 15:37:38 2024:	* Loading file into device...done
+Tue Sep 10 15:37:43 2024:	* Verifying memory (C:\Users\passp\AppData\Local\Temp\tmpv2udw90q\image.txt)...done
+Tue Sep 10 15:37:44 2024:	* 
+Tue Sep 10 15:37:44 2024:	* ----------------------------------------------------------------------------
+Tue Sep 10 15:37:44 2024:	* Arguments   : -j FAST -r [C:\Users\passp\AppData\Local\Temp\tmpv2udw90q\dd.txt,0x1a00-0x1a12] -e ERASE_MAIN -w C:\Users\passp\AppData\Local\Temp\tmpv2udw90q\image.txt -v -z [VCC] 
+Tue Sep 10 15:37:44 2024:	* ----------------------------------------------------------------------------
+Tue Sep 10 15:37:44 2024:	* Driver      : loaded
+Tue Sep 10 15:37:44 2024:	* Dll Version : 31400000
+Tue Sep 10 15:37:44 2024:	* FwVersion   : 31200000
+Tue Sep 10 15:37:44 2024:	* Interface   : TIUSB
+Tue Sep 10 15:37:44 2024:	* HwVersion   : E 4.0
+Tue Sep 10 15:37:44 2024:	* JTAG Mode   : AUTO
+Tue Sep 10 15:37:44 2024:	* Device      : MSP430FR4133
+Tue Sep 10 15:37:44 2024:	* EEM         : Level 5, ClockCntrl 2
+Tue Sep 10 15:37:44 2024:	* Read File   : C:\Users\passp\AppData\Local\Temp\tmpv2udw90q\dd.txt (memory segment = 0X1A00-0X1A12)
+Tue Sep 10 15:37:44 2024:	* Erase Mode  : ERASE_MAIN
+Tue Sep 10 15:37:44 2024:	* Prog.File   : C:\Users\passp\AppData\Local\Temp\tmpv2udw90q\image.txt
+Tue Sep 10 15:37:44 2024:	* Verified    : TRUE
+Tue Sep 10 15:37:44 2024:	* BSL Unlock  : FALSE
+Tue Sep 10 15:37:44 2024:	* InfoA Access: FALSE
+Tue Sep 10 15:37:44 2024:	* VCC ON      : 3000 mV
+Tue Sep 10 15:37:44 2024:	* ----------------------------------------------------------------------------
+Tue Sep 10 15:37:44 2024:	* Starting target code execution...done
+Tue Sep 10 15:37:45 2024:	* Disconnecting from device...done
+Tue Sep 10 15:37:45 2024:	* 
+Tue Sep 10 15:37:45 2024:	* ----------------------------------------------------------------------------
+Tue Sep 10 15:37:45 2024:	* Driver      : closed (No error)
+Tue Sep 10 15:37:45 2024:	* ----------------------------------------------------------------------------
+Tue Sep 10 15:37:45 2024:	*/
+Tue Sep 10 15:38:12 2024:	* -----/|-------------------------------------------------------------------- *
+Tue Sep 10 15:38:12 2024:	*     / |__                                                                   *
+Tue Sep 10 15:38:12 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Tue Sep 10 15:38:12 2024:	*      | /                                                                    *
+Tue Sep 10 15:38:12 2024:	* -----|/-------------------------------------------------------------------- *
+Tue Sep 10 15:38:12 2024:	*
+Tue Sep 10 15:38:12 2024:	* Evaluating triggers...done
+Tue Sep 10 15:38:12 2024:	* Checking for available FET debuggers: 
+Tue Sep 10 15:38:12 2024:	* Found USB FET @ COM6 <- Selected
+Tue Sep 10 15:38:12 2024:	* Initializing interface @ COM6...done
+Tue Sep 10 15:38:13 2024:	* Setting FET speed...done
+Tue Sep 10 15:38:13 2024:	* Checking firmware compatibility: 
+Tue Sep 10 15:38:13 2024:	* FET firmware is up to date.
+Tue Sep 10 15:38:13 2024:	* Reading FW version...
+Tue Sep 10 15:38:13 2024:	* Debugger does not support target voltages other than 3000 mV!
+Tue Sep 10 15:38:13 2024:	* Setting VCC to 3000 mV...done
+Tue Sep 10 15:38:13 2024:	* Accessing device...done
+Tue Sep 10 15:38:13 2024:	* Reading device information...done
+Tue Sep 10 15:38:13 2024:	* Dumping memory from 0X1A00-0X1A12 into C:\Users\passp\AppData\Local\Temp\tmpu7tjo4w8\dd.txt...done
+Tue Sep 10 15:38:14 2024:	* Loading file into device...done
+Tue Sep 10 15:38:18 2024:	* Verifying memory (C:\Users\passp\AppData\Local\Temp\tmpu7tjo4w8\image.txt)...done
+Tue Sep 10 15:38:20 2024:	* 
+Tue Sep 10 15:38:20 2024:	* ----------------------------------------------------------------------------
+Tue Sep 10 15:38:20 2024:	* Arguments   : -j FAST -r [C:\Users\passp\AppData\Local\Temp\tmpu7tjo4w8\dd.txt,0x1a00-0x1a12] -e ERASE_MAIN -w C:\Users\passp\AppData\Local\Temp\tmpu7tjo4w8\image.txt -v -z [VCC] 
+Tue Sep 10 15:38:20 2024:	* ----------------------------------------------------------------------------
+Tue Sep 10 15:38:20 2024:	* Driver      : loaded
+Tue Sep 10 15:38:20 2024:	* Dll Version : 31400000
+Tue Sep 10 15:38:20 2024:	* FwVersion   : 31200000
+Tue Sep 10 15:38:20 2024:	* Interface   : TIUSB
+Tue Sep 10 15:38:20 2024:	* HwVersion   : E 4.0
+Tue Sep 10 15:38:20 2024:	* JTAG Mode   : AUTO
+Tue Sep 10 15:38:20 2024:	* Device      : MSP430FR4133
+Tue Sep 10 15:38:20 2024:	* EEM         : Level 5, ClockCntrl 2
+Tue Sep 10 15:38:20 2024:	* Read File   : C:\Users\passp\AppData\Local\Temp\tmpu7tjo4w8\dd.txt (memory segment = 0X1A00-0X1A12)
+Tue Sep 10 15:38:20 2024:	* Erase Mode  : ERASE_MAIN
+Tue Sep 10 15:38:20 2024:	* Prog.File   : C:\Users\passp\AppData\Local\Temp\tmpu7tjo4w8\image.txt
+Tue Sep 10 15:38:20 2024:	* Verified    : TRUE
+Tue Sep 10 15:38:20 2024:	* BSL Unlock  : FALSE
+Tue Sep 10 15:38:20 2024:	* InfoA Access: FALSE
+Tue Sep 10 15:38:20 2024:	* VCC ON      : 3000 mV
+Tue Sep 10 15:38:20 2024:	* ----------------------------------------------------------------------------
+Tue Sep 10 15:38:20 2024:	* Starting target code execution...done
+Tue Sep 10 15:38:21 2024:	* Disconnecting from device...done
+Tue Sep 10 15:38:21 2024:	* 
+Tue Sep 10 15:38:21 2024:	* ----------------------------------------------------------------------------
+Tue Sep 10 15:38:21 2024:	* Driver      : closed (No error)
+Tue Sep 10 15:38:21 2024:	* ----------------------------------------------------------------------------
+Tue Sep 10 15:38:21 2024:	*/
+Tue Sep 10 15:39:24 2024:	* -----/|-------------------------------------------------------------------- *
+Tue Sep 10 15:39:24 2024:	*     / |__                                                                   *
+Tue Sep 10 15:39:24 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Tue Sep 10 15:39:24 2024:	*      | /                                                                    *
+Tue Sep 10 15:39:24 2024:	* -----|/-------------------------------------------------------------------- *
+Tue Sep 10 15:39:24 2024:	*
+Tue Sep 10 15:39:24 2024:	* Evaluating triggers...done
+Tue Sep 10 15:39:24 2024:	* Checking for available FET debuggers: 
+Tue Sep 10 15:39:24 2024:	* Found USB FET @ COM6 <- Selected
+Tue Sep 10 15:39:24 2024:	* Initializing interface @ COM6...done
+Tue Sep 10 15:39:24 2024:	* Setting FET speed...done
+Tue Sep 10 15:39:24 2024:	* Checking firmware compatibility: 
+Tue Sep 10 15:39:24 2024:	* FET firmware is up to date.
+Tue Sep 10 15:39:24 2024:	* Reading FW version...
+Tue Sep 10 15:39:24 2024:	* Debugger does not support target voltages other than 3000 mV!
+Tue Sep 10 15:39:24 2024:	* Setting VCC to 3000 mV...done
+Tue Sep 10 15:39:25 2024:	* Accessing device...done
+Tue Sep 10 15:39:25 2024:	* Reading device information...done
+Tue Sep 10 15:39:25 2024:	* Dumping memory from 0X1A00-0X1A12 into C:\Users\passp\AppData\Local\Temp\tmpo4pdvg38\dd.txt...done
+Tue Sep 10 15:39:25 2024:	* Loading file into device...done
+Tue Sep 10 15:39:29 2024:	* Verifying memory (C:\Users\passp\AppData\Local\Temp\tmpo4pdvg38\image.txt)...done
+Tue Sep 10 15:39:31 2024:	* 
+Tue Sep 10 15:39:31 2024:	* ----------------------------------------------------------------------------
+Tue Sep 10 15:39:31 2024:	* Arguments   : -j FAST -r [C:\Users\passp\AppData\Local\Temp\tmpo4pdvg38\dd.txt,0x1a00-0x1a12] -e ERASE_MAIN -w C:\Users\passp\AppData\Local\Temp\tmpo4pdvg38\image.txt -v -z [VCC] 
+Tue Sep 10 15:39:31 2024:	* ----------------------------------------------------------------------------
+Tue Sep 10 15:39:31 2024:	* Driver      : loaded
+Tue Sep 10 15:39:31 2024:	* Dll Version : 31400000
+Tue Sep 10 15:39:31 2024:	* FwVersion   : 31200000
+Tue Sep 10 15:39:31 2024:	* Interface   : TIUSB
+Tue Sep 10 15:39:31 2024:	* HwVersion   : E 4.0
+Tue Sep 10 15:39:31 2024:	* JTAG Mode   : AUTO
+Tue Sep 10 15:39:31 2024:	* Device      : MSP430FR4133
+Tue Sep 10 15:39:31 2024:	* EEM         : Level 5, ClockCntrl 2
+Tue Sep 10 15:39:31 2024:	* Read File   : C:\Users\passp\AppData\Local\Temp\tmpo4pdvg38\dd.txt (memory segment = 0X1A00-0X1A12)
+Tue Sep 10 15:39:31 2024:	* Erase Mode  : ERASE_MAIN
+Tue Sep 10 15:39:31 2024:	* Prog.File   : C:\Users\passp\AppData\Local\Temp\tmpo4pdvg38\image.txt
+Tue Sep 10 15:39:31 2024:	* Verified    : TRUE
+Tue Sep 10 15:39:31 2024:	* BSL Unlock  : FALSE
+Tue Sep 10 15:39:31 2024:	* InfoA Access: FALSE
+Tue Sep 10 15:39:31 2024:	* VCC ON      : 3000 mV
+Tue Sep 10 15:39:31 2024:	* ----------------------------------------------------------------------------
+Tue Sep 10 15:39:31 2024:	* Starting target code execution...done
+Tue Sep 10 15:39:32 2024:	* Disconnecting from device...done
+Tue Sep 10 15:39:32 2024:	* 
+Tue Sep 10 15:39:32 2024:	* ----------------------------------------------------------------------------
+Tue Sep 10 15:39:32 2024:	* Driver      : closed (No error)
+Tue Sep 10 15:39:32 2024:	* ----------------------------------------------------------------------------
+Tue Sep 10 15:39:32 2024:	*/
+Tue Sep 10 15:39:57 2024:	* -----/|-------------------------------------------------------------------- *
+Tue Sep 10 15:39:57 2024:	*     / |__                                                                   *
+Tue Sep 10 15:39:57 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Tue Sep 10 15:39:57 2024:	*      | /                                                                    *
+Tue Sep 10 15:39:57 2024:	* -----|/-------------------------------------------------------------------- *
+Tue Sep 10 15:39:57 2024:	*
+Tue Sep 10 15:39:57 2024:	* Evaluating triggers...done
+Tue Sep 10 15:39:57 2024:	* Checking for available FET debuggers: 
+Tue Sep 10 15:39:57 2024:	* Found USB FET @ COM6 <- Selected
+Tue Sep 10 15:39:57 2024:	* Initializing interface @ COM6...done
+Tue Sep 10 15:39:57 2024:	* Setting FET speed...done
+Tue Sep 10 15:39:57 2024:	* Checking firmware compatibility: 
+Tue Sep 10 15:39:57 2024:	* FET firmware is up to date.
+Tue Sep 10 15:39:57 2024:	* Reading FW version...
+Tue Sep 10 15:39:57 2024:	* Debugger does not support target voltages other than 3000 mV!
+Tue Sep 10 15:39:57 2024:	* Setting VCC to 3000 mV...done
+Tue Sep 10 15:39:58 2024:	* Accessing device...done
+Tue Sep 10 15:39:58 2024:	* Reading device information...done
+Tue Sep 10 15:39:58 2024:	* Dumping memory from 0X1A00-0X1A12 into C:\Users\passp\AppData\Local\Temp\tmpezeqeg0d\dd.txt...done
+Tue Sep 10 15:39:58 2024:	* Loading file into device...done
+Tue Sep 10 15:40:03 2024:	* Verifying memory (C:\Users\passp\AppData\Local\Temp\tmpezeqeg0d\image.txt)...done
+Tue Sep 10 15:40:04 2024:	* 
+Tue Sep 10 15:40:04 2024:	* ----------------------------------------------------------------------------
+Tue Sep 10 15:40:04 2024:	* Arguments   : -j FAST -r [C:\Users\passp\AppData\Local\Temp\tmpezeqeg0d\dd.txt,0x1a00-0x1a12] -e ERASE_MAIN -w C:\Users\passp\AppData\Local\Temp\tmpezeqeg0d\image.txt -v -z [VCC] 
+Tue Sep 10 15:40:04 2024:	* ----------------------------------------------------------------------------
+Tue Sep 10 15:40:04 2024:	* Driver      : loaded
+Tue Sep 10 15:40:04 2024:	* Dll Version : 31400000
+Tue Sep 10 15:40:04 2024:	* FwVersion   : 31200000
+Tue Sep 10 15:40:04 2024:	* Interface   : TIUSB
+Tue Sep 10 15:40:04 2024:	* HwVersion   : E 4.0
+Tue Sep 10 15:40:04 2024:	* JTAG Mode   : AUTO
+Tue Sep 10 15:40:04 2024:	* Device      : MSP430FR4133
+Tue Sep 10 15:40:04 2024:	* EEM         : Level 5, ClockCntrl 2
+Tue Sep 10 15:40:04 2024:	* Read File   : C:\Users\passp\AppData\Local\Temp\tmpezeqeg0d\dd.txt (memory segment = 0X1A00-0X1A12)
+Tue Sep 10 15:40:04 2024:	* Erase Mode  : ERASE_MAIN
+Tue Sep 10 15:40:04 2024:	* Prog.File   : C:\Users\passp\AppData\Local\Temp\tmpezeqeg0d\image.txt
+Tue Sep 10 15:40:04 2024:	* Verified    : TRUE
+Tue Sep 10 15:40:04 2024:	* BSL Unlock  : FALSE
+Tue Sep 10 15:40:04 2024:	* InfoA Access: FALSE
+Tue Sep 10 15:40:04 2024:	* VCC ON      : 3000 mV
+Tue Sep 10 15:40:04 2024:	* ----------------------------------------------------------------------------
+Tue Sep 10 15:40:04 2024:	* Starting target code execution...done
+Tue Sep 10 15:40:05 2024:	* Disconnecting from device...done
+Tue Sep 10 15:40:05 2024:	* 
+Tue Sep 10 15:40:05 2024:	* ----------------------------------------------------------------------------
+Tue Sep 10 15:40:05 2024:	* Driver      : closed (No error)
+Tue Sep 10 15:40:05 2024:	* ----------------------------------------------------------------------------
+Tue Sep 10 15:40:05 2024:	*/
+Tue Oct 15 18:38:07 2024:	* -----/|-------------------------------------------------------------------- *
+Tue Oct 15 18:38:07 2024:	*     / |__                                                                   *
+Tue Oct 15 18:38:07 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Tue Oct 15 18:38:07 2024:	*      | /                                                                    *
+Tue Oct 15 18:38:07 2024:	* -----|/-------------------------------------------------------------------- *
+Tue Oct 15 18:38:07 2024:	*
+Tue Oct 15 18:38:07 2024:	* Evaluating triggers...done
+Tue Oct 15 18:38:07 2024:	* Checking for available FET debuggers: 
+Tue Oct 15 18:38:07 2024:	* Found USB FET @ COM6 <- Selected
+Tue Oct 15 18:38:07 2024:	* Initializing interface @ COM6...done
+Tue Oct 15 18:38:07 2024:	* Setting FET speed...done
+Tue Oct 15 18:38:07 2024:	* Checking firmware compatibility: 
+Tue Oct 15 18:38:07 2024:	* FET firmware is up to date.
+Tue Oct 15 18:38:07 2024:	* Reading FW version...
+Tue Oct 15 18:38:07 2024:	* Debugger does not support target voltages other than 3000 mV!
+Tue Oct 15 18:38:07 2024:	* Setting VCC to 3000 mV...done
+Tue Oct 15 18:38:08 2024:	* Accessing device...done
+Tue Oct 15 18:38:08 2024:	* Reading device information...done
+Tue Oct 15 18:38:08 2024:	* Dumping memory from 0X1A00-0X1A12 into C:\Users\passp\AppData\Local\Temp\tmpb7vbpqc3\dd.txt...done
+Tue Oct 15 18:38:08 2024:	* Loading file into device...done
+Tue Oct 15 18:38:13 2024:	* Verifying memory (C:\Users\passp\AppData\Local\Temp\tmpb7vbpqc3\image.txt)...done
+Tue Oct 15 18:38:14 2024:	* 
+Tue Oct 15 18:38:14 2024:	* ----------------------------------------------------------------------------
+Tue Oct 15 18:38:14 2024:	* Arguments   : -j FAST -r [C:\Users\passp\AppData\Local\Temp\tmpb7vbpqc3\dd.txt,0x1a00-0x1a12] -e ERASE_MAIN -w C:\Users\passp\AppData\Local\Temp\tmpb7vbpqc3\image.txt -v -z [VCC] 
+Tue Oct 15 18:38:14 2024:	* ----------------------------------------------------------------------------
+Tue Oct 15 18:38:14 2024:	* Driver      : loaded
+Tue Oct 15 18:38:14 2024:	* Dll Version : 31400000
+Tue Oct 15 18:38:14 2024:	* FwVersion   : 31200000
+Tue Oct 15 18:38:14 2024:	* Interface   : TIUSB
+Tue Oct 15 18:38:14 2024:	* HwVersion   : E 4.0
+Tue Oct 15 18:38:14 2024:	* JTAG Mode   : AUTO
+Tue Oct 15 18:38:14 2024:	* Device      : MSP430FR4133
+Tue Oct 15 18:38:14 2024:	* EEM         : Level 5, ClockCntrl 2
+Tue Oct 15 18:38:14 2024:	* Read File   : C:\Users\passp\AppData\Local\Temp\tmpb7vbpqc3\dd.txt (memory segment = 0X1A00-0X1A12)
+Tue Oct 15 18:38:14 2024:	* Erase Mode  : ERASE_MAIN
+Tue Oct 15 18:38:14 2024:	* Prog.File   : C:\Users\passp\AppData\Local\Temp\tmpb7vbpqc3\image.txt
+Tue Oct 15 18:38:14 2024:	* Verified    : TRUE
+Tue Oct 15 18:38:14 2024:	* BSL Unlock  : FALSE
+Tue Oct 15 18:38:14 2024:	* InfoA Access: FALSE
+Tue Oct 15 18:38:14 2024:	* VCC ON      : 3000 mV
+Tue Oct 15 18:38:14 2024:	* ----------------------------------------------------------------------------
+Tue Oct 15 18:38:14 2024:	* Starting target code execution...done
+Tue Oct 15 18:38:15 2024:	* Disconnecting from device...done
+Tue Oct 15 18:38:15 2024:	* 
+Tue Oct 15 18:38:15 2024:	* ----------------------------------------------------------------------------
+Tue Oct 15 18:38:15 2024:	* Driver      : closed (No error)
+Tue Oct 15 18:38:15 2024:	* ----------------------------------------------------------------------------
+Tue Oct 15 18:38:15 2024:	*/
+Tue Oct 15 18:48:44 2024:	* -----/|-------------------------------------------------------------------- *
+Tue Oct 15 18:48:44 2024:	*     / |__                                                                   *
+Tue Oct 15 18:48:44 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Tue Oct 15 18:48:44 2024:	*      | /                                                                    *
+Tue Oct 15 18:48:44 2024:	* -----|/-------------------------------------------------------------------- *
+Tue Oct 15 18:48:44 2024:	*
+Tue Oct 15 18:48:44 2024:	* Evaluating triggers...done
+Tue Oct 15 18:48:44 2024:	* Checking for available FET debuggers: 
+Tue Oct 15 18:48:45 2024:	* Found USB FET @ COM6 <- Already in use
+Tue Oct 15 18:48:45 2024:	* Couldn't find available FET @ COM6. Aborting.
+Tue Oct 15 18:48:45 2024:	* 
+Tue Oct 15 18:48:45 2024:	* ----------------------------------------------------------------------------
+Tue Oct 15 18:48:45 2024:	* Driver      : closed (MSP DebugStack not initialized)
+Tue Oct 15 18:48:45 2024:	* ----------------------------------------------------------------------------
+Tue Oct 15 18:48:45 2024:	*/
+Tue Oct 15 18:48:49 2024:	* -----/|-------------------------------------------------------------------- *
+Tue Oct 15 18:48:49 2024:	*     / |__                                                                   *
+Tue Oct 15 18:48:49 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Tue Oct 15 18:48:49 2024:	*      | /                                                                    *
+Tue Oct 15 18:48:49 2024:	* -----|/-------------------------------------------------------------------- *
+Tue Oct 15 18:48:49 2024:	*
+Tue Oct 15 18:48:49 2024:	* Evaluating triggers...done
+Tue Oct 15 18:48:49 2024:	* Checking for available FET debuggers: 
+Tue Oct 15 18:48:49 2024:	* Found USB FET @ COM6 <- Already in use
+Tue Oct 15 18:48:49 2024:	* Couldn't find available FET @ COM6. Aborting.
+Tue Oct 15 18:48:49 2024:	* 
+Tue Oct 15 18:48:49 2024:	* ----------------------------------------------------------------------------
+Tue Oct 15 18:48:49 2024:	* Driver      : closed (MSP DebugStack not initialized)
+Tue Oct 15 18:48:49 2024:	* ----------------------------------------------------------------------------
+Tue Oct 15 18:48:49 2024:	*/
+Tue Oct 15 18:49:03 2024:	* -----/|-------------------------------------------------------------------- *
+Tue Oct 15 18:49:03 2024:	*     / |__                                                                   *
+Tue Oct 15 18:49:03 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Tue Oct 15 18:49:03 2024:	*      | /                                                                    *
+Tue Oct 15 18:49:03 2024:	* -----|/-------------------------------------------------------------------- *
+Tue Oct 15 18:49:03 2024:	*
+Tue Oct 15 18:49:03 2024:	* Evaluating triggers...done
+Tue Oct 15 18:49:03 2024:	* Checking for available FET debuggers: 
+Tue Oct 15 18:49:04 2024:	* Found USB FET @ COM6 <- Selected
+Tue Oct 15 18:49:04 2024:	* Initializing interface @ COM6...done
+Tue Oct 15 18:49:04 2024:	* Setting FET speed...done
+Tue Oct 15 18:49:04 2024:	* Checking firmware compatibility: 
+Tue Oct 15 18:49:04 2024:	* FET firmware is up to date.
+Tue Oct 15 18:49:04 2024:	* Reading FW version...
+Tue Oct 15 18:49:04 2024:	* Debugger does not support target voltages other than 3000 mV!
+Tue Oct 15 18:49:04 2024:	* Setting VCC to 3000 mV...done
+Tue Oct 15 18:49:04 2024:	* Accessing device...done
+Tue Oct 15 18:49:05 2024:	* Reading device information...done
+Tue Oct 15 18:49:05 2024:	* Dumping memory from 0X1A00-0X1A12 into C:\Users\passp\AppData\Local\Temp\tmp7qwvjex4\dd.txt...done
+Tue Oct 15 18:49:05 2024:	* Loading file into device...done
+Tue Oct 15 18:49:09 2024:	* Verifying memory (C:\Users\passp\AppData\Local\Temp\tmp7qwvjex4\image.txt)...done
+Tue Oct 15 18:49:11 2024:	* 
+Tue Oct 15 18:49:11 2024:	* ----------------------------------------------------------------------------
+Tue Oct 15 18:49:11 2024:	* Arguments   : -j FAST -r [C:\Users\passp\AppData\Local\Temp\tmp7qwvjex4\dd.txt,0x1a00-0x1a12] -e ERASE_MAIN -w C:\Users\passp\AppData\Local\Temp\tmp7qwvjex4\image.txt -v -z [VCC] 
+Tue Oct 15 18:49:11 2024:	* ----------------------------------------------------------------------------
+Tue Oct 15 18:49:11 2024:	* Driver      : loaded
+Tue Oct 15 18:49:11 2024:	* Dll Version : 31400000
+Tue Oct 15 18:49:11 2024:	* FwVersion   : 31200000
+Tue Oct 15 18:49:11 2024:	* Interface   : TIUSB
+Tue Oct 15 18:49:11 2024:	* HwVersion   : E 4.0
+Tue Oct 15 18:49:11 2024:	* JTAG Mode   : AUTO
+Tue Oct 15 18:49:11 2024:	* Device      : MSP430FR4133
+Tue Oct 15 18:49:11 2024:	* EEM         : Level 5, ClockCntrl 2
+Tue Oct 15 18:49:11 2024:	* Read File   : C:\Users\passp\AppData\Local\Temp\tmp7qwvjex4\dd.txt (memory segment = 0X1A00-0X1A12)
+Tue Oct 15 18:49:11 2024:	* Erase Mode  : ERASE_MAIN
+Tue Oct 15 18:49:11 2024:	* Prog.File   : C:\Users\passp\AppData\Local\Temp\tmp7qwvjex4\image.txt
+Tue Oct 15 18:49:11 2024:	* Verified    : TRUE
+Tue Oct 15 18:49:11 2024:	* BSL Unlock  : FALSE
+Tue Oct 15 18:49:11 2024:	* InfoA Access: FALSE
+Tue Oct 15 18:49:11 2024:	* VCC ON      : 3000 mV
+Tue Oct 15 18:49:11 2024:	* ----------------------------------------------------------------------------
+Tue Oct 15 18:49:11 2024:	* Starting target code execution...done
+Tue Oct 15 18:49:12 2024:	* Disconnecting from device...done
+Tue Oct 15 18:49:12 2024:	* 
+Tue Oct 15 18:49:12 2024:	* ----------------------------------------------------------------------------
+Tue Oct 15 18:49:12 2024:	* Driver      : closed (No error)
+Tue Oct 15 18:49:12 2024:	* ----------------------------------------------------------------------------
+Tue Oct 15 18:49:12 2024:	*/
+Tue Oct 15 18:53:59 2024:	* -----/|-------------------------------------------------------------------- *
+Tue Oct 15 18:53:59 2024:	*     / |__                                                                   *
+Tue Oct 15 18:53:59 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Tue Oct 15 18:53:59 2024:	*      | /                                                                    *
+Tue Oct 15 18:53:59 2024:	* -----|/-------------------------------------------------------------------- *
+Tue Oct 15 18:53:59 2024:	*
+Tue Oct 15 18:53:59 2024:	* Evaluating triggers...done
+Tue Oct 15 18:53:59 2024:	* Checking for available FET debuggers: 
+Tue Oct 15 18:53:59 2024:	* Found USB FET @ COM6 <- Selected
+Tue Oct 15 18:53:59 2024:	* Initializing interface @ COM6...done
+Tue Oct 15 18:53:59 2024:	* Setting FET speed...done
+Tue Oct 15 18:53:59 2024:	* Checking firmware compatibility: 
+Tue Oct 15 18:53:59 2024:	* FET firmware is up to date.
+Tue Oct 15 18:53:59 2024:	* Reading FW version...
+Tue Oct 15 18:53:59 2024:	* Debugger does not support target voltages other than 3000 mV!
+Tue Oct 15 18:53:59 2024:	* Setting VCC to 3000 mV...done
+Tue Oct 15 18:54:00 2024:	* Accessing device...done
+Tue Oct 15 18:54:00 2024:	* Reading device information...done
+Tue Oct 15 18:54:00 2024:	* Dumping memory from 0X1A00-0X1A12 into C:\Users\passp\AppData\Local\Temp\tmpw8a6xt_v\dd.txt...done
+Tue Oct 15 18:54:00 2024:	* Loading file into device...done
+Tue Oct 15 18:54:05 2024:	* Verifying memory (C:\Users\passp\AppData\Local\Temp\tmpw8a6xt_v\image.txt)...done
+Tue Oct 15 18:54:06 2024:	* 
+Tue Oct 15 18:54:06 2024:	* ----------------------------------------------------------------------------
+Tue Oct 15 18:54:06 2024:	* Arguments   : -j FAST -r [C:\Users\passp\AppData\Local\Temp\tmpw8a6xt_v\dd.txt,0x1a00-0x1a12] -e ERASE_MAIN -w C:\Users\passp\AppData\Local\Temp\tmpw8a6xt_v\image.txt -v -z [VCC] 
+Tue Oct 15 18:54:06 2024:	* ----------------------------------------------------------------------------
+Tue Oct 15 18:54:06 2024:	* Driver      : loaded
+Tue Oct 15 18:54:06 2024:	* Dll Version : 31400000
+Tue Oct 15 18:54:06 2024:	* FwVersion   : 31200000
+Tue Oct 15 18:54:06 2024:	* Interface   : TIUSB
+Tue Oct 15 18:54:06 2024:	* HwVersion   : E 4.0
+Tue Oct 15 18:54:06 2024:	* JTAG Mode   : AUTO
+Tue Oct 15 18:54:06 2024:	* Device      : MSP430FR4133
+Tue Oct 15 18:54:06 2024:	* EEM         : Level 5, ClockCntrl 2
+Tue Oct 15 18:54:06 2024:	* Read File   : C:\Users\passp\AppData\Local\Temp\tmpw8a6xt_v\dd.txt (memory segment = 0X1A00-0X1A12)
+Tue Oct 15 18:54:06 2024:	* Erase Mode  : ERASE_MAIN
+Tue Oct 15 18:54:06 2024:	* Prog.File   : C:\Users\passp\AppData\Local\Temp\tmpw8a6xt_v\image.txt
+Tue Oct 15 18:54:06 2024:	* Verified    : TRUE
+Tue Oct 15 18:54:06 2024:	* BSL Unlock  : FALSE
+Tue Oct 15 18:54:06 2024:	* InfoA Access: FALSE
+Tue Oct 15 18:54:06 2024:	* VCC ON      : 3000 mV
+Tue Oct 15 18:54:06 2024:	* ----------------------------------------------------------------------------
+Tue Oct 15 18:54:06 2024:	* Starting target code execution...done
+Tue Oct 15 18:54:07 2024:	* Disconnecting from device...done
+Tue Oct 15 18:54:07 2024:	* 
+Tue Oct 15 18:54:07 2024:	* ----------------------------------------------------------------------------
+Tue Oct 15 18:54:07 2024:	* Driver      : closed (No error)
+Tue Oct 15 18:54:07 2024:	* ----------------------------------------------------------------------------
+Tue Oct 15 18:54:07 2024:	*/
+Tue Oct 15 18:54:35 2024:	* -----/|-------------------------------------------------------------------- *
+Tue Oct 15 18:54:35 2024:	*     / |__                                                                   *
+Tue Oct 15 18:54:35 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Tue Oct 15 18:54:35 2024:	*      | /                                                                    *
+Tue Oct 15 18:54:35 2024:	* -----|/-------------------------------------------------------------------- *
+Tue Oct 15 18:54:35 2024:	*
+Tue Oct 15 18:54:35 2024:	* Evaluating triggers...done
+Tue Oct 15 18:54:35 2024:	* Checking for available FET debuggers: 
+Tue Oct 15 18:54:35 2024:	* Found USB FET @ COM6 <- Selected
+Tue Oct 15 18:54:35 2024:	* Initializing interface @ COM6...done
+Tue Oct 15 18:54:35 2024:	* Setting FET speed...done
+Tue Oct 15 18:54:35 2024:	* Checking firmware compatibility: 
+Tue Oct 15 18:54:35 2024:	* FET firmware is up to date.
+Tue Oct 15 18:54:35 2024:	* Reading FW version...
+Tue Oct 15 18:54:35 2024:	* Debugger does not support target voltages other than 3000 mV!
+Tue Oct 15 18:54:35 2024:	* Setting VCC to 3000 mV...done
+Tue Oct 15 18:54:36 2024:	* Accessing device...done
+Tue Oct 15 18:54:36 2024:	* Reading device information...done
+Tue Oct 15 18:54:36 2024:	* Dumping memory from 0X1A00-0X1A12 into C:\Users\passp\AppData\Local\Temp\tmpzi9ezf7f\dd.txt...done
+Tue Oct 15 18:54:36 2024:	* Loading file into device...done
+Tue Oct 15 18:54:40 2024:	* Verifying memory (C:\Users\passp\AppData\Local\Temp\tmpzi9ezf7f\image.txt)...done
+Tue Oct 15 18:54:42 2024:	* 
+Tue Oct 15 18:54:42 2024:	* ----------------------------------------------------------------------------
+Tue Oct 15 18:54:42 2024:	* Arguments   : -j FAST -r [C:\Users\passp\AppData\Local\Temp\tmpzi9ezf7f\dd.txt,0x1a00-0x1a12] -e ERASE_MAIN -w C:\Users\passp\AppData\Local\Temp\tmpzi9ezf7f\image.txt -v -z [VCC] 
+Tue Oct 15 18:54:42 2024:	* ----------------------------------------------------------------------------
+Tue Oct 15 18:54:42 2024:	* Driver      : loaded
+Tue Oct 15 18:54:42 2024:	* Dll Version : 31400000
+Tue Oct 15 18:54:42 2024:	* FwVersion   : 31200000
+Tue Oct 15 18:54:42 2024:	* Interface   : TIUSB
+Tue Oct 15 18:54:42 2024:	* HwVersion   : E 4.0
+Tue Oct 15 18:54:42 2024:	* JTAG Mode   : AUTO
+Tue Oct 15 18:54:42 2024:	* Device      : MSP430FR4133
+Tue Oct 15 18:54:42 2024:	* EEM         : Level 5, ClockCntrl 2
+Tue Oct 15 18:54:42 2024:	* Read File   : C:\Users\passp\AppData\Local\Temp\tmpzi9ezf7f\dd.txt (memory segment = 0X1A00-0X1A12)
+Tue Oct 15 18:54:42 2024:	* Erase Mode  : ERASE_MAIN
+Tue Oct 15 18:54:42 2024:	* Prog.File   : C:\Users\passp\AppData\Local\Temp\tmpzi9ezf7f\image.txt
+Tue Oct 15 18:54:42 2024:	* Verified    : TRUE
+Tue Oct 15 18:54:42 2024:	* BSL Unlock  : FALSE
+Tue Oct 15 18:54:42 2024:	* InfoA Access: FALSE
+Tue Oct 15 18:54:42 2024:	* VCC ON      : 3000 mV
+Tue Oct 15 18:54:42 2024:	* ----------------------------------------------------------------------------
+Tue Oct 15 18:54:42 2024:	* Starting target code execution...done
+Tue Oct 15 18:54:43 2024:	* Disconnecting from device...done
+Tue Oct 15 18:54:43 2024:	* 
+Tue Oct 15 18:54:43 2024:	* ----------------------------------------------------------------------------
+Tue Oct 15 18:54:43 2024:	* Driver      : closed (No error)
+Tue Oct 15 18:54:43 2024:	* ----------------------------------------------------------------------------
+Tue Oct 15 18:54:43 2024:	*/
+Tue Oct 15 18:55:24 2024:	* -----/|-------------------------------------------------------------------- *
+Tue Oct 15 18:55:24 2024:	*     / |__                                                                   *
+Tue Oct 15 18:55:24 2024:	*    /_   /   MSP Flasher v1.3.20                                             *
+Tue Oct 15 18:55:24 2024:	*      | /                                                                    *
+Tue Oct 15 18:55:24 2024:	* -----|/-------------------------------------------------------------------- *
+Tue Oct 15 18:55:24 2024:	*
+Tue Oct 15 18:55:24 2024:	* Evaluating triggers...done
+Tue Oct 15 18:55:24 2024:	* Checking for available FET debuggers: 
+Tue Oct 15 18:55:24 2024:	* Found USB FET @ COM6 <- Selected
+Tue Oct 15 18:55:24 2024:	* Initializing interface @ COM6...done
+Tue Oct 15 18:55:24 2024:	* Setting FET speed...done
+Tue Oct 15 18:55:24 2024:	* Checking firmware compatibility: 
+Tue Oct 15 18:55:24 2024:	* FET firmware is up to date.
+Tue Oct 15 18:55:24 2024:	* Reading FW version...
+Tue Oct 15 18:55:24 2024:	* Debugger does not support target voltages other than 3000 mV!
+Tue Oct 15 18:55:24 2024:	* Setting VCC to 3000 mV...done
+Tue Oct 15 18:55:25 2024:	* Accessing device...done
+Tue Oct 15 18:55:25 2024:	* Reading device information...done
+Tue Oct 15 18:55:25 2024:	* Dumping memory from 0X1A00-0X1A12 into C:\Users\passp\AppData\Local\Temp\tmpb0g537mw\dd.txt...done
+Tue Oct 15 18:55:25 2024:	* Loading file into device...done
+Tue Oct 15 18:55:30 2024:	* Verifying memory (C:\Users\passp\AppData\Local\Temp\tmpb0g537mw\image.txt)...done
+Tue Oct 15 18:55:31 2024:	* 
+Tue Oct 15 18:55:31 2024:	* ----------------------------------------------------------------------------
+Tue Oct 15 18:55:31 2024:	* Arguments   : -j FAST -r [C:\Users\passp\AppData\Local\Temp\tmpb0g537mw\dd.txt,0x1a00-0x1a12] -e ERASE_MAIN -w C:\Users\passp\AppData\Local\Temp\tmpb0g537mw\image.txt -v -z [VCC] 
+Tue Oct 15 18:55:31 2024:	* ----------------------------------------------------------------------------
+Tue Oct 15 18:55:31 2024:	* Driver      : loaded
+Tue Oct 15 18:55:31 2024:	* Dll Version : 31400000
+Tue Oct 15 18:55:31 2024:	* FwVersion   : 31200000
+Tue Oct 15 18:55:31 2024:	* Interface   : TIUSB
+Tue Oct 15 18:55:31 2024:	* HwVersion   : E 4.0
+Tue Oct 15 18:55:31 2024:	* JTAG Mode   : AUTO
+Tue Oct 15 18:55:31 2024:	* Device      : MSP430FR4133
+Tue Oct 15 18:55:31 2024:	* EEM         : Level 5, ClockCntrl 2
+Tue Oct 15 18:55:31 2024:	* Read File   : C:\Users\passp\AppData\Local\Temp\tmpb0g537mw\dd.txt (memory segment = 0X1A00-0X1A12)
+Tue Oct 15 18:55:31 2024:	* Erase Mode  : ERASE_MAIN
+Tue Oct 15 18:55:31 2024:	* Prog.File   : C:\Users\passp\AppData\Local\Temp\tmpb0g537mw\image.txt
+Tue Oct 15 18:55:31 2024:	* Verified    : TRUE
+Tue Oct 15 18:55:31 2024:	* BSL Unlock  : FALSE
+Tue Oct 15 18:55:31 2024:	* InfoA Access: FALSE
+Tue Oct 15 18:55:31 2024:	* VCC ON      : 3000 mV
+Tue Oct 15 18:55:31 2024:	* ----------------------------------------------------------------------------
+Tue Oct 15 18:55:31 2024:	* Starting target code execution...done
+Tue Oct 15 18:55:32 2024:	* Disconnecting from device...done
+Tue Oct 15 18:55:32 2024:	* 
+Tue Oct 15 18:55:32 2024:	* ----------------------------------------------------------------------------
+Tue Oct 15 18:55:32 2024:	* Driver      : closed (No error)
+Tue Oct 15 18:55:32 2024:	* ----------------------------------------------------------------------------
+Tue Oct 15 18:55:32 2024:	*/

@@ -1230,8 +1230,9 @@ int main( void )
     // Power up display with a nice dash pattern
     lcd_show_dashes();
 
-#warning
-    trigger_pin_test();
+    // Uncomment these lines for a test firmware that displays the current trigger switch state and a counter of state changes.
+    //#warning
+    //trigger_pin_test();
 
     // Initialize the RV3032 with proper clkout & backup switchover settings. Leaves the i2c connection shutdown.
     // Note that once we get the RTC to give us our ticks then we should never need to touch it again.
@@ -1266,7 +1267,7 @@ int main( void )
 
         lcd_show_first_start_message();
 
-
+        // This will wait for power to be removed and then count how many breaths (interrupt ever 1/64th of a second) we can take until we die
         power_rundown_test();
 
         // unreachable
