@@ -23,18 +23,6 @@ https://cwandt.com/products/time-since-launch?variant=19682206089275
 * 2x Energizer Ultimate Lithium AA batteries
 * Optional TPS7A0230 3V regulator for generating LCD bias voltage
 
-### The leap year problem
-
-The RX8900 counts any year ending in `00` as a leap year, but in real life 2100 is not a leap year.
-
-This means that if a unit is programmed in the 2000's and triggered on 3/1/2100 then the trigger date in EEPROM will be 2/29/2100, and any day after that will be 1 day behind the actual calendar date when the trigger was pulled. The count will still always be right, and the only way you'd know about this is if you inspect the trigger time with the diagnostic mode or if you have to reset the RTC.
-
-This divergence will increase by 1 for each non-leap year ending in `00` after 2000, including 2200 and 2300 (2400 is a leap). 
-
-Why don't we just correct for this in the firmware? Well because as far as the RX8900 is concerned 2/29/2100 actually happened, so a trigger could happen on that day.
-
-Since this problem is predicable we can account for it when resetting the RTC in units triggered after 2/28/2100. 
-
 ## Method of Operation
 
 ### Ready To Launch mode 
@@ -81,12 +69,6 @@ To commisison a new unit, we go though these steps...
 We are using the MSP430's Very Low Power Oscilator (VLO) to drive the LCD since it is actually lower power than the 32Khz XTAL. It is also slower, so more power savings. 
 
 We do NOT use the MSP430's "LPMx.5" extra low power modes since they end up using more power than the "LPM4" mode that we are using. This is becuase it takes 250us to wake from the "x.5" modes and durring this time, the MCU pulls about 200uA. Since we wake 2 times per second, this is just not worth it. If we only woke every, say, 15 seconds then we could likely save ~0.3uA by using the "x.5" modes. 
-
-We use the RTC's CLKOUT push-pull signal directly into an MSP430 io pin. This would be a problem durring battery changes since the RTC would try to power  
-the MSP430 though the protection diodes durring battery changes. We depend on the fact that the RTC will go into backup mode durring battery changes, which will
-float the CLKOUT pin. 
-
-Using CLKOUT also means that we get 2 interrupts each second (one on rising, one falling edge). We quickly ignore ever other one in the ISR. It would seem more power efficient to use the periodic timer function of the RTC to generate a 0.5Hz output, but enabling the periodic timer uses an additional 0.2uA (undocumented!), so not worth it. 
 
 To make LCD updates as power efficient as possible, we precomute the LCDMEM values for every second and minute update and store them in tables. Because we were careful to put all the segments making up both seconds digits into a single word of memory (minutes also), we can do a full update with a single 16 bit write. We further optimize but keeping the pointer to the next table lookup in a register and using the MSP430's post-decrement addressing mode to also increment the pointer for free (zero cycles). This lets us execute a full update on non-rollover seconds in only 4 instructions (not counting ISR overhead). This code is here...
 [CCS%20Project/tsl_asm.asm#L91](CCS%20Project/tsl_asm.asm#L91)
