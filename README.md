@@ -23,18 +23,6 @@ https://cwandt.com/products/time-since-launch?variant=19682206089275
 * 2x Energizer Ultimate Lithium AA batteries
 * Optional TPS7A0230 3V regulator for generating LCD bias voltage
 
-### The leap year problem
-
-The RX8900 counts any year ending in `00` as a leap year, but in real life 2100 is not a leap year.
-
-This means that if a unit is programmed in the 2000's and triggered on 3/1/2100 then the trigger date in EEPROM will be 2/29/2100, and any day after that will be 1 day behind the actual calendar date when the trigger was pulled. The count will still always be right, and the only way you'd know about this is if you inspect the trigger time with the diagnostic mode or if you have to reset the RTC.
-
-This divergence will increase by 1 for each non-leap year ending in `00` after 2000, including 2200 and 2300 (2400 is a leap). 
-
-Why don't we just correct for this in the firmware? Well because as far as the RX8900 is concerned 2/29/2100 actually happened, so a trigger could happen on that day.
-
-Since this problem is predicable we can account for it when resetting the RTC in units triggered after 2/28/2100. 
-
 ## Method of Operation
 
 ### Ready To Launch mode 
@@ -71,20 +59,38 @@ ON the first power up after programming, we check to make sure that the switch i
 Descibed here...
 [CCS%20Project/error_codes.h](CCS%20Project/error_codes.h)
 
+### Commisioning
+
+To commisison a new unit, we go though these steps...
+
+1. Firmware is programmed and the display shows `FIRST START` message.
+2. Power is removed from the unit.
+3. When the unit sees voltage is dropping, it starts counting how many 1/64ths of a second it can keep running before it shuts down. It displays all 8's on the LCD durring this time to check for shorts on the LCD lines.
+4. Batteries are insterted and the unit powers up.
+5. Firmware checks to see how many 1/64ths of a second it survived during the previous power down. If this value is out of bounds (power level too low or too high) then it shows an `AMPS LO` or `AMPS HI` error.
+6. The pin is inserted, depressing the trigger lever. This tests that the pin can cycle though both states.
+7. Unit is ready to launch! I displays a segment pattern on the LCD that shoud update at 2Hz. This tests both that the RTC is generating interrupts correectly and also that all LCD are good. 
+
 ## Interesting twists
 
 We are using the MSP430's Very Low Power Oscilator (VLO) to drive the LCD since it is actually lower power than the 32Khz XTAL. It is also slower, so more power savings. 
 
 We do NOT use the MSP430's "LPMx.5" extra low power modes since they end up using more power than the "LPM4" mode that we are using. This is becuase it takes 250us to wake from the "x.5" modes and durring this time, the MCU pulls about 200uA. Since we wake 2 times per second, this is just not worth it. If we only woke every, say, 15 seconds then we could likely save ~0.3uA by using the "x.5" modes. 
 
-We use the RTC's CLKOUT push-pull signal directly into an MSP430 io pin.
-
 To make LCD updates as power efficient as possible, we precomute the LCDMEM values for every second and minute update and store them in tables. Because we were careful to put all the segments making up both seconds digits into a single word of memory (minutes also), we can do a full update with a single 16 bit write. We further optimize but keeping the pointer to the next table lookup in a register and using the MSP430's post-decrement addressing mode to also increment the pointer for free (zero cycles). This lets us execute a full update on non-rollover seconds in only 4 instructions (not counting ISR overhead). This code is here...
 [CCS%20Project/tsl_asm.asm#L91](CCS%20Project/tsl_asm.asm#L91)
 
-## Backup mode
+## Battery changes
 
-We do not use the battery backup function of the RTC, ,so we add a 1K OHM resistor across the Vout pin and GND as recommended by the datasheet. 
+Based on power projections, we do not expect to need a battery change for at least 100 years. When the batteries get near thier end of life, the LCD will start to get dim. At this point, as long as the unit has been triggered, it will simply stop counting durring the time it takes to change the batteries, and will start counting again
+from where it left off once the new batteries are installed. To make this possible, we keep counters of both days and minutes elapsed since trigger in FRAM. These counters are updated each minute and day respectively. Do note that this means that every time you remove the batteries, the time since launch will round down to the most recent minute. Also note that it is _possible_ to lose power exactly at the momentthat happens once per day when both the minute and day counters are updates, so there is lock code to make sure this pair of updates is atomic. 
+
+Note that if the batteries are pulled before the unit is triggered then it will go into `BATT_ERROR_PRELAUNCH` mode ("ERROR 1"), so do not wait *too* long before triggering your TSL. :)
+
+## Hardware revisions
+
+The 2nd hardware revision was produced mid-2024 and removes the backup capacitors connected to the RTC and adds a new 10K OHM resistor on one of the pads that these capcitors used. Previously, these capacitors would keep the RTC continuously operating durring batter changes, but there some defects on those capacitors and we decided it would be easier to just have the count pause durring battery changes. To support this change, there is a change to the firmware that is not compatible with the old versions of the hardware. This change disables the "backup power" option on the RTC. To compile the firmware to work with this new version of the hardware, you must include `#define C2_IS_10K` in the top of `tsl-calibre-msp.cpp`. 
+
 
 ## Current Usage
 
