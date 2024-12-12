@@ -862,6 +862,35 @@ void lcd_show_errorcode( byte code  ) {
 
 }
 
+
+// PIn In--=
+
+constexpr glyph_segment_t pin_is_in_message[] = {
+                                                 glyph_P,
+                                                 glyph_i,
+                                                 glyph_n,
+                                                 glyph_SPACE,
+                                                 glyph_i,
+                                                 glyph_n,
+                                                 glyph_SPACE,
+                                                 glyph_E,
+                                                 glyph_r,
+                                                 glyph_r,
+                                                 glyph_SPACE,
+                                                 glyph_SPACE,
+};
+
+
+void lcd_show_pin_in_err_message() {
+
+    for( byte i=0; i<DIGITPLACE_COUNT; i++ ) {
+        lcd_show_f(  i , pin_is_in_message[ DIGITPLACE_COUNT - 1- i] );        // digit place 0 is rightmost, so reverse order for text
+    }
+
+}
+
+
+
 // LoAd PIn --=
 
 constexpr glyph_segment_t load_pin_message[] = {
@@ -1179,8 +1208,3 @@ void lcd_restore_screen( lcd_save_screen_buffer_t *buffer) {
     }
 
 }
-
-
-
-
-
