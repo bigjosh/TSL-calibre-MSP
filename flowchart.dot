@@ -1,0 +1,43 @@
+digraph program_states {
+    rankdir=TB
+    node [shape=box, style=rounded, fontname="Arial", fontsize=10];
+
+    START [label="START\n(Power up and run main())", shape=oval];
+    INITIAL_CHECK [label="Check persistent_data\ninitialized_flag?"];
+    INITIAL_POWERUP [label="INITIAL POWER-UP:\n- Flash bulbs\n- Set persistent_data\n- Show 'First Start'\n- power_rundown_test() (never returns)"];
+    COMMISSIONED_CHECK [label="Check commisioned_flag?"];
+    LOAD_TRIGGER [label="LOAD_TRIGGER MODE:\n- Show 'Load Pin'\n- Wait for pin insertion\n(Uses RTC tick interrupts)"];
+    ARMING [label="ARMING MODE:\n- Show 'Arming' message\n- Wait 1s (next RTC tick)\nfor stable insertion"];
+    READY_TO_LAUNCH [label="READY_TO_LAUNCH (RTL) MODE:\n- Enable trigger pin ISR\n- Show squiggle animation\n- Wait for trigger pull"];
+    TSL_MODE [label="TIME SINCE LAUNCH (TSL) MODE:\n- Record launch time\n- Reset RTC\n- Count seconds/min/hours/days\n- Update LCD on RTC ticks"];
+    LONG_NOW [label="LONG NOW MODE:\n- If day count overflows\n- Show final message\n- blinkforeverandever()"];
+    BATT_ERROR [label="ERROR:\nBATT_ERROR_PRELAUNCH\n- blinkforeverandever()"];
+    ERROR_MODE [label="ERROR MODE:\n- Display error code\n- blinkforeverandever()"];
+
+    START -> INITIAL_CHECK
+    INITIAL_CHECK -> INITIAL_POWERUP [label="No (0)"]
+    INITIAL_CHECK -> COMMISSIONED_CHECK [label="Yes (1)"]
+
+    COMMISSIONED_CHECK -> LOAD_TRIGGER [label="No (≠1)"]
+    COMMISSIONED_CHECK -> BATT_ERROR [label="Yes (1), but launched_flag≠0?\n(Battery error before launch)"]
+    COMMISSIONED_CHECK -> TSL_MODE [label="Yes (1) and launched_flag=1\n(Restore TSL from persistent_data)"]
+
+    LOAD_TRIGGER -> ARMING [label="Pin inserted at next tick"]
+    LOAD_TRIGGER -> LOAD_TRIGGER [label="Pin not inserted\n(retry)"]
+
+    ARMING -> READY_TO_LAUNCH [label="Pin stable after 1s"]
+    ARMING -> LOAD_TRIGGER [label="Pin not stable\nback to load trigger"]
+
+    READY_TO_LAUNCH -> TSL_MODE [label="Trigger pulled\n(via ISR)"]
+
+    TSL_MODE -> LONG_NOW [label="Days overflow"]
+    TSL_MODE -> ERROR_MODE [label="Any unexpected error"]
+
+    // BATT_ERROR and ERROR_MODE are end states
+    LONG_NOW -> LONG_NOW [label="Sleep forever"]
+    BATT_ERROR -> BATT_ERROR [label="Never returns"]
+    ERROR_MODE -> ERROR_MODE [label="Never returns"]
+
+    {rank=same; TSL_MODE; BATT_ERROR; ERROR_MODE; LONG_NOW;}
+}
+

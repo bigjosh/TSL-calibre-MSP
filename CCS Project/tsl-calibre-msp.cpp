@@ -1356,21 +1356,6 @@ int main( void )
 
         }
 
-        // Wait for any clkout transition so we know we have at least 500ms until next transition so we dont miss any seconds.
-        // This should always take <500ms
-        // This also proves the RV3032 is running and we are connected on clkout
-        unsigned start_val = TBI( RV3032_CLKOUT_PIN, RV3032_CLKOUT_B );
-        while (TBI( RV3032_CLKOUT_PIN, RV3032_CLKOUT_B )==start_val); // wait for any transition
-
-        // Now we enable the interrupt on the RTC CLKOUT pin. For now on we must remember to
-        // disable it again if we are going to end up in sleepforever mode.
-
-        // Clear any pending interrupts from the RV3032 clkout pin and then enable interrupts for the next falling edge
-        // We we should not get a real one for 500ms so we have time to do our stuff
-
-        CBI( RV3032_CLKOUT_PIFG     , RV3032_CLKOUT_B    );
-        SBI( RV3032_CLKOUT_PIE      , RV3032_CLKOUT_B    );
-
         mode = LOAD_TRIGGER;                  // Go though the state machine to wait for trigger to be loaded
         step =0;                              // Used to slide a dash indicator pointing to the pin location
 
@@ -1494,11 +1479,26 @@ int main( void )
         SET_CLKOUT_VECTOR( &TSL_MODE_BEGIN );
     }
 
+
     // Activate the RAM-based ISR vector table (rather than the default FRAM based one).
     // We use the RAM-based one so that we do not have to unlock FRAM every time we want to
     // update the CLKOUT ISR entry. This RAM vector was appropriately set in the code above by the time we get here.
-
     ACTIVATE_RAM_ISRS();
+
+
+    // Wait for any clkout transition so we know we have at least 500ms until next transition so we dont miss any seconds.
+    // This should always take <500ms
+    // This also proves the RV3032 is running and we are connected on clkout
+    unsigned start_val = TBI( RV3032_CLKOUT_PIN, RV3032_CLKOUT_B );
+    while (TBI( RV3032_CLKOUT_PIN, RV3032_CLKOUT_B )==start_val); // wait for any transition
+
+    // Now we enable the interrupt on the RTC CLKOUT pin. For now on we must remember to
+    // disable it again if we are going to end up in sleepforever mode.
+
+    // Clear any pending interrupts from the RV3032 clkout pin and then enable interrupts for the next falling edge
+    // We we should not get a real one for 500ms so we have time to do our stuff
+    CBI( RV3032_CLKOUT_PIFG     , RV3032_CLKOUT_B    );
+    SBI( RV3032_CLKOUT_PIE      , RV3032_CLKOUT_B    );
 
     // Wait for interrupt to fire at next clkout low-to-high change to drive us into the state machine (in either "pin loading" or "time since launch" mode)
     // Could also enable the trigger pin change ISR if we are in RTL mode.

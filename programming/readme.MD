@@ -35,12 +35,12 @@
 2. Enter the unit's serial number. 
 2. _Confirm_ that the firmware download completes without error.
 3. _Confirm_ that the TSL starts, the two LEDs flash, and the display shows the 'First Start' message.
-4. Disconnect the programming connector. The display should show all 8's and fade out while the unit tests its power consumption. Be sure to hold the board by the edges - just touching the LCD pins can increase the power usage enough to cause the test to fail. 
+4. Disconnect the programming connector. The display should show all 8's and fade out while the unit tests its power consumption. Be sure to hold the board by the edges - just touching the LCD pins can increase the power usage enough to cause the power test to fail. 
 5. Within 1 minute, install the batteries into the TSL.
 6. _Confirm_ that the display shows the 'Load Pin' message.
 7. Assemble the TSL into the tube.
 8. Insert the pull pin.
-9. The display should show 'Arming' followed by the dancing dashes animation.
+9. The display should show 'Arming' followed by the `Ready To Launch Mode` dancing dashes animation.
 9. _Confirm_ that the dancing dashes display lights all the LCD segments and that it updates steadily once per second. 
 10. Pack it up and ship it out!
 

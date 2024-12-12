@@ -59,7 +59,14 @@ Indicates that the trigger pull was more than 1 million days (~2740 years) ago s
 
 The idea here is to avoid problems of people trying to ebay old TSL units that have rolled over by misrepresenting their true milage.
 
-#### Error Codes 
+#### Errors
+
+##### Error messages 
+
+###### `Pin is in`
+ON the first power up after programming, we check to make sure that the switch is closed which indicates that the trigger pin is out.   
+
+##### Error Codes 
 
 Descibed here...
 [CCS%20Project/error_codes.h](CCS%20Project/error_codes.h)
@@ -70,20 +77,14 @@ We are using the MSP430's Very Low Power Oscilator (VLO) to drive the LCD since 
 
 We do NOT use the MSP430's "LPMx.5" extra low power modes since they end up using more power than the "LPM4" mode that we are using. This is becuase it takes 250us to wake from the "x.5" modes and durring this time, the MCU pulls about 200uA. Since we wake 2 times per second, this is just not worth it. If we only woke every, say, 15 seconds then we could likely save ~0.3uA by using the "x.5" modes. 
 
-We use the RTC's CLKOUT push-pull signal directly into an MSP430 io pin. This would be a problem durring battery changes since the RTC would try to power  
-the MSP430 though the protection diodes durring battery changes. We depend on the fact that the RTC will go into backup mode durring battery changes, which will
-float the CLKOUT pin. 
-
-Using CLKOUT also means that we get 2 interrupts each second (one on rising, one falling edge). We quickly ignore ever other one in the ISR. It would seem more power efficient to use the periodic timer function of the RTC to generate a 0.5Hz output, but enabling the periodic timer uses an additional 0.2uA (undocumented!), so not worth it. 
+We use the RTC's CLKOUT push-pull signal directly into an MSP430 io pin.
 
 To make LCD updates as power efficient as possible, we precomute the LCDMEM values for every second and minute update and store them in tables. Because we were careful to put all the segments making up both seconds digits into a single word of memory (minutes also), we can do a full update with a single 16 bit write. We further optimize but keeping the pointer to the next table lookup in a register and using the MSP430's post-decrement addressing mode to also increment the pointer for free (zero cycles). This lets us execute a full update on non-rollover seconds in only 4 instructions (not counting ISR overhead). This code is here...
 [CCS%20Project/tsl_asm.asm#L91](CCS%20Project/tsl_asm.asm#L91)
 
 ## Backup mode
 
-The RTC is set up to enter backup mode when it sees the voltage form the batteries drop lower than the voltage form its internal backup capacitors. This should only happen durring a battery change. Note that this can cuase unexpected behaivor if you do a battery change and replace the existing batteries with ones that have a lower total voltage. In this case the RTC will not come out of backup mode when the new batteries are inserted, andso it will not appear to be working to the MSP$#) when it boots up and will generate an "Error Code 1" (ERROR_BAD_CLOCK). If this happens, pull the batteries out for about 30 seconds to let the backup capacitor voltage run down so it will then be less than the batteries. Now reinsert the batteries and the RTC show now see a battery voltage higher than the capacitor voltage and wake up and operate normally. 
-
-## Build notes
+We do not use the battery backup function of the RTC, ,so we add a 1K OHM resistor across the Vout pin and GND as recommended by the datasheet. 
 
 ## Current Usage
 
@@ -98,7 +99,7 @@ The RTC is set up to enter backup mode when it sees the voltage form the batteri
 
 Note that voltage drop over time is not expected to be linear with Energizer Ultra cells. These batteries are predicted to spend most of their lives towards the higher end of the voltage range and only start dropping when they get near to their end of life.  
 
-There are gains of up to 5uA possible from having fewer LCD segments lit. Not sure how actionable this is. We could, say, save 0.5uA by blinking the Time Since Launch mode screen off every other second. It is likely that Ready To Launch mode's low power relative to Time Since Launch mode is due to the fact that it has only 1 segment lit per digit. 
+There are gains possible from having fewer LCD segments lit. Not sure how actionable this is. We could, say, save 0.5uA by blinking the Time Since Launch mode screen off every other second. It is likely that Ready To Launch mode's low power relative to Time Since Launch mode is due to the fact that it has only 1 segment lit per digit. 
 
 ### Measurement conditions
 
