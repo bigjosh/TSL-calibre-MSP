@@ -47,7 +47,14 @@ Indicates that the trigger pull was more than 1 million days (~2740 years) ago s
 
 The idea here is to avoid problems of people trying to ebay old TSL units that have rolled over by misrepresenting their true milage.
 
-#### Error Codes 
+#### Errors
+
+##### Error messages 
+
+###### `Pin is in`
+ON the first power up after programming, we check to make sure that the switch is closed which indicates that the trigger pin is out.   
+
+##### Error Codes 
 
 Descibed here...
 [CCS%20Project/error_codes.h](CCS%20Project/error_codes.h)
@@ -84,7 +91,6 @@ Note that if the batteries are pulled before the unit is triggered then it will 
 
 The 2nd hardware revision was produced mid-2024 and removes the backup capacitors connected to the RTC and adds a new 10K OHM resistor on one of the pads that these capcitors used. Previously, these capacitors would keep the RTC continuously operating durring batter changes, but there some defects on those capacitors and we decided it would be easier to just have the count pause durring battery changes. To support this change, there is a change to the firmware that is not compatible with the old versions of the hardware. This change disables the "backup power" option on the RTC. To compile the firmware to work with this new version of the hardware, you must include `#define C2_IS_10K` in the top of `tsl-calibre-msp.cpp`. 
 
-## Build notes
 
 ## Current Usage
 
@@ -99,7 +105,7 @@ The 2nd hardware revision was produced mid-2024 and removes the backup capacitor
 
 Note that voltage drop over time is not expected to be linear with Energizer Ultra cells. These batteries are predicted to spend most of their lives towards the higher end of the voltage range and only start dropping when they get near to their end of life.  
 
-There are gains of up to 5uA possible from having fewer LCD segments lit. Not sure how actionable this is. We could, say, save 0.5uA by blinking the Time Since Launch mode screen off every other second. It is likely that Ready To Launch mode's low power relative to Time Since Launch mode is due to the fact that it has only 1 segment lit per digit. 
+There are gains possible from having fewer LCD segments lit. Not sure how actionable this is. We could, say, save 0.5uA by blinking the Time Since Launch mode screen off every other second. It is likely that Ready To Launch mode's low power relative to Time Since Launch mode is due to the fact that it has only 1 segment lit per digit. 
 
 ### Measurement conditions
 

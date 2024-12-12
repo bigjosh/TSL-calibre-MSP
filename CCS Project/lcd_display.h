@@ -80,6 +80,9 @@ extern "C" {
     // Show the message "bAtt Error X" on the lcd.
     void lcd_show_batt_errorcode( byte code  );
 
+    // Show "Pin iS Pin"
+    void lcd_show_pin_in_err_message();
+
     // Show "-Arming-"
     void lcd_show_arming_message();
 

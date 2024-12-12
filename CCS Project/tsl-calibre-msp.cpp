@@ -27,7 +27,7 @@
 #define DEBUG_PULSE_OFF()    {}
 
 // Which PCB?
-//#define C2_IS_10K       // For PCBs after 9/2024 which have C2 replaced with a 10K resistor.
+#define C2_IS_10K       // For PCBs after 9/2024 which have C2 replaced with a 10K resistor.
 
 // Put the LCD into blinking mode
 
@@ -677,7 +677,7 @@ __interrupt void startup_isr(void) {
 
         if ( TBI( TRIGGER_PIN , TRIGGER_B )  ) {        // Trigger still pin inserted? (switch open, pin high)
 
-            // Now we need to setup interrupt on trigger pull to wake us when pin  goes low
+            // Now we need to setup interrupt on trigger pull to wake us when the pin goes low
             // This way we can react instantly when the user pulls the pin.
 
             SBI( TRIGGER_PIE  , TRIGGER_B );          // Enable interrupt on the pin attached to the trigger switch.
@@ -728,7 +728,7 @@ __interrupt void startup_isr(void) {
         } else {
 
             // trigger pin still out
-            // Show message so person knows why we are waiting (yes, this is redundant, but heck the pin is out so we are burning fuel against the trigger pull-up anyway
+            // Show message so operator knows why we are waiting (yes, this is redundant, but heck the pin is out so we are burning fuel against the trigger pull-up anyway
             // We do not display this message in the case where the pin is already in at startup since it would be confusing then.
             lcd_show_load_pin_message();
 
@@ -1149,6 +1149,64 @@ void power_rundown_test() {
 }
 
 
+// Displays the current trigger pin state
+
+void trigger_pin_test() {
+
+    unsigned char edgecount[4] = {0,0,0,0};      // 5 digits of count
+    unsigned pin_prev_state = 2;
+
+    CBI( TRIGGER_PDIR , TRIGGER_B );     // Set pin to input
+    SBI( TRIGGER_PREN , TRIGGER_B );     // With pull-up
+    SBI( TRIGGER_POUT , TRIGGER_B );      // Pull up
+
+    __delay_cycles(5000);           // Let pull up overcome the pin capacitance.
+
+    while (1) {
+
+        unsigned pin_next_state = TBI( TRIGGER_PIN , TRIGGER_B ) ? 1 : 0 ;
+
+        if (pin_next_state != pin_prev_state ) {
+
+            lcd_show_digit_f(0, pin_next_state);
+
+            if (++edgecount[0] == 10 ) {
+                edgecount[0] = 0;
+
+                if (++edgecount[1] == 10 ) {
+                    edgecount[1] = 0;
+
+                    if (++edgecount[2] == 10 ) {
+                        edgecount[2] = 0;
+
+                        if (++edgecount[3] == 10 ) {
+                            edgecount[3] = 0;
+                        }
+
+                        lcd_show_digit_f(9, edgecount[3] );
+
+
+                    }
+
+                    lcd_show_digit_f(8, edgecount[2] );
+
+
+                }
+
+                lcd_show_digit_f(7, edgecount[1] );
+
+            }
+
+            lcd_show_digit_f(6, edgecount[0] );
+
+        }
+
+        pin_prev_state = pin_next_state;
+
+    }
+}
+
+
 int main( void )
 {
 
@@ -1171,6 +1229,10 @@ int main( void )
 
     // Power up display with a nice dash pattern
     lcd_show_dashes();
+
+    // Uncomment these lines for a test firmware that displays the current trigger switch state and a counter of state changes.
+    //#warning
+    //trigger_pin_test();
 
     // Initialize the RV3032 with proper clkout & backup switchover settings. Leaves the i2c connection shutdown.
     // Note that once we get the RTC to give us our ticks then we should never need to touch it again.
@@ -1199,13 +1261,13 @@ int main( void )
 
 
         // Next we will do a power usage proving test to check to make sure this unit does not draw more current than expected.
-        // We never return form this, but we will be able to check the results in FRAM next time we are powered up.
+        // We never return from this, but we will be able to check the results in FRAM next time we are powered up.
 
         __delay_cycles( 500000 );       // Delay 500ms to let the voltage recover after the flash pulled it down.
 
         lcd_show_first_start_message();
 
-
+        // This will wait for power to be removed and then count how many breaths (interrupt every 1/64th of a second) we can take until we die
         power_rundown_test();
 
         // unreachable
@@ -1218,67 +1280,49 @@ int main( void )
     }
     lock_persistant_data();
 
-    // Wait for any clkout transition so we know we have at least 500ms until next transition so we dont miss any seconds.
-    // This should always take <500ms
-    // This also proves the RV3032 is running and we are connected on clkout
-    unsigned start_val = TBI( RV3032_CLKOUT_PIN, RV3032_CLKOUT_B );
-    while (TBI( RV3032_CLKOUT_PIN, RV3032_CLKOUT_B )==start_val); // wait for any transition
-
-    // Now we enable the interrupt on the RTC CLKOUT pin. For now on we must remember to
-    // disable it again if we are going to end up in sleepforever mode.
-
-    // Clear any pending interrupts from the RV3032 clkout pin and then enable interrupts for the next falling edge
-    // We we should not get a real one for 500ms so we have time to do our stuff
-
-    CBI( RV3032_CLKOUT_PIFG     , RV3032_CLKOUT_B    );
-    SBI( RV3032_CLKOUT_PIE      , RV3032_CLKOUT_B    );
-
     if ( persistent_data.commisisoned_flag != 0x01 ) {
 
+        // First lets check how long we stayed alive after the power was pulled when we were first programmed. This helps to weed out any units that
+        // have defects that use too much power.
 
-        #ifdef C2_IS_10K            // Only check power usage on the new resistor version
+        // This value represents how many 1/64ths of a second it took for us to go from 3.3V to 1.8V = a drop of 1.5V. This is running off of a 1uF decoupling capacitor.
+
+        // Note that one of these power errors will be persistent since we do not update the count in case we find the error.
+        // This is important in case the operator recycles the unit we want to make sure it does not get through on the second try without
+        // looking at it to see what happened.
+
+        unsigned porsoltCount = persistent_data.porsoltCount;
 
 
+        if ( porsoltCount < 39 ) {  // Empirically determined that all test units with nominal current draw score 40 or above, so this seems like a good starting point.
+                                    // 40 represents a a drain of 2.4uA with SVS and all LCD segments on. https://www.google.com/search?q=%281+microfarad%29+%2F+%2840%2F64+second%29+*+%281.5+volt%29++in+microamps
 
-            // First lets check how long we stayed alive after the power was pulled when we were first programmed. This helps to weed out any units that
-            // have defects that use too much power.
+            // If we are drawing more than 2.4uA then something is probably wrong, so reject this unit.
 
-            // This value represents how many 1/64ths of a second it took for us to go from 3.3V to 1.8V = a drop of 1.5V. This is running off of a 1uF decoupling capacitor.
+            // Show the operator what the count was
+            lcd_show_amps_hi_message(porsoltCount);
+            // ...and abort.
+            blinkforeverandever();
 
-            unsigned porsoltCount = persistent_data.porsoltCount;
+        }
 
+        if ( porsoltCount > 60 ) {  // The represents a drain of 1.6uA with all LCD segments on. https://www.google.com/search?q=%281+microfarad%29+%2F+%2860%2F64+second%29+*+%281.5+volt%29++in+microamps
 
-            if ( porsoltCount < 39 ) {  // Empirically determined that all test units with nominal current draw score 40 or above, so this seems like a good starting point.
-                                        // 40 represents a a drain of 2.4uA with SVS and all LCD segments on. https://www.google.com/search?q=%281+microfarad%29+%2F+%2840%2F64+second%29+*+%281.5+volt%29++in+microamps
+            // If we are drawing less than 1.6uA then something is probably wrong, so reject this unit.
 
-                // If we are drawing more than 2.4uA then something is probably wrong, so reject this unit.
+            // Show the operator what the count was
+            lcd_show_amps_lo_message(porsoltCount);
+            // ...and abort.
+            blinkforeverandever();
 
-                // Show the operator what the count was
-                lcd_show_amps_hi_message(porsoltCount);
-                // ...and abort.
-                blinkforeverandever();
-
-            }
-
-            if ( porsoltCount > 60 ) {  // The represents a drain of 1.6uA with all LCD segments on. https://www.google.com/search?q=%281+microfarad%29+%2F+%2860%2F64+second%29+*+%281.5+volt%29++in+microamps
-
-                // If we are drawing less than 1.6uA then something is probably wrong, so reject this unit.
-
-                // Show the operator what the count was
-                lcd_show_amps_lo_message(porsoltCount);
-                // ...and abort.
-                blinkforeverandever();
-
-            }
-
-        #endif
+        }
 
         // We just had batteries inserted for the first time ever, so we need to commission ourselves and get ready
 
-        // Set the RTC with the time when we were programmed, which should be about 1 second ago since this is the first time we are powering up from the reset after programming finished.
+        // Set the RTC with the time when we were programmed, which should be about 1 minute ago since this is the first time we are powering up from the reset after programming finished.
         // It will have the correct wall clock time until the first battery change in about 150 years. We use the RTC time to copy into `launched_time` when the trigger pin is pulled.
+        // These wall-clock time values are only used for logging and diagnostics.
         writeRV3032time(&persistent_data.programmed_time);
-
 
         // Make sure that the trigger pin is inserted because
         // we would not want to just launch because the pin was out when batteries were inserted.
@@ -1287,6 +1331,30 @@ int main( void )
         CBI( TRIGGER_PDIR , TRIGGER_B );      // Input
         SBI( TRIGGER_PREN , TRIGGER_B );      // Enable pull resistor
         SBI( TRIGGER_POUT , TRIGGER_B );      // Pull up
+
+        // Next let's check to make sure that the trigger switch is closed, which indicates that the pin is out.
+        // This means that you can not insert the pin until after this check has completed - and the next step of this
+        // sequence will tell the operator to "LOAD PIN". Checking both switch closed now and then open after we insert the pin
+        // proves out that the switch works and that it will hopefully close when the pin is ultimately pulled to start the count.
+
+        __delay_cycles( 50000 );        // Delay 50ms to let the switch debounce
+
+        if (TBI( TRIGGER_PIN , TRIGGER_B ) == 1 ) {         // Test that the pin is out (when it is in, then it shorts to ground so reads 0)
+
+            // Warn the operator that we are not going to be commissioned with a "Pin is in" error
+
+            lcd_show_pin_in_err_message();
+
+            // Ground the trigger pin so it does not kill the battery if the switch goes to closed somehow
+
+            SBI( TRIGGER_PDIR , TRIGGER_B );      // Out
+            CBI( TRIGGER_POUT , TRIGGER_B );      // Ground
+
+            // TODO: Should we save the fact that we had a bad switch state in persistent memory to make sure that we don't just power cycle and assume everything is ok if that state was transient?
+
+            blinkforeverandever();
+
+        }
 
         mode = LOAD_TRIGGER;                  // Go though the state machine to wait for trigger to be loaded
         step =0;                              // Used to slide a dash indicator pointing to the pin location
@@ -1411,11 +1479,26 @@ int main( void )
         SET_CLKOUT_VECTOR( &TSL_MODE_BEGIN );
     }
 
+
     // Activate the RAM-based ISR vector table (rather than the default FRAM based one).
     // We use the RAM-based one so that we do not have to unlock FRAM every time we want to
     // update the CLKOUT ISR entry. This RAM vector was appropriately set in the code above by the time we get here.
-
     ACTIVATE_RAM_ISRS();
+
+
+    // Wait for any clkout transition so we know we have at least 500ms until next transition so we dont miss any seconds.
+    // This should always take <500ms
+    // This also proves the RV3032 is running and we are connected on clkout
+    unsigned start_val = TBI( RV3032_CLKOUT_PIN, RV3032_CLKOUT_B );
+    while (TBI( RV3032_CLKOUT_PIN, RV3032_CLKOUT_B )==start_val); // wait for any transition
+
+    // Now we enable the interrupt on the RTC CLKOUT pin. For now on we must remember to
+    // disable it again if we are going to end up in sleepforever mode.
+
+    // Clear any pending interrupts from the RV3032 clkout pin and then enable interrupts for the next falling edge
+    // We we should not get a real one for 500ms so we have time to do our stuff
+    CBI( RV3032_CLKOUT_PIFG     , RV3032_CLKOUT_B    );
+    SBI( RV3032_CLKOUT_PIE      , RV3032_CLKOUT_B    );
 
     // Wait for interrupt to fire at next clkout low-to-high change to drive us into the state machine (in either "pin loading" or "time since launch" mode)
     // Could also enable the trigger pin change ISR if we are in RTL mode.
