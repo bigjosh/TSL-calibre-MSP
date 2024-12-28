@@ -1231,8 +1231,8 @@ int main( void )
     lcd_show_dashes();
 
     // Uncomment these lines for a test firmware that displays the current trigger switch state and a counter of state changes.
-    //#warning
-    //trigger_pin_test();
+    // #warning
+    // trigger_pin_test();
 
     // Initialize the RV3032 with proper clkout & backup switchover settings. Leaves the i2c connection shutdown.
     // Note that once we get the RTC to give us our ticks then we should never need to touch it again.
@@ -1306,9 +1306,9 @@ int main( void )
 
         }
 
-        if ( porsoltCount > 60 ) {  // The represents a drain of 1.6uA with all LCD segments on. https://www.google.com/search?q=%281+microfarad%29+%2F+%2860%2F64+second%29+*+%281.5+volt%29++in+microamps
+        if ( porsoltCount > 65 ) {  // The represents a drain of 1.47uA with all LCD segments on. https://www.google.com/search?q=%281+microfarad%29+%2F+%2860%2F64+second%29+*+%281.5+volt%29++in+microamps
 
-            // If we are drawing less than 1.6uA then something is probably wrong, so reject this unit.
+            // If we are drawing less than 1.47uA then something is probably wrong, so reject this unit.
 
             // Show the operator what the count was
             lcd_show_amps_lo_message(porsoltCount);
