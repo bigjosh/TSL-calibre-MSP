@@ -87,4 +87,4 @@ Put the relay in series with the power line going between the programmer and the
 
 It looks a little somehting like this...
 
-[relay-setup](relay-setup.jpg)
+![relay-setup](relay-setup.png)
