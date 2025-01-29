@@ -43,7 +43,7 @@ def send_data_to_sheet(url,data):
 
             # could be a connectivity problem or the appscript choked
 
-            print("Error adding row to log spreadsheet!")
+            print("Error adding row to log spreadsheet! Message: " + message)
 
             print("Appending failed row JSON to file log_pending.json so you can try again later...");
 

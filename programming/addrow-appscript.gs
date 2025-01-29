@@ -12,7 +12,7 @@ function doPost(e) {
     // Parse the JSON data from the POST request
     var values = JSON.parse(e.postData.contents);
     
-    if (!Array.isArray(values) || values.length != 4) {
+    if (!Array.isArray(values) || values.length != 3) {
           // Return an error response if something goes wrong
       return ContentService.createTextOutput(JSON.stringify({
         'status': 'error',
@@ -21,14 +21,14 @@ function doPost(e) {
     }
 
     // Create a new Date object for the current time
-    var now = new Date();
+    const now = new Date();
     
     // Format the date as GMT string
-    var timestamp = Utilities.formatDate(now, 'GMT', "yyyy-MM-dd'T'HH:mm:ss'Z'");
+    const timestamp = Utilities.formatDate(now, 'GMT', "yyyy-MM-dd'T'HH:mm:ss'Z'");
     
     // Add the timestamp to the beginning of the values array
     values.unshift(timestamp);    
-    
+
     // Append the values to the sheet
     sheet.appendRow(values);
     
@@ -46,3 +46,4 @@ function doPost(e) {
     })).setMimeType(ContentService.MimeType.JSON);
   }
 }
+
