@@ -303,188 +303,113 @@ def program_loop():
 
         print("Programming cycle started.")
 
-        if current_measure_enabled:
-            print("Closing relays to connect programming pins to TSL...")
+        # TODO: update this and add to the log sheet
+        error_message = "none"  
+
+        try:
+
+            print("Closing relays to send power to the TSL.")
             relays_close(); 
 
             #we assume the currentranger is in idle mode when we enter the programming cycle
-                
-        # Create a temp directory for the files we are creating, then create temp files for the firmware image (will auto delete everything when pass finished)
-        with tempfile.TemporaryDirectory() as tempdir:
-            
-            # first we create a firmware image to write to FRAM. We do this by combining a timestamp with the compiled firmware 
-
-            print("Creating firmware image...")
-            image_file_name = os.path.join( tempdir , 'image.txt' )    
-            with open( image_file_name ,'wb') as wfd:
-            
-                # get the current GMT time
-                t = time.gmtime()                
-
-                # prepend a time stamp (in TI HEX format)
-                # 1800 is the begining of "information memory" FRAM.
-                wfd.write("@1800\n".encode())
-                wfd.write(f"{t.tm_sec:02d} {t.tm_min:02d} {t.tm_hour:02d} {t.tm_wday:02d} {t.tm_mday:02d} {t.tm_mon:02d} {t.tm_year%100:02d}\n".encode())
                     
-                # ...and append firmware file into the image file
-                # note that the firmware comes last becuase the TI tools add a "q" to the end of this file.
-                with open('tsl-calibre-msp.txt','rb') as rfd:
-                    shutil.copyfileobj(rfd, wfd)
+            # Create a temp directory for the files we are creating, then create temp files for the firmware image (will auto delete everything when pass finished)
+            with tempfile.TemporaryDirectory() as tempdir:
+                
+                # first we create a firmware image to write to FRAM. We do this by combining a timestamp with the compiled firmware 
 
-                # If you ever need to read the commisioned time out of a unit, you can use the command...
-                # MSP430Flasher.exe -j fast -r [commisioned_time.txt,0x1800-0x1806] -z [VCC]
-                # Do note that the timestamp does not have a century field, so you will have to infer what century the unit was commisioned
-                # in using other factors like how dusty it is. 
+                print("Creating firmware image...")
+                image_file_name = os.path.join( tempdir , 'image.txt' )    
+                with open( image_file_name ,'wb') as wfd:
+                
+                    # get the current GMT time
+                    t = time.gmtime()                
 
-            print("Firmware image ready.")
-            # Here is the meat where we...
-            # 1. Grab the device UUID and ID from the MSP430 chip. This will let us keep a record of the serial number and what version of the chip this unit has.
-            # 2. Erase the FRAM. 
-            # 3. Burn the combined image into the unit.
-        
-            # start with executable
-            call_line = [mspflasher_exec]
-
-            # -j fast means use the fastest clock speed so programming will go as quickly as possible (it still takes a couple seconds)
-            call_line +=[ "-j" , "fast" ]
-
-            # dump the whole device descriptor table
-            # note that it would be nice to just dump the two parts we need (device_id & uuid), but there is an undocumented limitation
-            # in MSP430Flasher where if you try to do consecutive read operations, it just siliently ignores the second one. So instead
-            # we dump the whole table and will parse out the parts we care about later. 
-            # device desciptor table is in the MSP430FR4133 datasheet section 9.1
-            
-            # Dump the device descirtor data from the MSP430 to a file named `dd.txt` in the temp directory. 
-            dd_file_name = os.path.join( tempdir , 'dd.txt')
-            call_line += [ "-r" , f"[{dd_file_name},0x1a00-0x1a12]" ]
-            
-            # -e ERASE_MAIN prepares the FRAM to recieve the firmware download
-            call_line += ["-e","ERASE_MAIN"]
-            
-            #program in the firmware image we created earlier
-            call_line += ["-w" , image_file_name ]
-            
-            # -v verifies the contents of the FRAM match the firmware image file
-            call_line += ["-v"]
-            
-            # -z [VCC] leaves the device powered up via the EZ-FET programmer VCC pin (You should see the "First Start" message on the LCD display)
-            call_line += ["-z" , "[VCC]"]
-            
-            print("Powering up TSL, reading device ID and UUID, erasing FRAM, and writing firmware image...")
-            print("STARING COMMAND:")
-            print(call_line)
-
-            result = subprocess.run( call_line , capture_output=False)
-
-            # Check the return code and print the output
-            if result.returncode != 0:
-                print("MSPFlasher failed!")
-                exit(1)
-
-            # Lets grab the UUID and device info from the device descriptor dump we just grabbed above and make them into a serial number
-            device_uuid = get_ddid_from_file( dd_file_name )
+                    # prepend a time stamp (in TI HEX format)
+                    # 1800 is the begining of "information memory" FRAM.
+                    wfd.write("@1800\n".encode())
+                    wfd.write(f"{t.tm_sec:02d} {t.tm_min:02d} {t.tm_hour:02d} {t.tm_wday:02d} {t.tm_mday:02d} {t.tm_mon:02d} {t.tm_year%100:02d}\n".encode())
                         
-            print( f"Device UUID is {device_uuid}")
+                    # ...and append firmware file into the image file
+                    # note that the firmware comes last becuase the TI tools add a "q" to the end of this file.
+                    with open('tsl-calibre-msp.txt','rb') as rfd:
+                        shutil.copyfileobj(rfd, wfd)
 
-            # the log will get "None" if current measurement is not enabled
-            measured_nanoamps = None 
+                    # If you ever need to read the commisioned time out of a unit, you can use the command...
+                    # MSP430Flasher.exe -j fast -r [commisioned_time.txt,0x1800-0x1806] -z [VCC]
+                    # Do note that the timestamp does not have a century field, so you will have to infer what century the unit was commisioned
+                    # in using other factors like how dusty it is. 
 
-            if current_measure_enabled:
+                print("Firmware image ready.")
+                # Here is the meat where we...
+                # 1. Grab the device UUID and ID from the MSP430 chip. This will let us keep a record of the serial number and what version of the chip this unit has.
+                # 2. Erase the FRAM. 
+                # 3. Burn the combined image into the unit.
+            
+                # start with executable
+                call_line = [mspflasher_exec]
 
-                # power to the host is still on from the programming step above. 
-                overflow_current_flag = False
-                print("Time to test the power usage of the TSL...")                
-                print("Opening relays to disconnect programming pins from TSL to avoid leakage current...")                
-                relays_open();
-                print("Pausing to let the TSL finish booting up and flashing the LEDs...")
-                time.sleep(1);
-                print("press t key to start current measurement...")
-                while ( not getch.key_available() ):
-                    pass
+                # -j fast means use the fastest clock speed so programming will go as quickly as possible (it still takes a couple seconds)
+                call_line +=[ "-j" , "fast" ]
 
-                key = getch.getch()
-                if key != 't':
-                    print(f"Exited by user, key = {key}")
-
-
-                print("Switching to nanoamps range and starting current measurement output from the Current Ranger...")
-                # asumes the output format is still set to nanoamps from the top of the programming cycle. 
-                currentRanger_nanoamp_measure_mode()
-                # clear out any junk that might be in the buffer (like the responses to our commands)
-                serial_ranger.reset_input_buffer()
-                serial_ranger.readline()
-                serial_ranger.readline()
-
-                print("Pausing to let filtering capacitor stabilize after changing ranges...")
-                time.sleep(1)
-
-                print( f"Measuring current for {current_sample_window_ms}ms..." )
-                accumulated_nanos = 0
-                sample_count = 0
+                # dump the whole device descriptor table
+                # note that it would be nice to just dump the two parts we need (device_id & uuid), but there is an undocumented limitation
+                # in MSP430Flasher where if you try to do consecutive read operations, it just siliently ignores the second one. So instead
+                # we dump the whole table and will parse out the parts we care about later. 
+                # device desciptor table is in the MSP430FR4133 datasheet section 9.1
                 
-                # Sample current readings for the specified window
-                end_time = time.time() + (current_sample_window_ms / 1000)
-                while time.time()  < end_time:
-
-                    line = serial_ranger.readline()            
-                    sample = robust_parse_byte_array_to_num(line )
-
-                    # debug 
-                    print( f"Line {line} Sample {sample}" )
-
-                    # only process numbers, ignore other output (like the text messages)
-                    if (sample):
-                        if (sample > tsl_max_na):
-                            overflow_current_flag = True
-                            # no need to keep testing
-
-                            # break;
-
-                        else:
-                            accumulated_nanos += sample     
-                            sample_count += 1
+                # Dump the device descirtor data from the MSP430 to a file named `dd.txt` in the temp directory. 
+                dd_file_name = os.path.join( tempdir , 'dd.txt')
+                call_line += [ "-r" , f"[{dd_file_name},0x1a00-0x1a12]" ]
+                
+                # -e ERASE_MAIN prepares the FRAM to recieve the firmware download
+                call_line += ["-e","ERASE_MAIN"]
+                
+                #program in the firmware image we created earlier
+                call_line += ["-w" , image_file_name ]
+                
+                # -v verifies the contents of the FRAM match the firmware image file
+                call_line += ["-v"]
                 
 
-                # turn off currenranger logging output
-                currentRanger_idle_mode()
-
-                # Calculate average
-
-                if overflow_current_flag:
-                    measured_nanoamps = overflow_current_value
-                    print("Current measurment overflowed!")
-                else:
-                    measured_nanoamps = accumulated_nanos / sample_count
-                    print(f"Power usage is {measured_nanoamps:.1f} nanoamps (averaged over {sample_count} samples in {current_sample_window_ms}ms)")
+                # TODO TEMP
+                # -z [VCC] leaves the device powered up via the EZ-FET programmer VCC pin (You should see the "First Start" message on the LCD display)
+                call_line += ["-z" , "[VCC]"]
                 
-            # remove power from fixture (and device) so it can be safely removed
+                print("Powering up TSL, reading device ID and UUID, erasing FRAM, and writing firmware image...")
+                print("STARING COMMAND:")
+                print(call_line)
 
-            if current_measure_enabled:
-                # argh this is obnoxious but there does not seem to be any way to get MSPFLASHER to disconect target power without talking to it over the rogramming lines. :/
-                relays_close()
+                result = subprocess.run( call_line , capture_output=False)
 
-            # start with executable
-            call_line = [mspflasher_exec]
+                # Check the return code and print the output
+                if result.returncode != 0:
+                    print("MSPFlasher failed!")
+                    exit(1)
 
-            # this is s stupid dummy command that MSP430Flash needs something or it bombs. We just want it to shutdown and then disconnect the power from the device which it does by default when it exits
-            call_line +=[ "-j" , "fast" ]
-            print("Powering down device...")
-            print("STARING COMMAND:")
-            print(call_line)
-            result = subprocess.run( call_line , capture_output=False)
+            
+                # Lets grab the UUID and device info from the device descriptor dump we just grabbed above and make them into a serial number
+                device_uuid = get_ddid_from_file( dd_file_name )
+                            
+                print( f"Device UUID is {device_uuid}")
 
-            if current_measure_enabled:
+                # the log will get "None" if current measurement is not enabled
+                measured_nanoamps = None 
+
+                # remove power from fixture (and device) so it can be safely removed
+                # Allow a monent for LEDs to flash and the 1uF capacitor to charge
+                print("Waiting for flash to complete...")
+                time.sleep(2)
+
+                # Power down the device and fixture
+                print("Powering down device and fixture...")
                 relays_open()
 
-            # Check the return code and print the output
-            if result.returncode != 0:
-                print("MSPFlasher failed!")
-                exit(1)
+        finally:
 
-            if current_measure_enabled:
-                if overflow_current_flag:
-                    # special value for overlow
-                    measured_nanoamps = overflow_current_value
+            if (current_measure_enabled):
+                print("Disconnecting power...")
+                relays_open()
 
             if ( logscript_enabled ):
 
@@ -497,16 +422,6 @@ def program_loop():
                 addrow.send_data_to_sheet(logscript_url,[device_uuid,firmware_hash,nanoamps_string,machine_uuid_string])
                 print("Success!")  
 
-            if current_measure_enabled:
-
-                if overflow_current_flag:
-                    print("To high current reading! Make sure you have a 22uF capacitor across the current inputs. Otherwise reject this TSL and check for shorts!")
-                    exit(1)
-
-                if (measured_nanoamps > tsl_reject_na):
-                    # TODO: we should probably use a completely different firmware image for current meausrement so that we can safely reject the unit and it will not work afterwards
-                    print( f"Power usage was {measured_nanoamps:.1f} nanoamps, which is higher than the maximum of {tsl_reject_na:.1f} nanoamps. Reject this unit!" )
-                    exit(1)     
             
 # If we started from command line and there is a argument
 if __name__ == "__main__":
