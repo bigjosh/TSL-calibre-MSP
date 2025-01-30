@@ -23,6 +23,10 @@ mspflasher_name = "MSP430Flasher"
 relay_port_name  = os.environ.get( "tsl_relayport" )
 logscript_url    = os.environ.get( "tsl_logscript" )   
 
+if ( relay_port_name is None or logscript_url is None ):
+    print( "Please set the `tsl_relayport` and `tsl_logscript` environment variables. They can be set to `none` if not needed." )
+    exit(1)
+
 logscript_enabled = False
 if (logscript_url != "none"):
     print( f"Logging to google app script at {logscript_url}" )
@@ -170,19 +174,20 @@ def program_loop():
 
 
         # wait for user to start programming cycle
-        print("\rPress [spacebar] to start programming cycle, 'C'=Relay closed, 'O'=Relay open, any other key to exit...")
+        print("\rPress [spacebar] to start programming cycle, "+ ("'C'=Relay closed, 'O'=Relay open, " if relay_enabled else "") + " any other key to exit...")
 
         while ( not getch.key_available() ):
             pass
 
         key = getch.getch()
-        # debug
-        if key.lower()=='o':
-            relay_open()
-            continue
-        if key.lower()=='c':
-            relay_close()
-            continue
+
+        if (relay_enabled):
+            if key.lower()=='o':
+                relay_open()
+                continue
+            if key.lower()=='c':
+                relay_close()
+                continue
 
         if key != ' ':
             print(f"Exited by user, key = {key}")
@@ -190,8 +195,9 @@ def program_loop():
 
         print("Programming cycle started.")
 
-        print("Closing relay to send power to the TSL.")
-        relay_close(); 
+        if relay_enabled:
+            print("Closing relay to send power to the TSL.")
+            relay_close(); 
                 
         # Create a temp directory for the files we are creating, then create temp files for the firmware image (will auto delete everything when pass finished)
         with tempfile.TemporaryDirectory() as tempdir:
