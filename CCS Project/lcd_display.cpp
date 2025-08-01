@@ -917,6 +917,8 @@ void lcd_show_load_pin_message() {
 
 }
 
+// Since dash is moving to the right, we only need to erase the slot immediately to the left on each step.
+
 void lcd_show_load_pin_animation(unsigned int step) {
 
     switch( step ) {

@@ -749,6 +749,19 @@ __interrupt void startup_isr(void) {
 
 }
 
+// Hard earned everlasting sleep
+
+void long_now_mode() {
+
+    lcd_show_long_now();
+    blinkforeverandever();
+
+    // unreachable
+
+}
+
+
+
 
 
 // Spread the 6 day counter digits out to minimize superfluous digit updates and avoid mod and div operations.
@@ -784,7 +797,7 @@ extern "C" void tsl_new_day() {
         lcd_show_centesimus_dies_message();
         // Switch the MCU over to the very slow ~10KHz VLO clock. Things will take forever, but low power.
         CSCTL4 = SELMS__VLOCLK;
-        __delay_cycles(5000UL);
+        __delay_cycles(5000UL);         // Pause for about half a second
         // Switch the MCU back to DCO clock which uses more power per time, but more than compensates for it by getting even more done per time.
         CSCTL4 = 0;
         lcd_restore_screen(&lcd_screen_save_buffer);
@@ -829,9 +842,7 @@ extern "C" void tsl_new_day() {
                         if (days_digits[5] == 10 ) {
 
                             // If we get here then we just passed 1 million days, so go into long now mode.
-                            lcd_show_long_now();
-                            blinkforeverandever();
-
+                            long_now_mode();
                             // unreachable
 
                         }
@@ -1424,6 +1435,15 @@ int main( void )
             persistent_data.days = retrieved_days;
             persistent_data.update_flag = 0;
             lock_persistant_data();
+        }
+
+        if (retrieved_days >= 999999UL) {
+
+            // we had preciously reached the end of our long journey before the battery swap
+
+            long_now_mode();
+            // unreachable
+
         }
 
         // Break out the days into digits for more efficient updating while running.
