@@ -6,6 +6,7 @@ import os
 import sys
 import subprocess
 import time
+import datetime
 
 from dataclasses import dataclass, fields
 from typing import Any
@@ -78,6 +79,20 @@ def parse_persistent_data(byte_array: List[int]) -> PersistentData:
         update_flag=parse_uint(30),
         backup_mins=parse_uint(32),
         backup_days=parse_ulong(34)
+    )
+
+def bcd_to_int(bcd_value: int) -> int:
+    """Convert BCD (Binary Coded Decimal) to integer"""
+    return ((bcd_value >> 4) * 10) + (bcd_value & 0x0F)
+
+def timeblock_to_datetime(timeblock: RV3032TimeBlock) -> datetime:
+    return datetime.datetime(
+        year=2000+bcd_to_int(timeblock.year_bcd),
+        month=bcd_to_int(timeblock.month_bcd),
+        day=bcd_to_int(timeblock.date_bcd),
+        hour=bcd_to_int(timeblock.hour_bcd),
+        minute=bcd_to_int(timeblock.min_bcd),
+        second=bcd_to_int(timeblock.sec_bcd)
     )
 
 def decode_titxt(titxt_data):
@@ -176,10 +191,43 @@ def dump():
             print("decoded user data:")            
             print(  parse_persistent_data(data) )
 
-            print_dataclass(  parse_persistent_data(data) )
+            parsed_data = parse_persistent_data(data)
 
+            print_dataclass(  parsed_data )
 
+            # Note that we handle all datetimes as naive UTC, so we don't need to worry about timezones
 
+            programmed_time = timeblock_to_datetime(parsed_data.programmed_time)
+            print("Programmed time:", programmed_time.strftime("%Y-%m-%dT%H:%M:%S%z"))
+
+            launched_time = timeblock_to_datetime(parsed_data.launched_time)
+            print("Launched time  :", launched_time.strftime("%Y-%m-%dT%H:%M:%S%z"))              
+
+            # use same time function as the programming code - gets UTC time
+            now_as_time_type = time.gmtime()    
+            # convert to datetime for easier diff and printing
+            now_time = datetime.datetime(*now_as_time_type[:6])          # year, month, day, hour, minute, second
+            
+            # Calculate next 5-minute boundary
+            future_time = now_time + datetime.timedelta(minutes=5)
+            future_time = future_time.replace(second=0, microsecond=0)
+            future_time = future_time - datetime.timedelta(minutes=future_time.minute % 5)
+                    
+            print("Now time       :", now_time.strftime("%Y-%m-%dT%H:%M:%S%z"))
+            print("Future time (next 5-min boundary):", future_time.strftime("%Y-%m-%dT%H:%M:%S%z"))
+
+            # Calculate the time difference using the future time
+            diff = future_time - launched_time
+            
+            # Break down the difference into days and minutes
+            total_seconds = int(diff.total_seconds())
+            days = total_seconds // (24 * 3600)
+            remaining_seconds = total_seconds % (24 * 3600)
+            minutes = remaining_seconds // 60
+            
+            print(f"\nTime since launch:")
+            print(f"Days: {days}")
+            print(f"Minutes: {minutes}")
 
 
 dump()
