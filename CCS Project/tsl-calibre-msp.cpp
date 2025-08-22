@@ -1241,6 +1241,7 @@ int main( void )
     // Power up display with a nice dash pattern
     lcd_show_dashes();
 
+
     // Uncomment these lines for a test firmware that displays the current trigger switch state and a counter of state changes.
     // #warning
     // trigger_pin_test();
@@ -1259,9 +1260,6 @@ int main( void )
 
         // This is the first time we have ever powered up
 
-        // Flash the LEDs to prove they work.
-        flash();
-
 
         // Now remember that we did our start up. From now on, the RTC will run on its own forever.
         unlock_persistant_data();
@@ -1273,6 +1271,10 @@ int main( void )
 
         // Next we will do a power usage proving test to check to make sure this unit does not draw more current than expected.
         // We never return from this, but we will be able to check the results in FRAM next time we are powered up.
+
+
+        // Flash the LEDs to prove they work.
+        flash();
 
         __delay_cycles( 500000 );       // Delay 500ms to let the voltage recover after the flash pulled it down.
 
