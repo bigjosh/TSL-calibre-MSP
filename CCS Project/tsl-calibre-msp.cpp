@@ -1119,8 +1119,9 @@ void power_rundown_test() {
 
 
     // First make sure we start with a high enough voltage
-    if ( !( adc_measure() <= (adc_mv_to_vcc_adc8bit(3300) +1 ) ) ) {
-        lcd_show_lo_volt_message( adc_measure()  );
+    unsigned v = adc_measure();
+    if ( !( v <= (adc_mv_to_vcc_adc8bit(3300) +1 ) ) ) {
+        lcd_show_lo_volt_message( v );
         blinkforeverandever();
     };
 

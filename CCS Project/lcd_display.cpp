@@ -1183,7 +1183,7 @@ void lcd_show_lo_volt_message( unsigned count ) {
     }
 
     if (count<10000) {
-        lcd_show_digit_f( 2 , (count / 1000) % 10  );
+        lcd_show_digit_f( 3 , (count / 1000) % 10  );
         lcd_show_digit_f( 2 , (count / 100 ) % 10  );
         lcd_show_digit_f( 1 , (count / 10 )  % 10  );
         lcd_show_digit_f( 0 , (count / 1 )   % 10  );
