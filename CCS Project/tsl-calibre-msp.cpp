@@ -1384,7 +1384,9 @@ int main( void )
         if ( persistent_data.launched_flag != 0x01 ) {
 
             // We have already been commissioned, but then we got repowered before we launched.
-            // We will treat this as an error condition since either (1) the user pulled the batteries, (2) there is something wrong.
+            // We will treat this as an error condition since either...
+            //   (1) the user pulled the batteries, or
+            //   (2) there is something wrong.
             // Hopefully we will be able to tell if it was (1) with the tamper detect seals.
 
             lcd_show_batt_errorcode(BATT_ERROR_PRELAUNCH);
