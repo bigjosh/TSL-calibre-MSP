@@ -30,3 +30,6 @@
 *.app
 
 /Debug
+/.claude
+/programming/__pycache__
+/programming/__pycache__
