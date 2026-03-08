@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 
 """
-Lets the user pick which serial ports to use for the relay and CurrentRanger
+List available serial ports on this machine.
 """
 
 import serial
 import serial.tools.list_ports
-import subprocess
 import re
 
 # Field width constants

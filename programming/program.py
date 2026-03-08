@@ -7,7 +7,6 @@ import shutil
 import hashlib
 import tempfile
 import os
-import sys
 import uuid
 
 # we use this to make it possible to portably read a single keypress
@@ -20,55 +19,13 @@ import addrow
 mspflasher_name = "MSP430Flasher"
 
 #env variables
-relay_port_name  = os.environ.get( "tsl_relayport" )
-logscript_url    = os.environ.get( "tsl_logscript" )   
+logscript_url = os.environ.get( "tsl_logscript" , "" ).strip()
+logscript_enabled = ( logscript_url != "" ) and ( logscript_url.lower() != "none" )
 
-if ( relay_port_name is None or logscript_url is None ):
-    print( "Please set the `tsl_relayport` and `tsl_logscript` environment variables. They can be set to `none` if not needed." )
-    exit(1)
-
-logscript_enabled = False
-if (logscript_url != "none"):
+if logscript_enabled:
     print( f"Logging to google app script at {logscript_url}" )
-    logscript_enabled = True
-
-relay_enabled = False 
-
-print( f"Relay port: {relay_port_name}" )
-print( f"Logscript url: {logscript_url}" )  
-
-if (relay_port_name != "none"):
-
-    import serial
-
-    # start up serial_relay (used to disconnect programming pins until we are ready to program)
-    print(f"Opening Relay port on {relay_port_name}...")
-    serial_relay = serial.Serial( port=relay_port_name,  timeout=1 )
-    
-    # this silly protocol is defined at http://www.chinalctech.com/cpzx/Programmer/Relay_Module/115.html
-    def set_relay( relay_index , relay_state ):
-        serial_relay.write( bytearray(  [ 0xa0 , relay_index , relay_state , (0xa0+relay_index+relay_state) ] ) )
-        serial_relay.flush()
-
-    # Close relay
-    def relay_close():
-        set_relay( 1 , 1 )
-        ## give the relay a little bit of time to close
-        time.sleep(0.2)    # 200ms delay
-
-    # Open relay
-    def relay_open():
-        set_relay( 1 , 0 )
-        ## give the relay a little bit of time to close
-        time.sleep(0.2)    # 200ms delay
-
-    # default relay is open, only close it if we are actually programming
-    # this keeps the pins disconnected from power when we are inserting and removing the TSL from the fixture
-    relay_open()        
-
-    print( f"Relay is enabled with Relay port {relay_port_name}" )
-    # remeber that we are configured to measure power
-    relay_enabled = True
+else:
+    print( "Logging disabled." )
 
 #locate MSP430Flasher executable
 mspflasher_exec = shutil.which( mspflasher_name )
@@ -174,30 +131,18 @@ def program_loop():
 
 
         # wait for user to start programming cycle
-        print("\rPress [spacebar] to start programming cycle, "+ ("'C'=Relay closed, 'O'=Relay open, " if relay_enabled else "") + " any other key to exit...")
+        print("\rPress [spacebar] to start programming cycle, any other key to exit...")
 
         while ( not getch.key_available() ):
             pass
 
         key = getch.getch()
 
-        if (relay_enabled):
-            if key.lower()=='o':
-                relay_open()
-                continue
-            if key.lower()=='c':
-                relay_close()
-                continue
-
         if key != ' ':
             print(f"Exited by user, key = {key}")
             exit(0)
 
         print("Programming cycle started.")
-
-        if relay_enabled:
-            print("Closing relay to send power to the TSL.")
-            relay_close(); 
                 
         # Create a temp directory for the files we are creating, then create temp files for the firmware image (will auto delete everything when pass finished)
         with tempfile.TemporaryDirectory() as tempdir:
@@ -282,11 +227,7 @@ def program_loop():
             # Allow a monent for LEDs to flash and the 1uF capacitor to charge
             print("Waiting for flash to complete...")
             time.sleep(2)
-
-            if (relay_enabled):
-                # Power down the device and fixture
-                print("Powering down device and fixture...")
-                relay_open()
+            print("Disconnect the programming connector to remove power from the TSL.")
 
             if ( logscript_enabled ):
                 print( "Adding record to log...")
@@ -294,19 +235,7 @@ def program_loop():
                 print("Success!")  
 
             
-# If we started from command line and there is a argument
+# If we started from command line, enter the programming loop.
 if __name__ == "__main__":
-
-    if (sys.argv.__len__() == 1):
-        program_loop()
-
-    # This is a special command to let us programatically close the relay
-    if (sys.argv.__len__() == 2) and (sys.argv[1] == "cr"):
-
-        if relay_enabled:
-            relay_close()
-            print("Relay closed.")   
-        else:
-            print("Relay is not enabled. Make sure the `tsl_relayport` environment variable is set.")   
-        exit(0)
+    program_loop()
     

@@ -22,13 +22,11 @@ You will need a TI board with an EZFet programmer on it. There are lots and any 
     | SBWTDIO | R | 
     | SBWTICK | T |
  
- #### Config
+#### Config
 
-If you are not going to use the optional power test function, then you must set the envrironment variable `tsl_logscript` to `none`. 
+If you are not going to use the optional logging spreadsheet, you can leave the `tsl_logscript` environment variable unset or set it to `none`.
 
-If you are not going to use the optional logging function, then you must set the envrironment variables `tsl_rangerport` to `none` and `tsl_relayport` to `none`. 
-
-If you are going to use these optional features, see thier sections below. 
+If you are going to use logging, see the section below.
 
 ## Commissioning Procedure
 1. Run the `program.py` program.
@@ -53,7 +51,7 @@ Reject the unit if it fails any of the _confirm_ steps above.
 
 We optionally keep a record of every TSL programming event in a google sheet using a google app script. 
 
-If you do not want to use this feature, set the environment variable `tsl_logscript` to `none`.
+If you do not want to use this feature, leave `tsl_logscript` unset or set it to `none`.
 
 If you do want to use logging...
 
@@ -62,29 +60,3 @@ If you do want to use logging...
  8. Click "Deploy->New Deploy" and select "Run as" you and "Allow anyone".
  9. Click "Deploy" and copy the URL it gives you. 
  9. Set the envrironment variable `tsl_logscript` to this URL. 
-  
-### Automatic relay power controller
-
-You can otionally use an external relay to connect and disconnect power to the TSL being programmed. This is nice becuase (1) it makes sure that the pins are not powered when you are handling
-things, so less change to short somehting out, and (2) it makes the diconnect event very decisive and consistant so you get a good current measurement on the first power-down. 
-
-#### Hardware
-
-1. A USB relay board. I used [this one from Amazon](https://amzn.to/40phLwM). If you use a different one with a different protocol then you might need to update `relay_set()` function in the code. 
-3. Maybe a USB hub. 
-
-#### Config
-
-3. Install PySerial with `pip install pyserial`. This lets us acces the relay over serial 
-2. Figure out what portthe relay shows up as on the machine. You can use the included `listports.py` to list possible choices.
-3. Set the envronment variable `tsl_relayport` to the correct port name. In Windows, you can use the `setx` command like this...  
-`setx tsl_rangerport COM3 /m`  
-Note that you will need to close the current command windows and open a new one to get thes new variables, or you can additionaly use `set` to set them in the current window. 
-
-##### Assembly
-
-Put the relay in series with the power line going between the programmer and the TSL. Use the COM1 and NO1 pins on the relay (so the line is *disconnected* normally and connected when the relay is closed.
-
-It looks a little somehting like this...
-
-![relay-setup](relay-setup.png)
