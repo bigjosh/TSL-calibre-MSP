@@ -801,6 +801,31 @@ void lcd_show_testing_only_message() {
 }
 
 
+constexpr glyph_segment_t testing_message[] = {
+                                                   glyph_SPACE,
+                                                   glyph_SPACE,
+                                                   glyph_SPACE,
+                                                   glyph_t,
+                                                   glyph_E,
+                                                   glyph_S,
+                                                   glyph_t,
+                                                   glyph_I,
+                                                   glyph_n,
+                                                   glyph_g,
+                                                   glyph_SPACE,
+                                                   glyph_SPACE,
+};
+
+
+void lcd_show_testing_message() {
+
+    for( byte i=0; i<DIGITPLACE_COUNT; i++ ) {
+        lcd_show_f(  i , testing_message[ DIGITPLACE_COUNT - 1- i] );        // digit place 12 is rightmost, so reverse order for text
+    }
+
+}
+
+
 // "bAtt Error X"
 
 constexpr glyph_segment_t batt_errorcode_message[] = {

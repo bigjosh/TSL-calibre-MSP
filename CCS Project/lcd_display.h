@@ -42,6 +42,9 @@ extern "C" {
 
     void lcd_show_testing_only_message();
 
+    // Show "tEStIng"
+    void lcd_show_testing_message();
+
     // For now, show all 9's.
     // TODO: Figure out something better here
 

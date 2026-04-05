@@ -18,15 +18,15 @@
 
 struct __attribute__((__packed__)) persistent_data_t {
 
-    rv3032_time_block_t programmed_time;       // Calendar time when this unit was Programmed.Used to initialize the RTC on first power up.
+    rv3032_time_block_t programmed_time;        // Calendar time when this unit was Programmed. Used to initialize the RTC on first power up.
     rv3032_time_block_t launched_time;          // Time when this unit was launched relative to programmed time. Set when trigger pulled, never read.
 
 
     // State. We have 3 persistent states, (1) first startup fresh from factory programming, (2) ready to launch, (3) launched.
     // We make these volatile to ensure that the compiler actually writes changes to memory rather than trying to cache in a register
 
-    volatile unsigned initalized_flag;                         // Set to 1 after first time we boot up after programming. At this step, we check for excess current draw when we power down.
-    volatile unsigned commisisoned_flag;                       // Set to 1 after we commission, which involves inserting the batteries and trigger pin.
+    volatile unsigned initalized_flag;                         // Set to 1 by program fixture after successfully power test. If !1, then we show "TEST".
+    volatile unsigned commisisoned_flag;                       // Set to 1 after we commission, which involves inserting the batteries and trigger pin. This is when we set the RTC to the programmed time.
     volatile unsigned launched_flag;                           // Set to 1 when the trigger pin is pulled.
 
     volatile unsigned porsoltCount;                            // How many 0.1 seconds did the unit stay alive after power was removed during initialization?

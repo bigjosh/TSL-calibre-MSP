@@ -1259,30 +1259,11 @@ int main( void )
 
     if (persistent_data.initalized_flag!=0x01) {
 
-        // This is the first time we have ever powered up
+        // We are presumably still in the fixture at the factory and it just powered us up for the first time after programming.
 
-
-        // Now remember that we did our start up. From now on, the RTC will run on its own forever.
-        unlock_persistant_data();
-        persistent_data.tsl_powerup_count=0;
-        persistent_data.commisisoned_flag=0xff;           // Ready for next step in setup sequence
-        persistent_data.initalized_flag=0x01;             // Remember that we already started up once and never do it again.
-        lock_persistant_data();
-
-
-        // Next we will do a power usage proving test to check to make sure this unit does not draw more current than expected.
-        // We never return from this, but we will be able to check the results in FRAM next time we are powered up.
-
-
-        // Flash the LEDs to prove they work.
-        flash();
-
-        __delay_cycles( 500000 );       // Delay 500ms to let the voltage recover after the flash pulled it down.
-
-        lcd_show_first_start_message();
-
-        // This will wait for power to be removed and then count how many breaths (interrupt every 1/64th of a second) we can take until we die
-        power_rundown_test();
+        // Show a simple test message and sleep so it can measure our power draw.
+        lcd_show_testing_only_message();
+        blinkforeverandever();
 
         // unreachable
 
@@ -1296,40 +1277,7 @@ int main( void )
 
     if ( persistent_data.commisisoned_flag != 0x01 ) {
 
-        // First lets check how long we stayed alive after the power was pulled when we were first programmed. This helps to weed out any units that
-        // have defects that use too much power.
-
-        // This value represents how many 1/64ths of a second it took for us to go from 3.3V to 1.8V = a drop of 1.5V. This is running off of a 1uF decoupling capacitor.
-
-        // Note that one of these power errors will be persistent since we do not update the count in case we find the error.
-        // This is important in case the operator recycles the unit we want to make sure it does not get through on the second try without
-        // looking at it to see what happened.
-
-        unsigned porsoltCount = persistent_data.porsoltCount;
-
-
-        if ( porsoltCount < 39 ) {  // Empirically determined that all test units with nominal current draw score 40 or above, so this seems like a good starting point.
-                                    // 40 represents a a drain of 2.4uA with SVS and all LCD segments on. https://www.google.com/search?q=%281+microfarad%29+%2F+%2840%2F64+second%29+*+%281.5+volt%29++in+microamps
-
-            // If we are drawing more than 2.4uA then something is probably wrong, so reject this unit.
-
-            // Show the operator what the count was
-            lcd_show_amps_hi_message(porsoltCount);
-            // ...and abort.
-            blinkforeverandever();
-
-        }
-
-        if ( porsoltCount > 65 ) {  // The represents a drain of 1.47uA with all LCD segments on. https://www.google.com/search?q=%281+microfarad%29+%2F+%2860%2F64+second%29+*+%281.5+volt%29++in+microamps
-
-            // If we are drawing less than 1.47uA then something is probably wrong, so reject this unit.
-
-            // Show the operator what the count was
-            lcd_show_amps_lo_message(porsoltCount);
-            // ...and abort.
-            blinkforeverandever();
-
-        }
+        // This is the first time we have powered up since programming at the factory, presumably we just had our batteries installed at the factory.
 
         // We just had batteries inserted for the first time ever, so we need to commission ourselves and get ready
 
@@ -1337,6 +1285,9 @@ int main( void )
         // It will have the correct wall clock time until the first battery change in about 150 years. We use the RTC time to copy into `launched_time` when the trigger pin is pulled.
         // These wall-clock time values are only used for logging and diagnostics.
         writeRV3032time(&persistent_data.programmed_time);
+
+        // Flash the bulbs so the person who just put in the battery can see that they work. Hopefully they will fail the unit if not.
+        flash();
 
         // Make sure that the trigger pin is inserted because
         // we would not want to just launch because the pin was out when batteries were inserted.
