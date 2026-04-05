@@ -266,10 +266,10 @@ RTL_MODE_ISR:
       OR.W  R14,R12					; OR back in the base address (remember it is 128 byte aligned)
 
 
-      BIC.B     #2,&PAIFG_L+0 ;  	; Clear interrupt flag
-      								; Note that we can not use the constant-MOV 0x00 trick that worked above becuase
-      								; in RTL mode the person could pull the trigger, which would set the flag for that pin and if
-      								; we then hd bad timing and cleared that bit here then the pull would be lost forever.
+						        	; Here we save a cycle with a constant-sourced move. We can do this becuase we know a that clkout can be the ONLY
+						        	; enabled interrupt on this bank of interrupt flags, so we do not need to worry about clearing any other pending flags.
+						        	; The trigger is on a different bank ( PAIFG_H )
+      MOV.B     #0,&PAIFG_L+0 ;  	; Clear interrupt flag
 
  	  ; AND.B     #127,&PAOUT_L+0       ; DEBUGA OFF - For profiling
 

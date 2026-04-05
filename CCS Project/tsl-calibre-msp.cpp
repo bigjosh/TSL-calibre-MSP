@@ -162,19 +162,16 @@ void initGPIO() {
 
     // --- Debug pins
 
-    // Debug pins
-    SBI( DEBUGA_PDIR , DEBUGA_B );          // DEBUGA=Output. Currently used to time how long the ISR takes
-
-    CBI( DEBUGB_PDIR , DEBUGB_B );          // DEBUGB=Input
-    SBI( DEBUGB_POUT , DEBUGB_B );          // Pull up
-    SBI( DEBUGB_PREN , DEBUGB_B );          // Currently checked at power up, if low then we go into testonly mode.
+    // Debug pins - Currently unused so set low to save power. (Thanks Claude)
+    SBI( DEBUGA_PDIR , DEBUGA_B );
+    SBI( DEBUGB_PDIR , DEBUGB_B );
 
     // --- RV3032
 
     // ~INT in from RV3032 as INPUT with PULLUP
     // We don't use this for now, so set to drive low.
 
-    SBI( RV3032_INT_PDIR , RV3032_INT_B ); // INPUT
+    SBI( RV3032_INT_PDIR , RV3032_INT_B ); // OUPUT - Defaults to LOW
 
     // Note that we can leave the RV3032 EVI pin as is - tied LOW on the PCB so it does not float (we do not use it)
     // It is hard tied low so that it does not float during battery changes when the MCU will not be running
@@ -569,6 +566,8 @@ __interrupt void trigger_isr(void) {
         // Disable the trigger pin and drive low to save power and prevent any more interrupts from it
         // (if it stayed pulled up then it would draw power though the pull-up resistor whenever the pin was out)
 
+        CBI( TRIGGER_PIE, TRIGGER_B );        // Disable the interrupt enable. (Thanks Claude!)
+
         CBI( TRIGGER_POUT , TRIGGER_B );      // low
         SBI( TRIGGER_PDIR , TRIGGER_B );      // drive
 
@@ -799,6 +798,7 @@ extern "C" void tsl_new_day() {
         CSCTL4 = SELMS__VLOCLK;
         __delay_cycles(5000UL);         // Pause for about half a second
         // Switch the MCU back to DCO clock which uses more power per time, but more than compensates for it by getting even more done per time.
+        // Also sets XT1CLK for ACLK but we never use ACLK
         CSCTL4 = 0;
         lcd_restore_screen(&lcd_screen_save_buffer);
 
@@ -1066,98 +1066,6 @@ unsigned int adc_measure()
 constexpr unsigned adc_mv_to_vcc_adc8bit(unsigned mv) {
     // 255 is the full range 100% reading for the ADC, 1500 is the 1.5V reference voltage we are measuring, expressed in mV
     return  (255UL * 1500UL) / mv;
-}
-
-
-// We keep a RAM copy because update-in-place to FRAM requires two writes and a read. To store a value to FRAM is just a single write.
-static volatile unsigned power_rundown_counter_ram =0;
-
-// Called at 64Hz by the CLKOUT from the RTC while we are powering down to measure how long we can keep running and thus much current we are using.
-// 3.93uA@3.3V with all LCD segments lit and ISR running at 64Hz.
-// 3.25uA@1.92V " " "
-// 2.02uA just LCD, no interrupts.
-__interrupt void POWERDOWN_TEST_ISR(void) {
-
-    power_rundown_counter_ram+=1;
-    unlock_persistant_data();
-    persistent_data.porsoltCount=power_rundown_counter_ram;        // Note that this is an atomic update.
-    lock_persistant_data();
-
-    CBI( RV3032_CLKOUT_PIFG , RV3032_CLKOUT_B );      // Clear pending interrupt from CLKOUT
-
-    // Go back to sleep.
-}
-
-
-// Indirectly measure how much power this unit uses by measuring how long it takes to use up the energy stored in the decoupling cap.
-// The power supply should be disconnected after this function is called. This function never returns, the number of 0.1s cycles we were
-// able to keep running for is stored into `persistent_data.porsoltCount`.
-// Never returns.
-
-
-void power_rundown_test() {
-
-    // Set up the ADC to indirectly measure the Vcc voltage
-
-    adc_vcc_init();
-
-    // Enable the high-side voltage supervisor. This will reliably put us into reset at 1.8V on the way down if we are sleeping when we cross the threshold. Does use slightly more power, but I am not sure we can rely on the BOR or when that kicks in?
-    PMMCTL0 = PMMPW                  // Open PMM Registers for write
-            | SVSHE                  // "1b = SVSH is always enabled."
-        ;
-
-    unlock_persistant_data();
-    persistent_data.porsoltCount = 0;       // Reset our deathwatch counter. Will be peridocically incremented in the RTC ISR
-    lock_persistant_data();
-
-    // Call our ISR when CLKOUT clicks
-    SET_CLKOUT_VECTOR( &POWERDOWN_TEST_ISR );
-    ACTIVATE_RAM_ISRS();
-
-    // Set up the RTC to wake us up at 64Hz and reset the prescaler to the top of the second
-    rv3032_switchto_64Hz();
-
-
-    // First make sure we start with a high enough voltage
-    unsigned v = adc_measure();
-    if ( !( v <= (adc_mv_to_vcc_adc8bit(3300) +1 ) ) ) {
-        lcd_show_lo_volt_message( v );
-        blinkforeverandever();
-    };
-
-    // Now wait for the voltage to drop, which indicates that the power supply is disconnected
-
-    while ( adc_measure() <= (adc_mv_to_vcc_adc8bit(3300) +1 ) );    // The MSP-EZ supplies 3.325V, so when we drop below 3.3V then we are starting the slow decline into power death.
-                                                                     // Note that since we are measuring the 1.5V reference against the Vcc voltage that the measurement result will up down as the voltage goes down (as Vcc approaches Vref)
-
-    // When we get here, the Vcc voltage is lower than 3.3V and on the way down.
-    // So now we will count how long we stay alive before dying to measure how much current we are using while we wait to die.
-
-    // Note that we are not sure where the RV3032 prescaller is when we hit here, so this introduces up to 1/64th of a second of jitter to our reading.
-
-    // Don't need the ADC anymore, and leaving it on would increase power and shorten our glide time.
-    adc_shutdown();
-
-    // Now we enable the interrupt on the RTC CLKOUT pin. For now on we must remember to
-    // disable it again if we are going to end up in sleepforever mode.
-
-    // Clear any pending interrupts from the RV3032 clkout pin and then enable interrupts for the next falling edge
-    // We we should not get a real one for 500ms so we have time to do our stuff
-
-
-    CBI( RV3032_CLKOUT_PIFG     , RV3032_CLKOUT_B    );
-    SBI( RV3032_CLKOUT_PIE      , RV3032_CLKOUT_B    );
-
-    // Put all 8's on the display. This will lite every segment so any short on any segment will show up as power drain.
-    // This also lets the operator know that we know that we are dying. If the display stays on "First Start" after power is pulled, then we know that a Blotzman Battery has formed in the circuit.
-    lcd_show_all_8s_message();
-
-
-    // Wait for RV3032 CLKOUT interrupts to fire on clkout. Our ISR will count how many we see before we run out of juice.
-    // Note if we use LPM3_bits then we burn 18uA versus <2uA if we use LPM4_bits.
-    __bis_SR_register(LPM4_bits | GIE );                // Enter LPM4
-    __no_operation();                                   // For debugger
-
 }
 
 

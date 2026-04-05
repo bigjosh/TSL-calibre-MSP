@@ -11,7 +11,7 @@
 #define UTIL_H_
 
 
-#define _BV(x) (1<<x)               // bit value
+#define _BV(x) (1<<(x))               // bit value (Thanks Claude!)
 
 #define SBI(x,b) ((x) |= _BV(b))       // set bit b in x
 #define CBI(x,b) ((x) &= ~_BV(b))      // clear bit b in x

@@ -10,6 +10,8 @@
 #ifndef PINS_H_
 #define PINS_H_
 
+// IMPORTANT: Our ASM code blindly overwrites P1IFG so the RTC clkout should be the only interrupt in this register.
+
 // Connected to the RV3203 INT pin which is open collector on RV3032 side
 
 #define RV3032_INT_PREN   P1REN
@@ -111,7 +113,7 @@
 #define DEBUGA_B (7)
 
 
-// Debug out B on pin P8.3 which is pin number 19 on MSP430
+// Debug out B on pin P1.6 which is pin number 22 on MSP430
 
 #define DEBUGB_PREN P1REN
 #define DEBUGB_PDIR P1DIR
