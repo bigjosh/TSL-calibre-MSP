@@ -1,0 +1,33 @@
+#!/bin/bash
+# Claude-Marginalia: snapshot the current session JSONL into the repo before each commit.
+
+session_jsonl=""
+
+# First, try the deterministic path written by the SessionStart hook
+if [ -f .claude-session-path ]; then
+    candidate=$(cat .claude-session-path)
+    if [ -f "$candidate" ]; then
+        session_jsonl="$candidate"
+    fi
+fi
+
+# Fallback: find the most recently modified .jsonl in the project dir
+if [ -z "$session_jsonl" ]; then
+    repo_root_win=$(cd "$(git rev-parse --show-toplevel)" && pwd -W 2>/dev/null || pwd)
+    claude_proj_name=$(echo "$repo_root_win" | sed 's/[:\\/]/-/g')
+    claude_proj_dir="$HOME/.claude/projects/$claude_proj_name"
+
+    if [ ! -d "$claude_proj_dir" ]; then
+        exit 0
+    fi
+
+    session_jsonl=$(ls -t "$claude_proj_dir"/*.jsonl 2>/dev/null | head -1)
+fi
+
+if [ -z "$session_jsonl" ]; then
+    exit 0
+fi
+
+mkdir -p claude/JSONL
+cp "$session_jsonl" claude/JSONL/session.jsonl
+git add claude/JSONL/session.jsonl
