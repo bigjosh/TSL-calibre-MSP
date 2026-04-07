@@ -454,8 +454,8 @@ void rv3032_init() {
 
     // Give the RV3230 a chance to wake up before we start pounding it.
     // POR refresh time(1) At power up ~66ms
-    // Also there is Tdeb which is the time it takes to recover from a backup switch over back to Vcc. It is unclear if this is 1ms or 1000ms so lets be safe.
-    __delay_cycles(1100000);    // 1 sec +/-10% (we are running at 1Mhz)
+    // tSTART updated in 2023 to 0.5s max
+    __delay_cycles(550000);    // 0.5 sec +/-10% (we are running at 1Mhz)
 
     // Initialize our i2c pins as pull-up
     i2c_init();
@@ -1150,6 +1150,13 @@ int main( void )
     // Power up display with a nice dash pattern
     lcd_show_dashes();
 
+    // Update the counter for how many times we have powered up in our lives
+    unlock_persistant_data();
+    if (persistent_data.tsl_powerup_count< UINT_MAX ) {     // Stop at 65535. Do not roll over.
+        persistent_data.tsl_powerup_count++;                // The body keeps score.
+    }
+    lock_persistant_data();
+
 
     // Uncomment these lines for a test firmware that displays the current trigger switch state and a counter of state changes.
     // #warning
@@ -1160,14 +1167,17 @@ int main( void )
     rv3032_init();
 
 
-    // Initialize the lookup tables we use for efficiently updating the LCD
-    initLCDPrecomputedWordArrays();
-
     // TEST CODE GOES HERE
 
-    if (persistent_data.initalized_flag!=0x01) {
 
+    if (persistent_data.initalized_flag!=0x01) {
         // We are presumably still in the fixture at the factory and it just powered us up for the first time after programming.
+
+        // The pin is probably out since we are in the jig, so
+        // ground the trigger pin so we can get a clean power reading without the pull-up shorted.
+
+        SBI( TRIGGER_PDIR , TRIGGER_B );      // Out
+        CBI( TRIGGER_POUT , TRIGGER_B );      // Ground
 
         // Show a simple test message and sleep so it can measure our power draw.
         lcd_show_testing_only_message();
@@ -1177,11 +1187,9 @@ int main( void )
 
     }
 
-    unlock_persistant_data();
-    if (persistent_data.tsl_powerup_count< UINT_MAX ) {     // Stop at 65535. Do not roll over.
-        persistent_data.tsl_powerup_count++;                // The body keeps score.
-    }
-    lock_persistant_data();
+
+    // Initialize the lookup tables we use for efficiently updating the LCD
+    initLCDPrecomputedWordArrays();
 
     if ( persistent_data.commisisoned_flag != 0x01 ) {
 
