@@ -1181,7 +1181,8 @@ int main( void )
 
         // Show a simple test message and sleep so it can measure our power draw.
         lcd_show_testing_only_message();
-        blinkforeverandever();
+        // We do not blink here to make getting a steady power reading easier.
+        sleepforeverandever();
 
         // unreachable
 
