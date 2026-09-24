@@ -20,9 +20,6 @@ rotation.
 
 6. See mousebites.png for suggested location mouse bites if required.
 
-7. 
-Part C2 is a resistor despite the refdes. The line in the BOM is correct.
-
 8.
 PCB Parameters
 Layer:2 Layers
