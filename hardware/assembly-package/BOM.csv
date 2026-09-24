@@ -5,16 +5,14 @@ C4,CAP_0603,CAP CER 1UF 16V X7R 0603,Murata,,Possible,0.02,https://www.digikey.c
 C5,CAP_0603,CAP CER 1UF 16V X7R 0603,Murata,,Possible,0.02,https://www.digikey.com/en/products/detail/taiyo-yuden/EMK107C6105KA-T/6563455
 C7,CAP_0603,CAP CER 1UF 16V X7R 0603,Murata,,Possible,0.02,https://www.digikey.com/en/products/detail/taiyo-yuden/EMK107C6105KA-T/6563455
 C8,CAP_0603,CAP CER 1UF 16V X7R 0603,Murata,,Possible,0.02,https://www.digikey.com/en/products/detail/taiyo-yuden/EMK107C6105KA-T/6563455
-C2,RES_0805,RES 10K OHM 0805,Stackpole,,Possible,0.50,https://www.digikey.com/en/products/detail/stackpole-electronics-inc/RMCF0805JT10K0/1757762
-C6,CAP_0805,CAP CER 47UF 6.3V X5R 0805,Murata,DNP,Possible,0,
-C9,CAP_0805,CAP CER 47UF 6.3V X5R 0805,Murata,DNP,Possible,0,
-J1,LCD,30PIN TN Positive 12 Digit 7 Segment,,DNP,,1,na
+R1,RES_0605,RES 10K OHM 0805,Stackpole,,Possible,0.01,https://www.digikey.com/en/products/detail/stackpole-electronics-inc/RMCF0603FT10K0/1761235
+J1,LCD,30PIN TN Positive 12 Digit 7 Segment,Supplied by customer,DNP,,1,na
 J3,Programming pads,PDI-6,,DNP,,,
 L1,Flash LED, 62-227ET/KK7D, Everlight High Power LEDs,,Possible,0.16,https://www.digikey.com/en/products/detail/everlight-electronics-co-ltd/62-227ET-KK7D-3M5050X6Y62629U6-2T-EU/7930856
 L2,Flash LED, 62-227ET/KK7D, Everlight High Power LEDs,,Possible,0.16,https://www.digikey.com/en/products/detail/everlight-electronics-co-ltd/62-227ET-KK7D-3M5050X6Y62629U6-2T-EU/7930856
 Q1,MOSFET Transistor,2N7002K,NXP-Philips,,Possible,0.05,https://www.digikey.com/en/products/detail/rohm-semiconductor/RK7002BMT116/4924083
 Q2,MOSFET Transistor,2N7002K,NXP-Philips,,Possible,0.05,https://www.digikey.com/en/products/detail/rohm-semiconductor/RK7002BMT116/4924083
-S1,Trigger Switch,ESE18R61D,Panasonic,,,0.63,https://www.digikey.com/product-detail/en/panasonic-electronic-components/ESE-18R61D/P13373SCT-ND/822309
+S1,Switch,Custom two part latch switch,Supplied by customer,,,0.63,na
 U1,MCU,MSP430FR4133IG56,TI,,,1.15,https://www.digikey.com/en/products/detail/texas-instruments/MSP430FR4133IG56/5067017
 U2,RTC,RV-3032-C7,Micro Crystal,,,2.95,https://www.digikey.com/en/products/detail/micro-crystal-ag/rv-3032-c7-32-768khz-2-5ppm-ta-qa/16273065
 U3,REGULATOR,TPS7A0230PDBVR,TI,,Possible,0.5,https://www.digikey.com/en/products/detail/texas-instruments/TPS7A0230PDBVR/12165118
