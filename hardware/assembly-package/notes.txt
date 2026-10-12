@@ -4,7 +4,7 @@ No ultrasound cleaning - RTC clock part U2 is sensitive to vibration.
 2.
 LCD parts are to be hand soldered. The LCD face on the TOP side of the PCB. LCD 
 must have clearance above parts below. Use a jig or shim to maintain uniform 1.6mm 
-clearance between LCD bottom and PCB top while solderning. Soldering to be done from
+clearance between LCD bottom and PCB top while soldering. Soldering to be done from
 the BOTTOM side of PCB. 
 
 3.
@@ -15,12 +15,13 @@ pins to avoid over heating LCD.
 Use the solder reflow profile for RTC clock part U2, included in this directory. 
 
 5.
-Parts U1, U2, L1, & L2 are orienation sensitive. See photos in this directory for proper
+Parts U1, U2, L1, & L2 are orientation sensitive. See photos in this directory for proper
 rotation.
 
-6. See mousebites.png for suggested location mouse bites if required.
+6. 
+See mousebites.png for suggested location mouse bites if required.
 
-8.
+7.
 PCB Parameters
 Layer:2 Layers
 Material:FR-4
