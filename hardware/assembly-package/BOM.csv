@@ -1,10 +1,10 @@
 RefDes,Name,Value,Manufacturer,Place,Subsitution,Budget Price at 1K units,URL
-C1,CAP_0603,CAP CER 1UF 25V X7R 0603 GCM188R71E105KA64D,Murata,,Possible,0.04,https://www.digikey.com/en/products/detail/murata-electronics/GCM188R71E105KA64D/4903956
-C3,CAP_0603,CAP CER 1UF 25V X7R 0603 GCM188R71E105KA64D,Murata,,Possible,0.04,https://www.digikey.com/en/products/detail/murata-electronics/GCM188R71E105KA64D/4903956
-C4,CAP_0603,CAP CER 1UF 25V X7R 0603 GCM188R71E105KA64D,Murata,,Possible,0.04,https://www.digikey.com/en/products/detail/murata-electronics/GCM188R71E105KA64D/4903956
-C5,CAP_0603,CAP CER 1UF 25V X7R 0603 GCM188R71E105KA64D,Murata,,Possible,0.04,https://www.digikey.com/en/products/detail/murata-electronics/GCM188R71E105KA64D/4903956
-C7,CAP_0603,CAP CER 1UF 25V X7R 0603 GCM188R71E105KA64D,Murata,,Possible,0.04,https://www.digikey.com/en/products/detail/murata-electronics/GCM188R71E105KA64D/4903956
-C8,CAP_0603,CAP CER 1UF 25V X7R 0603 GCM188R71E105KA64D,Murata,,Possible,0.04,https://www.digikey.com/en/products/detail/murata-electronics/GCM188R71E105KA64D/4903956
+C1,CAP_0603,CAP CER 1UF 25V X7R 0603 GCM188R71E105KA64D,Murata,,Possible - must be X7R; 25V or higher; 0603; Murata/TDK/Kyocera-AVX/KEMET/Taiyo Yuden only,0.04,https://www.digikey.com/en/products/detail/murata-electronics/GCM188R71E105KA64D/4903956
+C3,CAP_0603,CAP CER 1UF 25V X7R 0603 GCM188R71E105KA64D,Murata,,Possible - must be X7R; 25V or higher; 0603; Murata/TDK/Kyocera-AVX/KEMET/Taiyo Yuden only,0.04,https://www.digikey.com/en/products/detail/murata-electronics/GCM188R71E105KA64D/4903956
+C4,CAP_0603,CAP CER 1UF 25V X7R 0603 GCM188R71E105KA64D,Murata,,Possible - must be X7R; 25V or higher; 0603; Murata/TDK/Kyocera-AVX/KEMET/Taiyo Yuden only,0.04,https://www.digikey.com/en/products/detail/murata-electronics/GCM188R71E105KA64D/4903956
+C5,CAP_0603,CAP CER 1UF 25V X7R 0603 GCM188R71E105KA64D,Murata,,Possible - must be X7R; 25V or higher; 0603; Murata/TDK/Kyocera-AVX/KEMET/Taiyo Yuden only,0.04,https://www.digikey.com/en/products/detail/murata-electronics/GCM188R71E105KA64D/4903956
+C7,CAP_0603,CAP CER 1UF 25V X7R 0603 GCM188R71E105KA64D,Murata,,Possible - must be X7R; 25V or higher; 0603; Murata/TDK/Kyocera-AVX/KEMET/Taiyo Yuden only,0.04,https://www.digikey.com/en/products/detail/murata-electronics/GCM188R71E105KA64D/4903956
+C8,CAP_0603,CAP CER 1UF 25V X7R 0603 GCM188R71E105KA64D,Murata,,Possible - must be X7R; 25V or higher; 0603; Murata/TDK/Kyocera-AVX/KEMET/Taiyo Yuden only,0.04,https://www.digikey.com/en/products/detail/murata-electronics/GCM188R71E105KA64D/4903956
 R1,RES_0603,RES 10K OHM 0603,Stackpole,,Possible,0.01,https://www.digikey.com/en/products/detail/stackpole-electronics-inc/RMCF0603FT10K0/1761235
 J1,LCD,30PIN TN Positive 12 Digit 7 Segment,Supplied by customer,DNP,,1,na
 J3,Programming pads,PDI-6,,DNP,,,
