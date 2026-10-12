@@ -5,7 +5,7 @@ C4,CAP_0603,CAP CER 1UF 16V X7R 0603,Murata,,Possible,0.02,https://www.digikey.c
 C5,CAP_0603,CAP CER 1UF 16V X7R 0603,Murata,,Possible,0.02,https://www.digikey.com/en/products/detail/taiyo-yuden/EMK107C6105KA-T/6563455
 C7,CAP_0603,CAP CER 1UF 16V X7R 0603,Murata,,Possible,0.02,https://www.digikey.com/en/products/detail/taiyo-yuden/EMK107C6105KA-T/6563455
 C8,CAP_0603,CAP CER 1UF 16V X7R 0603,Murata,,Possible,0.02,https://www.digikey.com/en/products/detail/taiyo-yuden/EMK107C6105KA-T/6563455
-R1,RES_0605,RES 10K OHM 0805,Stackpole,,Possible,0.01,https://www.digikey.com/en/products/detail/stackpole-electronics-inc/RMCF0603FT10K0/1761235
+R1,RES_0603,RES 10K OHM 0603,Stackpole,,Possible,0.01,https://www.digikey.com/en/products/detail/stackpole-electronics-inc/RMCF0603FT10K0/1761235
 J1,LCD,30PIN TN Positive 12 Digit 7 Segment,Supplied by customer,DNP,,1,na
 J3,Programming pads,PDI-6,,DNP,,,
 L1,Flash LED, 62-227ET/KK7D, Everlight High Power LEDs,,Possible,0.16,https://www.digikey.com/en/products/detail/everlight-electronics-co-ltd/62-227ET-KK7D-3M5050X6Y62629U6-2T-EU/7930856
@@ -18,4 +18,4 @@ U2,RTC,RV-3032-C7,Micro Crystal,,,2.95,https://www.digikey.com/en/products/detai
 U3,REGULATOR,TPS7A0230PDBVR,TI,,Possible,0.5,https://www.digikey.com/en/products/detail/texas-instruments/TPS7A0230PDBVR/12165118
 U4,Battery Holder,KEYSTONE1024,Keystone,,,1.601,https://www.digikey.com/product-detail/en/keystone-electronics/1024/36-1024-ND/2178268
 U5,Battery Holder,KEYSTONE1024,KeyStone,,,1.601,https://www.digikey.com/product-detail/en/keystone-electronics/1024/36-1024-ND/2178268
-T1,Test pads,CAP_0603,,DNP,,,
+T1,Test pads,TEST1,,DNP,,,
