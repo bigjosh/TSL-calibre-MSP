@@ -7,25 +7,12 @@ import shutil
 import hashlib
 import tempfile
 import os
-import uuid
 
 # we use this to make it possible to portably read a single keypress
 import getch
 
-# for logging to the google sheet
-import addrow
-
 #MSPFlasher executable name
 mspflasher_name = "MSP430Flasher"
-
-#env variables
-logscript_url = os.environ.get( "tsl_logscript" , "" ).strip()
-logscript_enabled = ( logscript_url != "" ) and ( logscript_url.lower() != "none" )
-
-if logscript_enabled:
-    print( f"Logging to google app script at {logscript_url}" )
-else:
-    print( "Logging disabled." )
 
 #locate MSP430Flasher executable
 mspflasher_exec = shutil.which( mspflasher_name )
@@ -34,9 +21,6 @@ if mspflasher_exec is None:
     raise Exception("MSPFlasher executable must be in search path")  
 
 print( f"Using MSPFlasher executable at {mspflasher_exec}" )
-
-machine_uuid_string = str(uuid.UUID(int=uuid.getnode()))
-print( f"Machine UUID: {machine_uuid_string}" )
 
 
 def print_bytes_as_table(data):
@@ -229,12 +213,6 @@ def program_loop():
             time.sleep(2)
             print("Disconnect the programming connector to remove power from the TSL.")
 
-            if ( logscript_enabled ):
-                print( "Adding record to log...")
-                addrow.send_data_to_sheet(logscript_url,[device_uuid,firmware_hash,machine_uuid_string])
-                print("Success!")  
-
-            
 # If we started from command line, enter the programming loop.
 if __name__ == "__main__":
     program_loop()
